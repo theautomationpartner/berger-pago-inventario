@@ -158,7 +158,7 @@ export function Paso1Seleccion({
                   <span className="trow-nom">
                     <span className="trow-nom-txt">{t.nombre}</span>
                     {t.numInterno && <span className="chip chip--interno">N° {t.numInterno}</span>}
-                    {t.formaPago && <span className="chip chip--gris">{t.formaPago}</span>}
+                    {t.formaPago && <span className="chip chip--violeta">{t.formaPago}</span>}
                   </span>
                   <span className="trow-meta">
                     <span className="trow-fecha">{fechaCorta(t.fechaProd)}</span>

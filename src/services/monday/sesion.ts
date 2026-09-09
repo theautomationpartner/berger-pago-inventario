@@ -33,10 +33,29 @@ interface TokenEnCache {
 let cache: TokenEnCache | null = null
 
 /**
- * Cuánto se espera a que monday conteste. Adentro de monday la respuesta es inmediata; este
- * número sólo decide en cuánto tiempo se rinde la app cuando NO está adentro.
+ * Cuánto se espera a que monday conteste.
+ *
+ * El pedido de sesión es un `postMessage` a la ventana padre. Si la app NO está embebida,
+ * `window.parent` es ella misma: el mensaje no llega a nadie y la espera se agota siempre. Ese es
+ * justo el caso de quien abre la URL del deploy en el navegador, y hacerlo mirar un spinner seis
+ * segundos antes del cartel de acceso denegado no aporta nada.
+ *
+ * Por eso hay dos tiempos. Embebida, se le da aire de sobra a monday. Suelta, alcanza con un
+ * momento: la respuesta, si llegara, sería un ida y vuelta local de milisegundos. El tiempo corto
+ * no se decide sólo con "no estoy en un iframe" —no hay garantía de cómo monta la vista la app
+ * del celular—: se sigue preguntando igual, sólo que sin esperar de más.
  */
-const ESPERA_MS = 6000
+const EMBEBIDA = (() => {
+  try {
+    return window.self !== window.top
+  } catch {
+    // Un `SecurityError` al leer `window.top` significa que hay un padre de otro origen: o sea,
+    // sí está embebida.
+    return true
+  }
+})()
+
+const ESPERA_MS = EMBEBIDA ? 6000 : 1500
 
 /** Lee el cuerpo del JWT sin verificarlo: la verificación de verdad ocurre en el servidor. */
 function leerDatos(token: string): { datos: DatosSesion; vence: number } {

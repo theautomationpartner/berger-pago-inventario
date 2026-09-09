@@ -120,3 +120,54 @@
     flex: 0 0 auto;
   }
 }
+
+/* ===== Pantalla de acceso denegado =====
+   Ocupa el panel entero y está centrada: es la pantalla completa, no un cartel encima de la app.
+   Cuando se muestra, no hay ninguna otra cosa dibujada. */
+.sin-acceso {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 0;
+  padding: 32px var(--gutter);
+  text-align: center;
+  background: var(--bg);
+}
+.sin-acceso-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: var(--berger-red-soft);
+  color: var(--berger-red);
+  font-size: 30px;
+}
+.sin-acceso-tit {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-dark);
+  line-height: 1.25;
+}
+.sin-acceso-det {
+  font-size: 14px;
+  color: var(--text-gray);
+  max-width: 420px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .sin-acceso-ic {
+    width: 66px;
+    height: 66px;
+    font-size: 26px;
+  }
+  .sin-acceso-tit {
+    font-size: 20px;
+  }
+}

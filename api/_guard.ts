@@ -25,6 +25,9 @@ export interface SesionMonday {
   isViewOnly: boolean
 }
 
+/** Cuenta de monday habilitada: BERGER S.A. (slug `maquinariasagricolas`). */
+const CUENTA_BERGER = 36618349
+
 export class NoAutorizado extends Error {}
 export class MalConfigurado extends Error {}
 
@@ -155,10 +158,11 @@ export async function verificarSesion(authHeader: string | null): Promise<Sesion
 
   /* Que el token sea válido sólo prueba que viene de nuestra app; podría ser de otra cuenta de
      monday que la tuviera instalada. Acá se exige que sea la de BERGER S.A.. */
-  const cuentaEsperada = Number(process.env.MONDAY_ACCOUNT_ID)
-  if (!cuentaEsperada) {
-    throw new MalConfigurado('Falta MONDAY_ACCOUNT_ID en el entorno del deploy.')
-  }
+  /* El id de la cuenta NO es un secreto —está también en el cliente, en `columns.ts`—, así que
+     tiene un valor por defecto en vez de ser una variable obligatoria: una variable menos que
+     cargar es una forma menos de dejar el deploy a medio configurar. `MONDAY_ACCOUNT_ID` sigue
+     existiendo para poder cambiar la cuenta habilitada sin volver a compilar. */
+  const cuentaEsperada = Number(process.env.MONDAY_ACCOUNT_ID) || CUENTA_BERGER
   if (accountId !== cuentaEsperada) {
     throw new NoAutorizado('La cuenta de monday no está habilitada para esta app.')
   }

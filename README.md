@@ -102,29 +102,50 @@ rutas: `/monday-api` → `/v2` (GraphQL) y `/monday-file` → `/v2/file` (subida
 
 ---
 
+## Acceso: sólo el monday de BERGER
+
+La URL del deploy es pública y la app se puede instalar en cualquier cuenta de monday, así que el
+permiso **no** depende de dónde esté instalada. Lo decide el `sessionToken` que monday le entrega
+a la app: un JWT firmado con el secreto de la aplicación, que dice de qué cuenta viene el usuario.
+
+- **En el cliente** (`src/hooks/useAccesoMonday.ts`): la verificación corre ANTES de dibujar nada.
+  Si monday no responde —porque no hay iframe padre, o sea, alguien abrió la URL suelta— o si la
+  cuenta no es la de BERGER (`36618349`), lo único que existe en pantalla es el cartel de acceso
+  denegado. Ni barra de marca, ni operaciones, ni una sola consulta al tablero.
+- **En el servidor** (`api/_guard.ts`): la misma comprobación, y ésta es la barrera de verdad. El
+  proxy verifica la firma HMAC del token y que la cuenta coincida antes de hablar con Monday. Sin
+  eso, cualquiera podría pedirle datos salteándose la interfaz.
+
+Esconder la pantalla es cortesía; la barrera es la del servidor. Están las dos porque resuelven
+cosas distintas: una evita mostrar el circuito interno de la empresa a quien pasa por la URL, la
+otra evita que se lleve los datos.
+
+---
+
 ## Seguridad del token
 
 **El token nunca entra al repositorio ni al bundle que descarga el navegador.**
 
 - `.env.local` está en `.gitignore` (la regla es `.env.*` con excepción de `.env.example`). Es el
   único lugar del disco donde vive el token en desarrollo.
-- En **producción** el token NO se expone con `VITE_`: va como `MONDAY_TOKEN` en las variables de
-  entorno de Vercel y sólo lo leen las funciones serverless de `api/`, del lado del servidor.
-- Esas funciones exigen un `sessionToken` firmado por monday antes de consultar nada
-  (`api/_guard.ts`): verifican la firma HMAC con el secreto de la app y que la cuenta sea la de
-  BERGER. Abrir la URL del deploy en un navegador suelto no devuelve datos.
+- En **producción** el token va como `MONDAY_TOKEN` en las variables de entorno de Vercel y sólo lo
+  leen las funciones serverless de `api/`, del lado del servidor.
+
+> ⚠️ **`VITE_MONDAY_TOKEN` no va nunca en Vercel.** Vite reemplaza todo lo que empieza con `VITE_`
+> por su valor literal dentro del JavaScript que descarga el navegador. Cargarla en el deploy
+> publica el token para cualquiera que abra la URL y mire el bundle. Es exclusiva de `.env.local`.
 
 Variables de entorno del deploy:
 
-| Variable | Para qué |
-|----------|----------|
-| `MONDAY_TOKEN` | Token de la API. **Sin** prefijo `VITE_`. |
-| `MONDAY_SIGNING_SECRET` | Signing secret de la app (Developer Center → Basic Information). |
-| `MONDAY_CLIENT_SECRET` | Client secret de la misma pantalla. Se prueban los dos. |
-| `MONDAY_ACCOUNT_ID` | Cuenta habilitada. BERGER S.A. = `36618349`. |
+| Variable | ¿Obligatoria? | Para qué |
+|----------|---------------|----------|
+| `MONDAY_TOKEN` | Sí | Token de la API. **Sin** prefijo `VITE_`. |
+| `MONDAY_SIGNING_SECRET` | Sí (o la de abajo) | Signing secret de la app. Developer Center → tu app → Basic Information. |
+| `MONDAY_CLIENT_SECRET` | Sí (o la de arriba) | Client secret de la misma pantalla. Se prueban las dos: cuál valida depende de cómo se creó la app. |
+| `MONDAY_ACCOUNT_ID` | No | Cuenta habilitada. Por defecto, la de BERGER S.A. (`36618349`). |
 
-> Si el token de la API se filtró alguna vez (mail, chat, captura), hay que **revocarlo y generar
-> uno nuevo** desde monday: developers → My access tokens.
+> Si el token de la API se filtró alguna vez (mail, chat, captura, un bundle publicado), hay que
+> **revocarlo y generar uno nuevo** desde monday: developers → My access tokens.
 
 ---
 
@@ -214,5 +235,12 @@ Están comentadas en el código, pero conviene tenerlas juntas:
 ## Deploy en Vercel
 
 1. Importar el repositorio; el framework se detecta solo (`vercel.json` ya fija build y salida).
-2. Cargar las cuatro variables de entorno de la tabla de arriba.
-3. En el Developer Center de monday, apuntar la board view a la URL del deploy.
+2. En monday: Developer Center → **Create app** → agregar una feature de tipo **Board View** y
+   apuntarla a la URL del deploy. De esa pantalla salen el signing secret y el client secret.
+3. Cargar en Vercel las variables de la tabla de arriba, y **borrar `VITE_MONDAY_TOKEN` si está**.
+4. Redeployar: las variables se leen en el build, así que un deploy anterior no las toma.
+5. Instalar la app en el workspace de BERGER y agregar la vista al tablero.
+
+Hasta que no estén el signing secret y el client secret, la función `/api/monday` contesta
+`500 · Falta MONDAY_SIGNING_SECRET` y la app no muestra datos. Es a propósito: sin con qué
+verificar la firma, no hay forma de saber quién está pidiendo, y fallar cerrado es lo correcto.

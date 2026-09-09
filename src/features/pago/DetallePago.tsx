@@ -1,26 +1,9 @@
+import { tonoEstadoInventario, tonoEstadoPago, tonoOperacionPend } from '@/lib/chips'
 import { fechaCorta, importe } from '@/lib/format'
-import { INV_ESTADO, PAGO_ESTADO } from '@/services/monday/columns'
 import type { Pago } from '@/types'
 
 interface Props {
   pago: Pago
-}
-
-/** Color del chip según el punto del circuito en que está el pago o el tractor. */
-function tonoEstado(estado: string): string {
-  switch (estado) {
-    case PAGO_ESTADO.CONFIRMADO:
-    case INV_ESTADO.PAGADO:
-      return 'chip--verde'
-    case PAGO_ESTADO.APROBADO:
-    case INV_ESTADO.TRANSF_APROBADA:
-      return 'chip--azul'
-    case PAGO_ESTADO.CARGADO:
-    case INV_ESTADO.TRANSF_CARGADA:
-      return 'chip--ambar'
-    default:
-      return 'chip--gris'
-  }
 }
 
 interface Adjunto {
@@ -65,13 +48,15 @@ export function DetallePago({ pago }: Props) {
           <div className="dato">
             <span className="dato-lbl">Estado del pago</span>
             <span className="dato-val">
-              <span className={`chip ${tonoEstado(pago.estadoPago)}`}>{pago.estadoPago || '—'}</span>
+              <span className={`chip ${tonoEstadoPago(pago.estadoPago)}`}>{pago.estadoPago || '—'}</span>
             </span>
           </div>
           <div className="dato">
             <span className="dato-lbl">Operación pendiente</span>
             <span className="dato-val">
-              <span className="chip chip--gris">{pago.operacionPend || '—'}</span>
+              <span className={`chip ${tonoOperacionPend(pago.operacionPend)}`}>
+                {pago.operacionPend || '—'}
+              </span>
             </span>
           </div>
           {pago.fechaCargado && (
@@ -129,7 +114,7 @@ export function DetallePago({ pago }: Props) {
                   <span className="sel-nom">{t.nombre}</span>
                   <span className="tractor-fila-chips">
                     {t.numInterno && <span className="chip chip--interno">N° {t.numInterno}</span>}
-                    <span className={`chip ${tonoEstado(t.estadoTractor)}`}>
+                    <span className={`chip ${tonoEstadoInventario(t.estadoTractor)}`}>
                       {t.estadoTractor || 'sin estado'}
                     </span>
                     {!t.tractorId && (

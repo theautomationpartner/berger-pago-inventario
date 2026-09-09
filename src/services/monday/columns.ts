@@ -6,6 +6,19 @@
  * una columna se toca un solo archivo.
  */
 
+/**
+ * Cuenta de monday habilitada: BERGER S.A. (slug `maquinariasagricolas`).
+ *
+ * La app se puede instalar en cualquier cuenta que tenga el link, así que el permiso NO puede
+ * depender de dónde esté instalada. Este id es el que decide: el token de sesión que firma monday
+ * dice de qué cuenta viene el usuario, y cualquier otra queda afuera.
+ *
+ * Del lado del cliente esto sólo evita mostrar una pantalla que no va a funcionar. La barrera de
+ * verdad está en `api/_guard.ts`, del lado del servidor, con la misma comprobación: sin ella,
+ * cualquiera podría pedirle datos al proxy salteándose la interfaz.
+ */
+export const CUENTA_BERGER = 36618349
+
 export const TABLEROS = {
   /** Inventario: un item por tractor. */
   inventario: '18428578101',

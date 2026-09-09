@@ -59,9 +59,9 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
-  color: #98a2b3;
-  background: var(--tint-neutral);
-  border: 1px solid var(--tint-neutral-bd);
+  color: #6b7bb5;
+  background: #eef0fd;
+  border: 1px solid #d5d9f7;
   border-radius: 999px;
   padding: 3px 9px;
   flex: 0 0 auto;
@@ -412,9 +412,9 @@
   white-space: nowrap;
 }
 .chip--interno {
-  background: #eef2f7;
-  border-color: #dfe4ec;
-  color: var(--text-mid);
+  background: #eef0fd;
+  border-color: #d5d9f7;
+  color: #3f45a0;
   font-variant-numeric: tabular-nums;
 }
 .chip--verde {
@@ -437,10 +437,20 @@
   border-color: #ffe1a8;
   color: #8a5a00;
 }
-.chip--gris {
-  background: var(--tint-neutral);
-  border-color: var(--tint-neutral-bd);
-  color: var(--text-gray);
+.chip--violeta {
+  background: #f5f0fd;
+  border-color: #e2d6f6;
+  color: #6b3fa0;
+}
+.chip--teal {
+  background: #e6f7f6;
+  border-color: #b7e4e0;
+  color: #0f766e;
+}
+.chip--indigo {
+  background: #eef0fd;
+  border-color: #d5d9f7;
+  color: #3f45a0;
 }
 
 /* ===== Campos ===== */

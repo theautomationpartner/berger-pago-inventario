@@ -171,7 +171,7 @@ export function FlujoAvancePago({ flujo }: Props) {
                           <span className={`trow-radio${marcado ? ' trow-radio--sel' : ''}`} />
                           <span className="trow-nom">
                             <span className="trow-nom-txt">{p.nombre}</span>
-                            <span className="chip chip--gris">
+                            <span className="chip chip--teal">
                               {p.tractores.length} tractor{p.tractores.length === 1 ? '' : 'es'}
                             </span>
                           </span>
