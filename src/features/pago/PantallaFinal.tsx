@@ -1,4 +1,5 @@
 import { cantidad, importe } from '@/lib/format'
+import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
 import type { ResultadoCarga } from '@/types'
 
 interface Props {
@@ -6,8 +7,6 @@ interface Props {
   monto: number
   onNuevaOperacion: () => void
 }
-
-const URL_PAGOS = 'https://maquinariasagricolas.monday.com/boards/18430295445'
 
 /**
  * Cierre de la operación.
@@ -63,10 +62,10 @@ export function PantallaFinal({ resultado, monto, onNuevaOperacion }: Props) {
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="final-acciones">
           <a
             className="btn btn--borde"
-            href={`${URL_PAGOS}/pulses/${resultado.pagoId}`}
+            href={`${URL_TABLERO_PAGOS}/pulses/${resultado.pagoId}`}
             target="_blank"
             rel="noreferrer"
           >

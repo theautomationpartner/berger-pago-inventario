@@ -42,6 +42,7 @@ export function Paso2Transferencia({ tractores, datos, onCambiar, total }: Props
         <ZonaArchivo
           archivo={datos.archivo}
           onElegir={(archivo) => onCambiar({ ...datos, archivo })}
+          titulo="Arrastrá la transferencia acá o hacé clic para buscarla"
         />
       </div>
 

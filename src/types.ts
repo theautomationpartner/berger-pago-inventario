@@ -14,8 +14,6 @@ export interface DefinicionOperacion {
   titulo: string
   detalle: string
   icono: string
-  /** Las operaciones 2 y 3 todavía no están implementadas. */
-  disponible: boolean
 }
 
 /**
@@ -41,13 +39,13 @@ export interface Tractor {
   formaPago: string
 }
 
-/** Mes de trabajo de la operación. `mes` es 1-12, no el 0-11 de `Date`. */
+/** Mes de trabajo de la operación 1. `mes` es 1-12, no el 0-11 de `Date`. */
 export interface PeriodoMes {
   anio: number
   mes: number
 }
 
-/** Datos de la transferencia que completa el usuario antes de impactar en Monday. */
+/** Datos de la transferencia que completa el usuario en la operación 1. */
 export interface DatosTransferencia {
   archivo: File | null
   /**
@@ -63,7 +61,43 @@ export interface DatosTransferencia {
   fechaEmision: string
 }
 
-/** Resultado de impactar la operación en Monday. */
+/**
+ * Un tractor dentro de un pago ya registrado: el subitem del tablero de Pagos.
+ *
+ * `tractorId` es la conexión al item del Inventario. Es el dato que hace posible que las
+ * operaciones 2 y 3 avancen el estado del tractor sin tener que volver a buscarlo por nombre.
+ */
+export interface SubitemPago {
+  id: string
+  nombre: string
+  numDraft: string
+  codProducto: string
+  numInterno: string
+  valorNeto: number | null
+  /** Item del Inventario conectado, o `null` si el subitem quedó sin conexión. */
+  tractorId: string | null
+  /** Estado Pago actual del tractor en el Inventario. */
+  estadoTractor: string
+}
+
+/** Un pago del tablero de Pagos del Inventario, con sus tractores. */
+export interface Pago {
+  id: string
+  nombre: string
+  monto: number | null
+  fechaEmision: string
+  estadoPago: string
+  operacionPend: string
+  fechaCargado: string
+  fechaAprobado: string
+  /** URL del archivo adjunto en cada etapa, o `''` si todavía no hay. */
+  urlTransferencia: string
+  urlTransferenciaConNumero: string
+  urlComprobanteBanco: string
+  tractores: SubitemPago[]
+}
+
+/** Resultado de la operación 1. */
 export interface ResultadoCarga {
   /** Item creado en el tablero de Pagos del Inventario. */
   pagoId: string
@@ -78,5 +112,55 @@ export interface ResultadoCarga {
   advertencias: string[]
 }
 
-/** Etapa del asistente de la operación "Cargar Transferencia". */
+/** Resultado de las operaciones 2 y 3. */
+export interface ResultadoAvance {
+  pagoId: string
+  tractoresActualizados: number
+  advertencias: string[]
+}
+
+/** Etapa del asistente de la operación 1. */
 export type Etapa = 'seleccion' | 'transferencia' | 'listo'
+
+/** Etapa del asistente de las operaciones 2 y 3. */
+export type EtapaAvance = 'seleccion' | 'archivo' | 'listo'
+
+/**
+ * Configuración de una operación que avanza un pago ya existente (las número 2 y 3).
+ *
+ * Las dos hacen exactamente lo mismo —elegir un pago pendiente, adjuntar un comprobante y
+ * empujar el circuito un casillero— y sólo cambian en QUÉ estados leen y escriben. Describirlas
+ * como datos, en vez de duplicar el flujo en dos componentes casi iguales, es lo que garantiza
+ * que un arreglo en el manejo de errores valga para las dos.
+ */
+export interface FlujoAvance {
+  operacion: Operacion
+  /** Qué pagos se ofrecen: etiqueta de "Operacion Pend" y, si hace falta, de "Estado Pago". */
+  filtroOperacionPend: string
+  filtroEstadoPago?: string
+
+  /** Textos de la pantalla. */
+  tituloSeleccion: string
+  detalleSeleccion: string
+  vacioTitulo: string
+  vacioDetalle: string
+  tituloArchivo: string
+  detalleArchivo: string
+  zonaTitulo: string
+  botonAccion: string
+  finalTitulo: string
+  finalDetalle: string
+
+  /** Dónde se guarda el comprobante que sube el usuario. */
+  columnaArchivo: string
+  /** Estados y fecha que quedan en el pago. */
+  nuevoEstadoPago: string
+  nuevaOperacionPend: string
+  columnaFecha: string
+  /** Estado al que pasan los tractores del pago en el Inventario. */
+  nuevoEstadoInventario: string
+  /** Columna del aviso por mail que se deja en "Enviar". */
+  columnaEmail: string
+  /** Qué hace ese mail, para poder contarlo en pantalla. */
+  detalleEmail: string
+}

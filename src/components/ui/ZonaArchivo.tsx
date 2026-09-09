@@ -6,6 +6,8 @@ interface Props {
   onElegir: (archivo: File | null) => void
   /** Extensiones aceptadas, para el `accept` del input y para el mensaje de rechazo. */
   acepta?: string
+  /** Qué se está pidiendo. Cada operación adjunta un documento distinto. */
+  titulo?: string
 }
 
 /**
@@ -16,7 +18,12 @@ interface Props {
  * comportamiento nativo de teclado y el diálogo del sistema. Reemplazarlo por un `div` con un
  * `onClick` deja la carga fuera del alcance de quien navega sin mouse.
  */
-export function ZonaArchivo({ archivo, onElegir, acepta = '.pdf' }: Props) {
+export function ZonaArchivo({
+  archivo,
+  onElegir,
+  acepta = '.pdf',
+  titulo = 'Arrastrá el archivo acá o hacé clic para buscarlo',
+}: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [sobre, setSobre] = useState(false)
   const [rechazo, setRechazo] = useState<string | null>(null)
@@ -77,7 +84,7 @@ export function ZonaArchivo({ archivo, onElegir, acepta = '.pdf' }: Props) {
         <span className="zona-ic">
           <i className="fa-solid fa-cloud-arrow-up" aria-hidden="true" />
         </span>
-        <span className="zona-tit">Arrastrá la transferencia acá o hacé clic para buscarla</span>
+        <span className="zona-tit">{titulo}</span>
         <span className="zona-det">Un archivo {extensiones.join(' o ')} de tu computadora</span>
         <input
           ref={input}

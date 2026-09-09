@@ -1,11 +1,14 @@
 /* Contenedor de la app. Ocupa el panel entero del tablero de monday y es lo único que scrollea:
-   la barra de marca queda fija arriba y el pie de acción fijo abajo. */
+   la barra de marca y el selector de operación quedan fijos arriba, y el pie de acción abajo.
+
+   Esa estructura es lo que hace que la app sirva en un celular: con toda la pantalla scrolleando,
+   el botón que cierra la operación queda al fondo de una lista de treinta tractores. */
 
 .app {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   min-height: 0;
   background: var(--bg);
   /* Contenedor de consulta: el layout se reordena según el ANCHO REAL del panel, que en monday
@@ -17,7 +20,16 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px 24px 24px;
+  /* Inercia de scroll en iOS; sin esto el movimiento se siente trabado dentro del WebView. */
+  -webkit-overflow-scrolling: touch;
+  padding: 20px var(--gutter) 24px;
+  background: var(--bg);
+}
+
+/* Franja del selector de operación: fija, entre la marca y el contenido. */
+.barra-ops {
+  flex: 0 0 auto;
+  padding: 16px var(--gutter) 0;
   background: var(--bg);
 }
 
@@ -52,10 +64,12 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 12px 24px;
+  padding: 12px var(--gutter);
   border-top: 1px solid var(--border-soft);
   background: #fff;
   box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.04);
+  /* Deja libre la franja del gesto de inicio del celular; en el resto vale 0. */
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 .pie-info {
   display: flex;
@@ -63,9 +77,46 @@
   gap: 2px;
   min-width: 0;
 }
+.pie-info .font-b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pie-acciones {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* ===== Celular ===== */
+@media (max-width: 640px) {
+  .scroll {
+    padding-top: 14px;
+    padding-bottom: 18px;
+  }
+  .barra-ops {
+    padding-top: 10px;
+  }
+
+  /* El pie pasa a dos filas: el resumen arriba y el botón ocupando el ancho completo abajo.
+     En una sola fila, el botón principal queda en una tira de 90px contra el borde, que es
+     justo donde peor se acierta con el pulgar. */
+  .pie {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .pie-acciones {
+    margin-left: 0;
+    width: 100%;
+  }
+  /* El botón principal manda; "Volver" se queda con lo mínimo. */
+  .pie-acciones .btn {
+    flex: 1;
+    min-height: var(--toque);
+  }
+  .pie-acciones .btn--texto {
+    flex: 0 0 auto;
+  }
 }

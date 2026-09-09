@@ -43,6 +43,15 @@
   --radio: 10px;
   --sombra: 0 1px 3px rgba(16, 24, 40, 0.06);
   --sombra-alta: 0 4px 12px rgba(16, 24, 40, 0.1);
+
+  /* Margen lateral de la app. Es UNA variable y no un número repetido porque en celular tiene
+     que achicarse en todos lados a la vez: si un bloque se queda en 24px, su contenido deja de
+     alinearse con el resto y se nota más que el propio margen. */
+  --gutter: 24px;
+
+  /* Alto mínimo de todo lo que se toca. 44px es el umbral por debajo del cual un dedo empieza a
+     errarle al control en un celular. */
+  --toque: 44px;
 }
 
 * {
@@ -52,15 +61,30 @@
   font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
+html,
 body {
-  height: 100vh;
+  /* `100dvh` y no `100vh`: en el navegador del celular —y en el WebView de la app de monday— la
+     barra de direcciones aparece y desaparece con el scroll, y `100vh` mide la ventana SIN esa
+     barra. El resultado es una app más alta que la pantalla, con el pie de acción cortado justo
+     al abrirla. La unidad dinámica sigue ese alto real. */
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg);
+  /* El WebView de Android agranda las fuentes por su cuenta al rotar; esto lo desactiva. */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Reserva para el ancho de `100dvh` en navegadores viejos que no la conocen. */
+@supports not (height: 100dvh) {
+  html,
+  body {
+    height: 100vh;
+  }
 }
 
 #root {
   display: flex;
-  height: 100vh;
+  height: 100%;
   color: var(--text-dark);
   background: var(--bg);
 }
@@ -70,6 +94,14 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+/* Sin esto, tocar un botón en Android deja un rectángulo azul encima durante un instante. */
+button,
+a,
+label,
+[role='tab'] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::-webkit-scrollbar {
@@ -106,4 +138,17 @@ textarea {
 }
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== Celular =====
+   El corte es por VIEWPORT y no por contenedor a propósito: no describe un panel angosto dentro
+   de una pantalla grande, sino un dispositivo chico, donde además cambian el tamaño mínimo de
+   los controles y el margen de la app. */
+@media (max-width: 640px) {
+  :root {
+    --gutter: 12px;
+  }
+  .xs {
+    font-size: 12px;
+  }
 }

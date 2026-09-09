@@ -8,17 +8,22 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
+  gap: 14px;
+  padding: 10px var(--gutter);
   background: #fff;
   border-bottom: 1px solid var(--border-soft);
 }
+/* La caja del logo se mide por ALTO y deja el ancho suelto hasta un tope generoso.
+   `max-width` es el que decide si un logo acostado entra entero: con 180px, un lockup de
+   proporción 3:1 a 52px de alto necesita 156px y pasa raspando; a 4:1 ya no entra y `contain`
+   lo achica hasta que el nombre deja de leerse. Por eso hay lugar de sobra (260px): el logo
+   toma el ancho que su archivo pida y el que sobra simplemente no se usa. */
 .marca-logo {
-  height: 46px;
+  height: 52px;
   width: auto;
-  max-width: 180px;
+  max-width: 260px;
   object-fit: contain;
-  border-radius: 8px;
+  object-position: left center;
   user-select: none;
   flex: 0 0 auto;
 }
@@ -27,6 +32,7 @@
   width: 1px;
   background: var(--border-soft);
   flex: 0 0 auto;
+  margin: 2px 0;
 }
 .marca-txt {
   display: flex;
@@ -60,23 +66,15 @@
   padding: 3px 9px;
   flex: 0 0 auto;
 }
-@container (max-width: 620px) {
-  .marca-logo {
-    height: 36px;
-  }
-  .marca-sub {
-    display: none;
-  }
-}
 
 /* ===== Selector de operación ===== */
 .ops {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
-@container (max-width: 860px) {
+@container (max-width: 900px) {
   .ops {
     grid-template-columns: 1fr;
   }
@@ -86,14 +84,14 @@
   align-items: flex-start;
   gap: 12px;
   text-align: left;
-  padding: 14px 16px;
+  padding: 13px 15px;
   border: 1px solid var(--tint-neutral-bd);
   border-radius: var(--radio);
   background: var(--tint-neutral);
   cursor: pointer;
   transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
-.op:hover:not(.op--off) {
+.op:hover {
   border-color: var(--berger-red-bd);
   background: #fff;
   box-shadow: var(--sombra);
@@ -104,10 +102,6 @@
   background: #fff;
   border-color: var(--berger-red);
   box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.12);
-}
-.op--off {
-  cursor: not-allowed;
-  opacity: 0.62;
 }
 .op-ic {
   flex: 0 0 auto;
@@ -138,23 +132,15 @@
   font-weight: 700;
   color: var(--text-dark);
 }
+/* El ordinal dice que las operaciones son una secuencia y no tres opciones sueltas. */
+.op-nro {
+  color: var(--berger-red);
+  font-weight: 800;
+}
 .op-det {
   font-size: 12px;
   color: var(--text-gray);
   line-height: 1.35;
-}
-.op-pron {
-  align-self: flex-start;
-  margin-top: 2px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: #8a5a00;
-  background: #fff6e5;
-  border: 1px solid #ffe1a8;
-  border-radius: 999px;
-  padding: 2px 8px;
 }
 
 /* ===== Stepper ===== */
@@ -180,6 +166,10 @@
   text-align: center;
   line-height: 1.2;
   text-wrap: balance;
+}
+/* Sólo uno de los dos rótulos se ve por vez; el intercambio está al pie del archivo. */
+.step-nom--corto {
+  display: none;
 }
 .sic {
   width: 28px;
@@ -244,7 +234,7 @@
 .sline {
   height: 3px;
   width: 40px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   background: var(--border);
   border-radius: 2px;
   /* Baja el conector al eje del círculo (28px de alto, centro en 14px, menos la mitad de sus
@@ -289,10 +279,12 @@
   font-weight: 800;
   letter-spacing: -0.4px;
   color: var(--text-dark);
+  line-height: 1.2;
 }
 .sec-det {
   font-size: 13px;
   color: var(--text-gray);
+  line-height: 1.45;
 }
 
 /* ===== Cards ===== */
@@ -321,14 +313,11 @@
 .card--flush {
   margin-bottom: 0;
 }
-.card--plano {
-  padding: 0;
-  overflow: hidden;
-}
 .ctitle {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   font-size: 14px;
   font-weight: 700;
   color: var(--text-dark);
@@ -347,7 +336,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
+  min-height: 40px;
+  padding: 9px 18px;
   border: 1px solid transparent;
   border-radius: 8px;
   font-size: 13px;
@@ -357,6 +347,7 @@
   color: var(--text-dark);
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
   white-space: nowrap;
+  text-decoration: none;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -402,7 +393,8 @@
   color: var(--text-dark);
 }
 .btn--chico {
-  padding: 6px 12px;
+  min-height: 32px;
+  padding: 5px 12px;
   font-size: 12px;
 }
 
@@ -470,13 +462,16 @@
 .input,
 .select {
   width: 100%;
-  height: 38px;
+  height: 40px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #fff;
   font-size: 13px;
   color: var(--text-dark);
+  /* Los `select` y los `date` de iOS ignoran el alto si conservan su apariencia nativa. */
+  appearance: none;
+  -webkit-appearance: none;
 }
 .input:focus,
 .select:focus {
@@ -501,6 +496,10 @@
   line-height: 1.45;
   margin-bottom: 16px;
   border: 1px solid;
+}
+.aviso i {
+  margin-top: 2px;
+  flex: 0 0 auto;
 }
 .aviso--error {
   background: var(--berger-red-soft);
@@ -529,7 +528,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 46px 20px;
+  padding: 40px 20px;
   text-align: center;
   color: var(--text-gray);
 }
@@ -563,5 +562,123 @@
 @keyframes girar {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ===== Celular ===== */
+@media (max-width: 640px) {
+  .marca {
+    gap: 10px;
+    padding: 8px var(--gutter);
+  }
+  .marca-logo {
+    height: 40px;
+    max-width: 168px;
+  }
+  .marca-tit {
+    font-size: 15px;
+  }
+  .marca-sub {
+    font-size: 11px;
+  }
+  /* El sello de build es información de diagnóstico: en una pantalla chica compite con el
+     nombre de la app por el poco ancho que hay. Sigue en el DOM para inspeccionarlo. */
+  .marca-build {
+    display: none;
+  }
+
+  /* Las tarjetas de operación pasan a ser pestañas en una fila que scrollea. Apiladas con su
+     descripción se comían la pantalla entera antes de mostrar un solo dato. */
+  .ops {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    /* Los márgenes negativos dejan que las pestañas lleguen al borde al scrollear, y el padding
+       las devuelve a la línea del resto del contenido cuando están quietas. */
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .ops::-webkit-scrollbar {
+    display: none;
+  }
+  .op {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    min-height: var(--toque);
+    scroll-snap-align: start;
+  }
+  .op-ic {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .op-tit {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  /* La descripción se va: en una pestaña de una línea no entra, y el título más el ordinal ya
+     dicen qué es cada operación. La explicación completa vuelve en el encabezado del paso. */
+  .op-det {
+    display: none;
+  }
+
+  /* Stepper compacto: rótulos cortos y conectores que ceden ancho antes que desbordar. */
+  .stepper {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .step-nom--largo {
+    display: none;
+  }
+  .step-nom--corto {
+    display: block;
+    max-width: 78px;
+    font-size: 11px;
+  }
+  .sline {
+    width: auto;
+    min-width: 10px;
+  }
+
+  .sec-tit {
+    font-size: 18px;
+  }
+  .sec-det {
+    font-size: 12.5px;
+  }
+  .sec-num {
+    width: 25px;
+    height: 25px;
+    font-size: 12px;
+  }
+
+  .card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  /* 16px no es una decisión estética: por debajo de ese tamaño, iOS hace zoom sobre el campo al
+     enfocarlo y deja la pantalla corrida, con el resto del formulario fuera de la vista. */
+  .input,
+  .select {
+    height: var(--toque);
+    font-size: 16px;
+  }
+  .btn {
+    min-height: var(--toque);
+  }
+  .btn--chico {
+    min-height: 34px;
+  }
+
+  .vacio {
+    padding: 30px 14px;
   }
 }

@@ -130,7 +130,7 @@ export function CargarTransferencia() {
         <div className="view">
           <Stepper
             actual={etapa}
-            onIr={etapa === 'listo' || enviando ? undefined : (e) => setEtapa(e)}
+            onIr={etapa === 'listo' || enviando ? undefined : (e) => setEtapa(e as Etapa)}
           />
 
           {etapa === 'seleccion' && (

@@ -10,17 +10,17 @@ interface Props {
  * Las tres operaciones del circuito, siempre a la vista.
  *
  * Son botones y no un `select`: con tres opciones fijas, un desplegable esconde justamente lo
- * que hay que entender de la pantalla —que el pago tiene tres etapas y quién hace cada una—.
+ * que hay que entender de la pantalla —que el pago tiene tres etapas y que cada una toma lo que
+ * dejó la anterior—.
+ *
+ * En celular las tarjetas se convierten en pestañas (una fila que scrollea en horizontal): tres
+ * tarjetas apiladas con su descripción comen la pantalla entera antes de que aparezca un solo
+ * dato.
  */
 export function SelectorOperacion({ activa, onCambiar }: Props) {
-  const elegir = (op: (typeof OPERACIONES)[number]) => {
-    if (!op.disponible || op.id === activa) return
-    onCambiar(op.id)
-  }
-
   return (
     <div className="ops" role="tablist" aria-label="Operación">
-      {OPERACIONES.map((op) => {
+      {OPERACIONES.map((op, i) => {
         const esActiva = op.id === activa
         return (
           <button
@@ -28,17 +28,17 @@ export function SelectorOperacion({ activa, onCambiar }: Props) {
             type="button"
             role="tab"
             aria-selected={esActiva}
-            disabled={!op.disponible}
-            className={`op${esActiva ? ' op--activa' : ''}${op.disponible ? '' : ' op--off'}`}
-            onClick={() => elegir(op)}
+            className={`op${esActiva ? ' op--activa' : ''}`}
+            onClick={() => op.id !== activa && onCambiar(op.id)}
           >
             <span className="op-ic">
               <i className={op.icono} aria-hidden="true" />
             </span>
             <span className="op-txt">
-              <span className="op-tit">{op.titulo}</span>
+              <span className="op-tit">
+                <span className="op-nro">{i + 1}.</span> {op.titulo}
+              </span>
               <span className="op-det">{op.detalle}</span>
-              {!op.disponible && <span className="op-pron">Próximamente</span>}
             </span>
           </button>
         )

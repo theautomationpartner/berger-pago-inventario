@@ -1,5 +1,5 @@
-/* Piezas propias de la operación de pago: barra de período, lista de tractores seleccionables,
-   lista desplegable de seleccionados, totales y recuadro de la transferencia. */
+/* Piezas propias de las operaciones de pago: barra de período, listas seleccionables, ficha del
+   pago, totales y recuadros de comprobante. */
 
 /* ===== Barra de período ===== */
 /* El mes de la operación es el filtro más importante de la pantalla: define qué tractores se
@@ -12,7 +12,7 @@
   margin-bottom: 16px;
 }
 .periodo-sel {
-  width: 170px;
+  width: 190px;
 }
 .periodo-nota {
   display: flex;
@@ -21,10 +21,10 @@
   margin-left: auto;
   font-size: 12px;
   color: var(--text-gray);
-  padding-bottom: 9px;
+  padding-bottom: 5px;
 }
 
-/* ===== Lista de tractores ===== */
+/* ===== Listas seleccionables (tractores y pagos) ===== */
 .lista {
   border: 1px solid var(--tint-neutral-bd);
   border-radius: var(--radio);
@@ -36,7 +36,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   background: var(--tint-neutral);
   border-bottom: 1px solid var(--tint-neutral-bd);
   font-size: 12px;
@@ -50,14 +50,15 @@
   gap: 6px;
 }
 .lista-body {
-  /* La lista puede traer decenas de tractores: scrollea sola en vez de empujar el total y el
-     botón de la operación fuera de la vista. */
+  /* La lista puede traer decenas de filas: scrollea sola en vez de empujar el total y el botón
+     de la operación fuera de la vista. */
   max-height: 420px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Fila de tractor. Toda la fila es el control de selección: apuntar a un checkbox de 16px para
-   marcar veinte tractores es innecesariamente preciso. */
+/* Fila seleccionable. TODA la fila es el control: apuntar a un checkbox de 16px para marcar
+   veinte tractores es innecesariamente preciso, y en un celular directamente no se acierta. */
 .trow {
   display: flex;
   align-items: center;
@@ -83,10 +84,12 @@
 .trow--sel:hover {
   background: #eaf3ff;
 }
+/* Cuadrado = varios a la vez (tractores). Círculo = uno solo (pagos). La forma del control es lo
+   que anticipa si marcar el segundo va a desmarcar el primero. */
 .trow-check {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   border: 1.5px solid var(--border);
   background: #fff;
@@ -94,11 +97,23 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
 }
 .trow--sel .trow-check {
   background: var(--primary-blue);
   border-color: var(--primary-blue);
+}
+.trow-radio {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: #fff;
+}
+.trow-radio--sel {
+  border-color: var(--primary-blue);
+  border-width: 6px;
 }
 .trow-nom {
   display: flex;
@@ -136,11 +151,6 @@
   min-width: 96px;
   text-align: right;
 }
-@container (max-width: 720px) {
-  .trow-fecha {
-    display: none;
-  }
-}
 
 /* ===== Lista desplegable de seleccionados ===== */
 .sel-lista {
@@ -162,8 +172,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   width: 100%;
-  padding: 10px 12px;
+  min-height: var(--toque);
+  padding: 9px 12px;
   background: none;
   border: none;
   text-align: left;
@@ -205,11 +217,11 @@
   background: var(--tint-data);
 }
 
-/* Grilla de datos del tractor. `auto-fit` es lo que hace que las cuatro celdas se acomoden solas
-   al ancho del panel de monday sin escribir un breakpoint por tamaño. */
+/* Grilla de datos. `auto-fit` es lo que hace que las celdas se acomoden solas al ancho —del
+   panel de monday o de la pantalla del celular— sin escribir un breakpoint por tamaño. */
 .datos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 10px;
 }
 .dato {
@@ -252,6 +264,74 @@
 .dato--forma .dato-val {
   color: #6b3fa0;
   font-size: 13px;
+}
+
+/* ===== Adjuntos ya cargados en un pago ===== */
+.adjuntos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.adjunto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-decoration: none;
+}
+.adjunto:hover {
+  border-color: var(--berger-red-bd);
+  color: var(--berger-red-dark);
+}
+.adjunto i:first-child {
+  color: var(--berger-red);
+}
+
+/* ===== Tractores dentro de un pago ya registrado ===== */
+/* No es desplegable como la lista de la operación 1: acá el detalle YA está decidido y lo que
+   importa es revisarlo de un vistazo antes de aprobar o confirmar. */
+.tractor-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--tint-data-bd);
+  border-radius: 8px;
+  background: #fff;
+}
+.tractor-fila-nom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.tractor-fila-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tractor-fila-datos {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tractor-fila-neto {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--green-dark);
+  flex: 0 0 auto;
 }
 
 /* ===== Total ===== */
@@ -312,13 +392,13 @@
   color: #8a5a00;
 }
 
-/* ===== Recuadro de la transferencia ===== */
+/* ===== Recuadro del comprobante ===== */
 .zona {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 28px 20px;
+  padding: 26px 18px;
   border: 2px dashed var(--tint-input-bd);
   border-radius: var(--radio);
   background: var(--tint-input);
@@ -339,6 +419,7 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--text-dark);
+  line-height: 1.35;
 }
 .zona-det {
   font-size: 12px;
@@ -350,6 +431,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   padding: 12px 14px;
   border: 1px solid var(--green-bd);
   border-radius: var(--radio);
@@ -373,6 +455,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 .archivo-nom {
   font-size: 13px;
@@ -392,18 +475,20 @@
   flex: 0 0 auto;
 }
 
-/* ===== Resumen compacto del paso 2 ===== */
+/* ===== Resumen compacto del paso 2 de la operación 1 ===== */
 .resumen {
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-height: 220px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .resumen-fila {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 7px 10px;
   border-radius: 6px;
   background: #fff;
@@ -432,7 +517,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 40px 20px 26px;
+  padding: 34px 16px 24px;
   text-align: center;
 }
 .final-ic {
@@ -452,6 +537,7 @@
   font-weight: 800;
   letter-spacing: -0.4px;
   color: var(--text-dark);
+  line-height: 1.2;
 }
 .final-det {
   font-size: 14px;
@@ -461,44 +547,118 @@
 }
 .final-datos {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
   margin-top: 6px;
 }
-
-/* ===== Operaciones todavía no implementadas ===== */
-.pronto {
+.final-acciones {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 10px;
-  padding: 52px 20px;
-  text-align: center;
-  border: 1px dashed var(--tint-neutral-bd);
-  border-radius: var(--radio);
-  background: var(--tint-neutral);
-}
-.pronto-ic {
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
   justify-content: center;
-  background: #fff;
-  border: 1px solid var(--border-soft);
-  color: var(--berger-red);
-  font-size: 20px;
 }
-.pronto-tit {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text-dark);
-}
-.pronto-det {
-  font-size: 13px;
-  color: var(--text-gray);
-  max-width: 480px;
-  line-height: 1.55;
+
+/* ===== Celular ===== */
+@media (max-width: 640px) {
+  .periodo {
+    gap: 10px;
+  }
+  /* El selector de mes ocupa el ancho completo: es el filtro que decide la pantalla entera. */
+  .periodo-sel {
+    width: 100%;
+  }
+  .periodo-nota {
+    margin-left: 0;
+    width: 100%;
+    padding-bottom: 0;
+    justify-content: space-between;
+  }
+
+  .lista-body {
+    /* Con el pie de acción fijo y la barra de operaciones arriba, un alto fijo grande deja la
+       lista scrolleando dentro de otro scroll. Se limita contra la altura de la pantalla. */
+    max-height: 46dvh;
+  }
+
+  /* La fila pasa a dos renglones: identificación arriba, números abajo alineados a los bordes.
+     En una sola línea, el nombre del tractor y el importe se pelean por 320px y termina
+     ganando el recorte con puntos suspensivos. */
+  .trow {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 11px 12px;
+    min-height: var(--toque);
+  }
+  .trow-nom {
+    flex: 1 1 auto;
+  }
+  .trow-meta {
+    width: 100%;
+    margin-left: 30px;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .trow-neto {
+    min-width: 0;
+  }
+
+  .datos {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 8px;
+  }
+  .dato {
+    padding: 8px 10px;
+  }
+  .dato-val {
+    font-size: 13px;
+  }
+
+  .total {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .total-val {
+    font-size: 22px;
+  }
+  .total-detalle {
+    /* Debajo del importe y alineado a la izquierda: colgado a la derecha en 320px queda una
+       columna de dos palabras por renglón. */
+    margin-left: 0;
+    width: 100%;
+    text-align: left;
+  }
+
+  .zona {
+    padding: 22px 14px;
+  }
+  .zona-tit {
+    font-size: 13px;
+  }
+  .archivo-quitar {
+    margin-left: 0;
+  }
+
+  .resumen {
+    max-height: 200px;
+  }
+
+  .final {
+    padding: 26px 8px 20px;
+  }
+  .final-tit {
+    font-size: 19px;
+  }
+  .final-det {
+    font-size: 13px;
+  }
+  /* Los botones de cierre ocupan el ancho: son la única acción de la pantalla. */
+  .final-acciones {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+  .final-acciones .btn {
+    width: 100%;
+  }
 }

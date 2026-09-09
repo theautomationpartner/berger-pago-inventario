@@ -13,7 +13,7 @@
  * porque el pago ya existe en Monday: esconder que un subitem no se creó dejaría al usuario
  * creyendo que cargó algo que no está.
  */
-import { aTextoMonday } from '@/lib/format'
+import { aTextoMonday, hoyISO } from '@/lib/format'
 import type { ResultadoCarga, Tractor } from '@/types'
 import {
   COL_INV,
@@ -21,6 +21,7 @@ import {
   COL_PAGO_SUB,
   INV_ESTADO,
   PAGO_ESTADO,
+  PAGO_OPERACION,
   TABLEROS,
 } from './columns'
 import { mondayApi, subirArchivoAColumna } from './sdk'
@@ -69,11 +70,18 @@ export async function cargarTransferencia({
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
 
-  // 1. Item del pago.
+  /* 1. Item del pago.
+     `Operacion Pend` queda en "Pend de Aprobar Transf" en el mismo movimiento que el estado: son
+     dos lecturas distintas del mismo hecho —en qué etapa está el pago, y quién tiene que actuar—
+     y dejarlas para dos escrituras separadas abre una ventana en la que el pago existe sin dueño.
+     `Fecha CARGADO` es la fecha en que se completó ESTA operación, que no tiene por qué coincidir
+     con la fecha de emisión de la transferencia. */
   const valoresPago = {
     [COL_PAGO.montoTransferencia]: aTextoMonday(monto),
     [COL_PAGO.fechaEmision]: { date: fechaEmision },
     [COL_PAGO.estadoPago]: { label: PAGO_ESTADO.CARGADO },
+    [COL_PAGO.operacionPend]: { label: PAGO_OPERACION.PEND_APROBAR },
+    [COL_PAGO.fechaCargado]: { date: hoyISO() },
   }
   const creado = await mondayApi<{ create_item: { id: string } }>(M_CREAR_PAGO, {
     tablero: TABLEROS.pagos,

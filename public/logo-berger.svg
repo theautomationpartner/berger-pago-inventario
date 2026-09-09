@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="BERGER S.A.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 120" role="img" aria-label="BERGER S.A.">
   <title>BERGER S.A.</title>
-  <rect width="240" height="240" rx="18" fill="#E11B22"/>
-  <g transform="translate(28,96)">
-    <path d="M49.81,27.29L49.81,32.71L45.38,31.94L44.29,36.01L48.52,37.56L45.80,42.26L42.35,39.37L39.37,42.35L42.26,45.80L37.56,48.52L36.01,44.29L31.94,45.38L32.71,49.81L27.29,49.81L28.06,45.38L23.99,44.29L22.44,48.52L17.74,45.80L20.63,42.35L17.65,39.37L14.20,42.26L11.48,37.56L15.71,36.01L14.62,31.94L10.19,32.71L10.19,27.29L14.62,28.06L15.71,23.99L11.48,22.44L14.20,17.74L17.65,20.63L20.63,17.65L17.74,14.20L22.44,11.48L23.99,15.71L28.06,14.62L27.29,10.19L32.71,10.19L31.94,14.62L36.01,15.71L37.56,11.48L42.26,14.20L39.37,17.65L42.35,20.63L45.80,17.74L48.52,22.44L44.29,23.99L45.38,28.06Z" fill="#ffffff" fill-rule="evenodd"/>
-    <circle cx="30" cy="30" r="6.6" fill="#E11B22"/>
+  <rect width="340" height="120" rx="16" fill="#E11B22"/>
+  <g>
+    <path d="M71.72,55.93L71.72,64.07L64.82,62.88L63.20,68.91L69.78,71.34L65.70,78.39L60.32,73.91L55.91,78.32L60.39,83.70L53.34,87.78L50.91,81.20L44.88,82.82L46.07,89.72L37.93,89.72L39.12,82.82L33.09,81.20L30.66,87.78L23.61,83.70L28.09,78.32L23.68,73.91L18.30,78.39L14.22,71.34L20.80,68.91L19.18,62.88L12.28,64.07L12.28,55.93L19.18,57.12L20.80,51.09L14.22,48.66L18.30,41.61L23.68,46.09L28.09,41.68L23.61,36.30L30.66,32.22L33.09,38.80L39.12,37.18L37.93,30.28L46.07,30.28L44.88,37.18L50.91,38.80L53.34,32.22L60.39,36.30L55.91,41.68L60.32,46.09L65.70,41.61L69.78,48.66L63.20,51.09L64.82,57.12Z" fill="#ffffff" fill-rule="evenodd"/>
+    <circle cx="42" cy="60" r="9.5" fill="#E11B22"/>
   </g>
-  <text x="96" y="140" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="46" font-weight="800" letter-spacing="1" fill="#ffffff">BERGER</text>
-  <text x="99" y="170" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="2" fill="#ffffff">S.A.</text>
+  <text x="90" y="72" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="46" font-weight="800" letter-spacing="1.5" fill="#ffffff">BERGER</text>
+  <text x="92" y="97" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="3" fill="#ffffff">S.A.</text>
 </svg>
