@@ -6,13 +6,7 @@
  * ellos obligaría a abrir monday para saber qué se está aprobando.
  */
 import type { Pago, SubitemPago } from '@/types'
-import {
-  COL_INV,
-  COL_PAGO,
-  COL_PAGO_SUB,
-  PAGO_OPERACION_INDEX,
-  TABLEROS,
-} from './columns'
+import { COL_PAGO, COL_PAGO_SUB, PAGO_OPERACION_INDEX } from './columns'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
@@ -53,49 +47,6 @@ const COLUMNAS_SUB = [
   COL_PAGO_SUB.numInterno,
   COL_PAGO_SUB.inventario,
 ]
-
-/**
- * `... on MirrorValue` y `... on BoardRelationValue` no son opcionales: sin ellos el N° Interno
- * espejado vuelve vacío y la conexión al Inventario vuelve como `null`, que es justamente el dato
- * que las operaciones 2 y 3 necesitan para avanzar el estado del tractor.
- */
-const CAMPOS_SUB = `
-  id
-  type
-  text
-  ... on MirrorValue { display_value }
-  ... on BoardRelationValue { linked_item_ids }
-`
-
-const QUERY_PAGOS = `
-  query ($tablero: ID!, $operacion: CompareValue!, $cols: [String!], $colsSub: [String!], $limite: Int!) {
-    boards(ids: [$tablero]) {
-      items_page(
-        limit: $limite
-        query_params: {
-          rules: [{ column_id: "${COL_PAGO.operacionPend}", compare_value: $operacion, operator: any_of }]
-        }
-      ) {
-        items {
-          id
-          name
-          column_values(ids: $cols) { id type text }
-          subitems { id name column_values(ids: $colsSub) { ${CAMPOS_SUB} } }
-        }
-      }
-    }
-  }
-`
-
-/** Estado Pago actual de los tractores conectados, para mostrarlo junto a cada subitem. */
-const QUERY_ESTADO_TRACTORES = `
-  query ($ids: [ID!]!) {
-    items(ids: $ids) {
-      id
-      column_values(ids: ["${COL_INV.estadoPago}"]) { id text }
-    }
-  }
-`
 
 /**
  * El tablero de pagos no crece como el de inventario: un item por transferencia. 200 alcanza de
@@ -150,8 +101,7 @@ export async function pagosPendientes(
   estadoPago?: string,
 ): Promise<Pago[]> {
   const indice = PAGO_OPERACION_INDEX[operacionPend]
-  const datos = await mondayApi<{ boards: { items_page: { items: PagoCrudo[] } }[] }>(QUERY_PAGOS, {
-    tablero: TABLEROS.pagos,
+  const datos = await mondayApi<{ boards: { items_page: { items: PagoCrudo[] } }[] }>('pagosPendientes', {
     operacion: indice == null ? [] : [indice],
     cols: COLUMNAS_PAGO,
     colsSub: COLUMNAS_SUB,
@@ -176,7 +126,7 @@ export async function pagosPendientes(
   const estados = new Map<string, string>()
   if (idsTractores.length > 0) {
     const r = await mondayApi<{ items: { id: string; column_values: ColumnaCruda[] }[] }>(
-      QUERY_ESTADO_TRACTORES,
+      'estadoDeTractores',
       { ids: idsTractores },
     )
     for (const it of r.items) estados.set(it.id, texto(it.column_values[0]))

@@ -1,17 +1,25 @@
 /**
- * Proxy server-side hacia la API de Monday para el deploy.
+ * Proxy server-side hacia la API de Monday.
  *
- * Cumple dos funciones, y las dos son de seguridad:
+ * Cumple tres funciones, y las tres son de seguridad:
  *
  * 1. El token de la API NO viaja en el bundle del navegador. En desarrollo lo resuelve el proxy
  *    de Vite con `VITE_MONDAY_TOKEN` (archivo local, fuera del repositorio); acá lo pone
  *    `MONDAY_TOKEN`, una variable de entorno del deploy que el cliente nunca ve.
  *
- * 2. Es el único camino a los datos, así que es el lugar donde se comprueba quién pregunta. Sin
- *    un `sessionToken` de monday válido y de la cuenta habilitada, la request no llega a Monday:
- *    abrir la URL del deploy en un navegador suelto no devuelve nada.
+ * 2. Comprueba QUIÉN pregunta: sin un `sessionToken` de monday válido y de la cuenta habilitada,
+ *    la request no llega a Monday. Abrir la URL del deploy en un navegador suelto no devuelve
+ *    nada.
+ *
+ * 3. Comprueba QUÉ se pregunta. Antes reenviaba el cuerpo tal cual, y eso convertía a este
+ *    endpoint en una API completa de la cuenta: cualquier usuario de BERGER con sesión —incluso
+ *    uno de sólo lectura— podía abrir las herramientas del navegador y ejecutar la consulta que
+ *    quisiera con el token de la cuenta. Ahora el cliente manda el NOMBRE de una operación del
+ *    catálogo y el texto de la consulta lo pone este archivo, así que no se puede falsificar.
+ *    Las variables, que sí siguen viniendo de afuera, las valida el propio catálogo.
  */
 import { MalConfigurado, NoAutorizado, verificarSesion } from './_guard'
+import { OperacionInvalida, resolverOperacion } from '../src/services/monday/operaciones'
 
 const API = 'https://api.monday.com/v2'
 const API_VERSION = '2024-10'
@@ -45,6 +53,26 @@ export default async function handler(req: Request): Promise<Response> {
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')
 
+  let pedido: { operacion?: unknown; variables?: unknown }
+  try {
+    pedido = (await req.json()) as typeof pedido
+  } catch {
+    return error(400, 'El cuerpo del pedido no es JSON válido.')
+  }
+
+  /* Acá está el candado: la consulta sale del catálogo, no del cuerpo. Un cliente que mande su
+     propio GraphQL no obtiene nada, porque este archivo no lee ningún campo `query`. */
+  let query: string
+  let variables: Record<string, unknown>
+  try {
+    const operacion = resolverOperacion(pedido.operacion)
+    query = operacion.query
+    variables = operacion.validar((pedido.variables ?? {}) as Record<string, unknown>)
+  } catch (e: unknown) {
+    if (e instanceof OperacionInvalida) return error(400, e.message)
+    return error(400, 'Pedido inválido.')
+  }
+
   const res = await fetch(API, {
     method: 'POST',
     headers: {
@@ -53,7 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
       Authorization: token,
       'API-Version': API_VERSION,
     },
-    body: await req.text(),
+    body: JSON.stringify({ query, variables }),
   })
 
   return new Response(await res.text(), {

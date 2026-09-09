@@ -24,12 +24,6 @@ import type { FlujoAvance, Pago, ResultadoAvance } from '@/types'
 import { COL_INV, COL_PAGO, EMAIL_ENVIAR, TABLEROS } from './columns'
 import { mondayApi, subirArchivoAColumna } from './sdk'
 
-const M_ACTUALIZAR = `
-  mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
-    change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
-  }
-`
-
 const motivo = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 interface Entrada {
@@ -45,7 +39,7 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
   const advertencias: string[] = []
 
   // 2. Estado, operación pendiente y fecha del pago.
-  await mondayApi(M_ACTUALIZAR, {
+  await mondayApi('actualizarColumnas', {
     tablero: TABLEROS.pagos,
     item: pago.id,
     valores: JSON.stringify({
@@ -65,7 +59,7 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
       continue
     }
     try {
-      await mondayApi(M_ACTUALIZAR, {
+      await mondayApi('actualizarColumnas', {
         tablero: TABLEROS.inventario,
         item: t.tractorId,
         valores: JSON.stringify({
@@ -82,7 +76,7 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
 
   // 4. Aviso por mail. Va al final: es lo único que sale de monday y no se puede deshacer.
   try {
-    await mondayApi(M_ACTUALIZAR, {
+    await mondayApi('actualizarColumnas', {
       tablero: TABLEROS.pagos,
       item: pago.id,
       valores: JSON.stringify({ [flujo.columnaEmail]: { label: EMAIL_ENVIAR } }),

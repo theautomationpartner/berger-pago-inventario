@@ -2,20 +2,31 @@
  * Proxy server-side para la SUBIDA DE ARCHIVOS a Monday.
  *
  * Es un handler aparte de `/api/monday` porque Monday separa los binarios de la API GraphQL: van
- * a `/v2/file` como `multipart/form-data`. La diferencia práctica es que acá el cuerpo NO se
- * puede leer como texto ni volver a serializar —eso rompería el `boundary` del multipart—, así
- * que se reenvía el stream tal cual y se copia el `Content-Type` original, que es el único lugar
- * donde viaja ese `boundary`.
+ * a `/v2/file` como `multipart/form-data`.
  *
- * El control de acceso es el mismo que el del otro proxy: sin `sessionToken` válido de la cuenta
- * habilitada, no se sube nada.
+ * Igual que el otro proxy, no reenvía lo que le mandan: el cliente sólo dice a QUÉ item y a QUÉ
+ * columna va el archivo, y la mutation la escribe este archivo. La columna tiene que ser una de
+ * las tres de comprobante del circuito —transferencia, transferencia con número, comprobante del
+ * banco—; con el cuerpo reenviado tal cual, cualquiera podía adjuntar archivos en cualquier
+ * columna de la cuenta.
+ *
+ * El formulario se arma de nuevo en vez de retocar el que llegó: así el `boundary` lo calcula
+ * `fetch` y no hay que confiar en el `Content-Type` del cliente.
  */
 import { MalConfigurado, NoAutorizado, verificarSesion } from './_guard'
+import {
+  MUTATION_ARCHIVO,
+  OperacionInvalida,
+  validarDestinoArchivo,
+} from '../src/services/monday/operaciones'
 
 const API_ARCHIVO = 'https://api.monday.com/v2/file'
 const API_VERSION = '2024-10'
 
 export const config = { runtime: 'edge' }
+
+/** Tope de tamaño del comprobante. Son PDFs de una o dos páginas; 20 MB es holgado de sobra. */
+const MAX_BYTES = 20 * 1024 * 1024
 
 const error = (status: number, message: string): Response =>
   new Response(JSON.stringify({ errors: [{ message }] }), {
@@ -37,22 +48,45 @@ export default async function handler(req: Request): Promise<Response> {
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')
 
-  const contentType = req.headers.get('content-type')
-  if (!contentType?.startsWith('multipart/form-data')) {
+  let entrada: FormData
+  try {
+    entrada = await req.formData()
+  } catch {
     return error(400, 'La subida de archivos tiene que ser multipart/form-data.')
   }
 
+  const archivo = entrada.get('archivo')
+  if (!(archivo instanceof File)) return error(400, 'Falta el archivo.')
+  if (archivo.size === 0) return error(400, 'El archivo está vacío.')
+  if (archivo.size > MAX_BYTES) return error(413, 'El archivo supera los 20 MB.')
+
+  let destino: { itemId: string; columnId: string }
+  try {
+    destino = validarDestinoArchivo(entrada.get('variables[itemId]'), entrada.get('variables[columnId]'))
+  } catch (e: unknown) {
+    if (e instanceof OperacionInvalida) return error(400, e.message)
+    return error(400, 'Destino de archivo inválido.')
+  }
+
+  /*
+   * El formato NO es el de la especificación de GraphQL multipart: Monday espera la mutation en
+   * un campo `query` —con `operations` contesta "query not found in multipart form"—, las
+   * variables como `variables[nombre]`, y un `map` que asocia la parte binaria con la variable de
+   * archivo en texto plano, no en el array que pide la especificación.
+   */
+  const salida = new FormData()
+  salida.append('query', MUTATION_ARCHIVO)
+  salida.append('variables[itemId]', destino.itemId)
+  salida.append('variables[columnId]', destino.columnId)
+  salida.append('map', JSON.stringify({ archivo: 'variables.file' }))
+  salida.append('archivo', archivo, archivo.name)
+
   const res = await fetch(API_ARCHIVO, {
     method: 'POST',
-    headers: {
-      'Content-Type': contentType,
-      Authorization: token,
-      'API-Version': API_VERSION,
-    },
-    body: req.body,
-    // Requerido por `fetch` cuando el cuerpo es un stream y no un valor ya materializado.
-    duplex: 'half',
-  } as RequestInit & { duplex: 'half' })
+    // Sin `Content-Type` a mano: lo escribe `fetch` con el `boundary` del formulario nuevo.
+    headers: { Authorization: token, 'API-Version': API_VERSION },
+    body: salida,
+  })
 
   return new Response(await res.text(), {
     status: res.status,

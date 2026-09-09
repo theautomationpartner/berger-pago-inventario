@@ -122,6 +122,36 @@ otra evita que se lleve los datos.
 
 ---
 
+## Qué puede pedirle la app a monday
+
+El cliente **no arma consultas GraphQL**. Manda el *nombre* de una operación del catálogo
+([`src/services/monday/operaciones.ts`](src/services/monday/operaciones.ts)) y el texto de la
+consulta lo pone el servidor, así que no se puede falsificar: lo que no está en el catálogo, no se
+puede pedir.
+
+Antes el proxy reenviaba el cuerpo tal cual, y eso lo convertía en una API completa de la cuenta:
+cualquier usuario de BERGER con sesión —incluso uno de sólo lectura— podía abrir las herramientas
+del navegador y ejecutar la consulta que quisiera con el token de la cuenta. El guard comprobaba
+QUIÉN preguntaba, pero nunca QUÉ preguntaba.
+
+Fijar el texto de la consulta no alcanza por sí solo, porque las variables siguen viniendo del
+cliente: `change_multiple_column_values` con variables libres escribe en cualquier tablero de la
+cuenta aunque la mutation esté fija. Por eso cada operación las valida:
+
+- Los **ids de tablero de lectura los pone el servidor**; el que mande el cliente se descarta.
+- En las **escrituras**, el tablero tiene que ser el de Inventario o el de Pagos, y **cada columna
+  tocada tiene que estar en la lista de escribibles de ese tablero**. La app puede mover el Estado
+  Pago de un tractor; no puede tocarle el precio de venta.
+- Los **archivos** sólo entran en las tres columnas de comprobante del circuito, con un tope de
+  20 MB.
+- Ids, tamaños de página e índices de estado se validan de forma y de rango.
+
+Los IDs de tableros y columnas **siguen siendo visibles** en el bundle, y eso es deliberado: no son
+credenciales —sin un token válido no habilitan nada— y esconderlos exigiría mover todo el armado de
+consultas al servidor. Lo que sí quedó cerrado es lo que se puede *hacer* con ellos.
+
+---
+
 ## Seguridad del token
 
 **El token nunca entra al repositorio ni al bundle que descarga el navegador.**
@@ -170,6 +200,7 @@ src/
     flujos.ts                 Las operaciones 2 y 3 descriptas como datos
   services/monday/          Todo lo que habla con monday
     columns.ts              IDs de tableros y columnas (única fuente de verdad)
+    operaciones.ts          Catálogo de operaciones permitidas + validación de variables
     sdk.ts                  Cliente HTTP + subida de archivos
     parse.ts                Lectura de column_values
     inventario.ts           Consulta de tractores listos para pagar

@@ -26,24 +26,6 @@ import {
 } from './columns'
 import { mondayApi, subirArchivoAColumna } from './sdk'
 
-const M_CREAR_PAGO = `
-  mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
-    create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
-  }
-`
-
-const M_CREAR_SUBITEM = `
-  mutation ($padre: ID!, $nombre: String!, $valores: JSON!) {
-    create_subitem(parent_item_id: $padre, item_name: $nombre, column_values: $valores) { id }
-  }
-`
-
-const M_ACTUALIZAR = `
-  mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
-    change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
-  }
-`
-
 /** Nombre del item de pago. Se lee solo en el tablero: fecha de la transferencia y volumen. */
 export function nombreDelPago(fechaEmision: string, cantidad: number): string {
   const [anio, mes, dia] = fechaEmision.split('-')
@@ -83,8 +65,7 @@ export async function cargarTransferencia({
     [COL_PAGO.operacionPend]: { label: PAGO_OPERACION.PEND_APROBAR },
     [COL_PAGO.fechaCargado]: { date: hoyISO() },
   }
-  const creado = await mondayApi<{ create_item: { id: string } }>(M_CREAR_PAGO, {
-    tablero: TABLEROS.pagos,
+  const creado = await mondayApi<{ create_item: { id: string } }>('crearPago', {
     nombre: nombreDelPago(fechaEmision, tractores.length),
     valores: JSON.stringify(valoresPago),
   })
@@ -106,7 +87,7 @@ export async function cargarTransferencia({
       [COL_PAGO_SUB.inventario]: { item_ids: [t.id] },
     }
     try {
-      const sub = await mondayApi<{ create_subitem: { id: string } }>(M_CREAR_SUBITEM, {
+      const sub = await mondayApi<{ create_subitem: { id: string } }>('crearSubitemDePago', {
         padre: pagoId,
         nombre: t.nombre,
         valores: JSON.stringify(valoresSub),
@@ -121,7 +102,7 @@ export async function cargarTransferencia({
   let tractoresActualizados = 0
   for (const t of tractores) {
     try {
-      await mondayApi(M_ACTUALIZAR, {
+      await mondayApi('actualizarColumnas', {
         tablero: TABLEROS.inventario,
         item: t.id,
         valores: JSON.stringify({
