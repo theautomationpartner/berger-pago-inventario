@@ -1,0 +1,504 @@
+/* Piezas propias de la operación de pago: barra de período, lista de tractores seleccionables,
+   lista desplegable de seleccionados, totales y recuadro de la transferencia. */
+
+/* ===== Barra de período ===== */
+/* El mes de la operación es el filtro más importante de la pantalla: define qué tractores se
+   pueden pagar. Por eso vive arriba de la lista y no escondido en un panel. */
+.periodo {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.periodo-sel {
+  width: 170px;
+}
+.periodo-nota {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-gray);
+  padding-bottom: 9px;
+}
+
+/* ===== Lista de tractores ===== */
+.lista {
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: var(--radio);
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--sombra);
+}
+.lista-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--tint-neutral);
+  border-bottom: 1px solid var(--tint-neutral-bd);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+.lista-head-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lista-body {
+  /* La lista puede traer decenas de tractores: scrollea sola en vez de empujar el total y el
+     botón de la operación fuera de la vista. */
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* Fila de tractor. Toda la fila es el control de selección: apuntar a un checkbox de 16px para
+   marcar veinte tractores es innecesariamente preciso. */
+.trow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #f0f1f5;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.trow:last-child {
+  border-bottom: none;
+}
+.trow:hover {
+  background: #fafbfd;
+}
+.trow--sel {
+  background: #f2f8ff;
+}
+.trow--sel:hover {
+  background: #eaf3ff;
+}
+.trow-check {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+}
+.trow--sel .trow-check {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+.trow-nom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+.trow-nom-txt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.trow-fecha {
+  font-size: 12px;
+  color: var(--text-gray);
+  font-variant-numeric: tabular-nums;
+}
+.trow-neto {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  font-variant-numeric: tabular-nums;
+  min-width: 96px;
+  text-align: right;
+}
+@container (max-width: 720px) {
+  .trow-fecha {
+    display: none;
+  }
+}
+
+/* ===== Lista desplegable de seleccionados ===== */
+.sel-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sel-item {
+  border: 1px solid var(--tint-data-bd);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+.sel-item--abierto {
+  border-color: var(--tint-input-bd);
+  box-shadow: var(--sombra);
+}
+.sel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.sel-head:hover {
+  background: #fafbfd;
+}
+.sel-caret {
+  flex: 0 0 auto;
+  width: 16px;
+  color: var(--text-gray);
+  font-size: 11px;
+  transition: transform 0.16s ease;
+}
+.sel-item--abierto .sel-caret {
+  transform: rotate(90deg);
+}
+.sel-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sel-head-neto {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--green-dark);
+  flex: 0 0 auto;
+}
+.sel-cuerpo {
+  border-top: 1px dashed var(--border-soft);
+  padding: 12px;
+  background: var(--tint-data);
+}
+
+/* Grilla de datos del tractor. `auto-fit` es lo que hace que las cuatro celdas se acomoden solas
+   al ancho del panel de monday sin escribir un breakpoint por tamaño. */
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.dato {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid var(--tint-data-bd);
+  border-radius: 8px;
+  background: #fff;
+  min-width: 0;
+}
+.dato-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-gray);
+}
+.dato-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El valor neto es el número que se suma al total: se destaca del resto de los importes. */
+.dato--neto {
+  background: var(--green-soft);
+  border-color: var(--green-bd);
+}
+.dato--neto .dato-val {
+  color: var(--green-dark);
+}
+.dato--forma {
+  background: #f7f2fd;
+  border-color: #e4d5f5;
+}
+.dato--forma .dato-val {
+  color: #6b3fa0;
+  font-size: 13px;
+}
+
+/* ===== Total ===== */
+.total {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border: 1px solid var(--green-bd);
+  border-radius: var(--radio);
+  background: var(--green-soft);
+}
+.total-ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 200, 117, 0.16);
+  color: var(--green-dark);
+  font-size: 15px;
+  flex: 0 0 auto;
+}
+.total-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.total-lbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.total-val {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.total-detalle {
+  margin-left: auto;
+  text-align: right;
+  font-size: 12px;
+  color: var(--green-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Aviso de importes incompletos: si un espejo no trajo el valor neto, el total que se ve NO es
+   el total real y decirlo importa más que mostrar un número redondo. */
+.total-parcial {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a5a00;
+}
+
+/* ===== Recuadro de la transferencia ===== */
+.zona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 20px;
+  border: 2px dashed var(--tint-input-bd);
+  border-radius: var(--radio);
+  background: var(--tint-input);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.zona:hover,
+.zona--sobre {
+  border-color: var(--primary-blue);
+  background: #e6f0ff;
+}
+.zona-ic {
+  font-size: 26px;
+  color: var(--primary-blue);
+}
+.zona-tit {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.zona-det {
+  font-size: 12px;
+  color: var(--text-gray);
+}
+
+/* Archivo ya elegido: deja de ser una invitación y pasa a ser un dato con su acción de quitar. */
+.archivo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--green-bd);
+  border-radius: var(--radio);
+  background: var(--green-soft);
+}
+.archivo-ic {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--green-bd);
+  color: var(--berger-red);
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+.archivo-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.archivo-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archivo-peso {
+  font-size: 11px;
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.archivo-quitar {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* ===== Resumen compacto del paso 2 ===== */
+.resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.resumen-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--tint-data-bd);
+  font-size: 12px;
+}
+.resumen-nom {
+  font-weight: 600;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.resumen-val {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dark);
+  flex: 0 0 auto;
+}
+
+/* ===== Pantalla final ===== */
+.final {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px 26px;
+  text-align: center;
+}
+.final-ic {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-soft);
+  border: 1px solid var(--green-bd);
+  color: var(--green-dark);
+  font-size: 26px;
+}
+.final-tit {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: var(--text-dark);
+}
+.final-det {
+  font-size: 14px;
+  color: var(--text-gray);
+  max-width: 520px;
+  line-height: 1.5;
+}
+.final-datos {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* ===== Operaciones todavía no implementadas ===== */
+.pronto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 52px 20px;
+  text-align: center;
+  border: 1px dashed var(--tint-neutral-bd);
+  border-radius: var(--radio);
+  background: var(--tint-neutral);
+}
+.pronto-ic {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  color: var(--berger-red);
+  font-size: 20px;
+}
+.pronto-tit {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+.pronto-det {
+  font-size: 13px;
+  color: var(--text-gray);
+  max-width: 480px;
+  line-height: 1.55;
+}

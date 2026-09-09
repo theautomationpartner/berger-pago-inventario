@@ -1,0 +1,34 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Dependencias
+node_modules
+.npm
+
+# Build
+dist
+dist-ssr
+*.local
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?
+
+# Variables de entorno — NUNCA subir el token de Monday al repositorio.
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Scratch
+*.tmp

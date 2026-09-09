@@ -1,0 +1,567 @@
+/* Piezas reutilizables: barra de marca, selector de operación, stepper, cards, botones, chips. */
+
+/* ===== Barra de marca ===== */
+/* El logo abre la barra, contra el margen izquierdo. El alto lo fija la caja y el ancho lo pone
+   la imagen (`width: auto` + `object-fit: contain`): entra COMPLETO, sin recorte ni deformación,
+   con cualquier proporción de archivo. El filete separa la marca del título. */
+.marca {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--border-soft);
+}
+.marca-logo {
+  height: 46px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+  border-radius: 8px;
+  user-select: none;
+  flex: 0 0 auto;
+}
+.marca-sep {
+  align-self: stretch;
+  width: 1px;
+  background: var(--border-soft);
+  flex: 0 0 auto;
+}
+.marca-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.marca-tit {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: var(--text-dark);
+  line-height: 1.2;
+}
+.marca-sub {
+  font-size: 12px;
+  color: var(--text-gray);
+}
+/* Sello de versión: dice qué build está corriendo. Sin esto, saber si un deploy tomó el último
+   commit es adivinar mirando la interfaz. */
+.marca-build {
+  margin-left: auto;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #98a2b3;
+  background: var(--tint-neutral);
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: 999px;
+  padding: 3px 9px;
+  flex: 0 0 auto;
+}
+@container (max-width: 620px) {
+  .marca-logo {
+    height: 36px;
+  }
+  .marca-sub {
+    display: none;
+  }
+}
+
+/* ===== Selector de operación ===== */
+.ops {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@container (max-width: 860px) {
+  .ops {
+    grid-template-columns: 1fr;
+  }
+}
+.op {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: var(--radio);
+  background: var(--tint-neutral);
+  cursor: pointer;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.op:hover:not(.op--off) {
+  border-color: var(--berger-red-bd);
+  background: #fff;
+  box-shadow: var(--sombra);
+}
+/* La operación elegida se marca con el rojo de BERGER: es el único acento de marca que cambia
+   de estado, así que alcanza para ubicar en qué parte del circuito está parado el usuario. */
+.op--activa {
+  background: #fff;
+  border-color: var(--berger-red);
+  box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.12);
+}
+.op--off {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.op-ic {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  color: var(--text-gray);
+}
+.op--activa .op-ic {
+  background: var(--berger-red);
+  border-color: var(--berger-red);
+  color: #fff;
+}
+.op-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.op-tit {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.op-det {
+  font-size: 12px;
+  color: var(--text-gray);
+  line-height: 1.35;
+}
+.op-pron {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #8a5a00;
+  background: #fff6e5;
+  border: 1px solid #ffe1a8;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* ===== Stepper ===== */
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-gray);
+  background: none;
+  border: none;
+  padding: 0;
+}
+.step-nom {
+  max-width: 92px;
+  text-align: center;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.sic {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-gray);
+}
+.step.done {
+  color: var(--text-dark);
+}
+.step.done .sic {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.step.cur {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+.step.cur .sic {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: #fff;
+  /* Halo que respira: sin él, el color solo no alcanza para ubicar de un vistazo la etapa
+     actual. `alternate` sube y baja por el mismo camino, así no hay salto al reiniciar. */
+  animation: paso-brillo 1.8s ease-in-out infinite alternate;
+}
+@keyframes paso-brillo {
+  from {
+    box-shadow: 0 0 0 0 rgba(0, 115, 234, 0.35);
+  }
+  to {
+    box-shadow: 0 0 0 6px rgba(0, 115, 234, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .step.cur .sic {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(0, 115, 234, 0.22);
+  }
+}
+.step--nav {
+  cursor: pointer;
+}
+.step--nav .sic {
+  transition: transform 0.12s ease;
+}
+.step--nav:hover .sic {
+  transform: scale(1.06);
+}
+.step--off {
+  cursor: default;
+}
+.sline {
+  height: 3px;
+  width: 40px;
+  flex: 0 0 auto;
+  background: var(--border);
+  border-radius: 2px;
+  /* Baja el conector al eje del círculo (28px de alto, centro en 14px, menos la mitad de sus
+     propios 3px). Sin esto queda arriba de todo, porque el stepper alinea por el tope. */
+  margin-top: 12.5px;
+  transition: background 0.25s ease;
+}
+.sline.done {
+  background: var(--green);
+}
+
+/* ===== Encabezado de sección ===== */
+.sec-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sec-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.sec-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.sec-tit {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: var(--text-dark);
+}
+.sec-det {
+  font-size: 13px;
+  color: var(--text-gray);
+}
+
+/* ===== Cards ===== */
+/* Las cajas de sección son blanco grisáceo sobre el fondo blanco de la app: eso es lo que las
+   separa sin necesidad de una sombra fuerte ni de un borde oscuro. */
+.card {
+  background: var(--tint-neutral);
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: var(--radio);
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--sombra);
+}
+.card--data {
+  background: var(--tint-data);
+  border-color: var(--tint-data-bd);
+}
+.card--input {
+  background: var(--tint-input);
+  border-color: var(--tint-input-bd);
+}
+.card--summary {
+  background: var(--tint-summary);
+  border-color: var(--tint-summary-bd);
+}
+.card--flush {
+  margin-bottom: 0;
+}
+.card--plano {
+  padding: 0;
+  overflow: hidden;
+}
+.ctitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 14px;
+}
+.ctitle-cont {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-gray);
+}
+
+/* ===== Botones ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #fff;
+  color: var(--text-dark);
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--primario {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: #fff;
+}
+.btn--primario:hover:not(:disabled) {
+  background: var(--primary-blue-hover);
+  border-color: var(--primary-blue-hover);
+}
+/* Acción que IMPACTA en monday: va en el rojo de la marca porque no se puede deshacer desde la
+   app, y tiene que distinguirse de "seguir al paso siguiente". */
+.btn--marca {
+  background: var(--berger-red);
+  border-color: var(--berger-red);
+  color: #fff;
+}
+.btn--marca:hover:not(:disabled) {
+  background: var(--berger-red-dark);
+  border-color: var(--berger-red-dark);
+}
+.btn--borde {
+  background: #fff;
+  border-color: var(--border);
+  color: var(--text-mid);
+}
+.btn--borde:hover:not(:disabled) {
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+}
+.btn--texto {
+  background: none;
+  border: none;
+  color: var(--text-gray);
+  padding: 8px 10px;
+}
+.btn--texto:hover:not(:disabled) {
+  background: var(--tint-neutral);
+  color: var(--text-dark);
+}
+.btn--chico {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* ===== Chips y badges ===== */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip--interno {
+  background: #eef2f7;
+  border-color: #dfe4ec;
+  color: var(--text-mid);
+  font-variant-numeric: tabular-nums;
+}
+.chip--verde {
+  background: var(--green-soft);
+  border-color: var(--green-bd);
+  color: var(--green-dark);
+}
+.chip--rojo {
+  background: var(--berger-red-soft);
+  border-color: var(--berger-red-bd);
+  color: var(--berger-red-dark);
+}
+.chip--azul {
+  background: #eaf2fd;
+  border-color: #c9dcf8;
+  color: #0060c2;
+}
+.chip--ambar {
+  background: #fff6e5;
+  border-color: #ffe1a8;
+  color: #8a5a00;
+}
+.chip--gris {
+  background: var(--tint-neutral);
+  border-color: var(--tint-neutral-bd);
+  color: var(--text-gray);
+}
+
+/* ===== Campos ===== */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.campo-lbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+.campo-ayuda {
+  font-size: 11px;
+  color: var(--text-gray);
+}
+.input,
+.select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.14);
+}
+.input--num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ===== Mensajes ===== */
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+.aviso--error {
+  background: var(--berger-red-soft);
+  border-color: var(--berger-red-bd);
+  color: #8f1015;
+}
+.aviso--info {
+  background: #eef5ff;
+  border-color: var(--tint-input-bd);
+  color: #0b4a8f;
+}
+.aviso--ok {
+  background: var(--green-soft);
+  border-color: var(--green-bd);
+  color: var(--green-dark);
+}
+.aviso--alerta {
+  background: #fff6e5;
+  border-color: #ffe1a8;
+  color: #8a5a00;
+}
+
+/* ===== Vacíos y carga ===== */
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 46px 20px;
+  text-align: center;
+  color: var(--text-gray);
+}
+.vacio-ic {
+  font-size: 26px;
+  color: #c4c9d4;
+}
+.vacio-tit {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+.vacio-det {
+  font-size: 13px;
+  max-width: 440px;
+  line-height: 1.5;
+}
+.spin {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+}
+.spin--oscuro {
+  border-color: rgba(0, 0, 0, 0.12);
+  border-top-color: var(--primary-blue);
+}
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}

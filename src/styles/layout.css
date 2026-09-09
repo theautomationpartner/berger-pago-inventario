@@ -1,0 +1,71 @@
+/* Contenedor de la app. Ocupa el panel entero del tablero de monday y es lo único que scrollea:
+   la barra de marca queda fija arriba y el pie de acción fijo abajo. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  background: var(--bg);
+  /* Contenedor de consulta: el layout se reordena según el ANCHO REAL del panel, que en monday
+     depende de los paneles laterales abiertos, no del viewport. */
+  container-type: inline-size;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  background: var(--bg);
+}
+
+.view {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+/* Grillas reutilizadas por las secciones. */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+@container (max-width: 760px) {
+  .grid2,
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Pie de acción: la acción principal del paso está siempre a la vista, sin depender del scroll. */
+.pie {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border-soft);
+  background: #fff;
+  box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.04);
+}
+.pie-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pie-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
