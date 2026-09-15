@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   ClienteIngreso,
   PedidoIngreso,
-  PerfilElegible,
   PerfilIngreso,
   RespuestaIngreso,
 } from '@/services/acceso/cliente'
@@ -19,14 +18,21 @@ export type PasoIngreso =
   | { tipo: 'cargando' }
   | { tipo: 'sin_acceso' }
   | { tipo: 'error' }
-  | { tipo: 'elegir_perfil'; perfiles: PerfilElegible[] }
-  | { tipo: 'configurar'; perfil: PerfilIngreso; otpauth: string; secreto: string }
+  | {
+      tipo: 'configurar'
+      perfil: PerfilIngreso
+      otpauth: string
+      secreto: string
+      puedeImportar: boolean
+    }
   | { tipo: 'codigos'; perfil: PerfilIngreso; codigos: string[] }
   | { tipo: 'verificar'; perfil: PerfilIngreso }
   | { tipo: 'listo'; perfil: PerfilIngreso }
 
 const MENSAJE_BLOQUEADO = 'Demasiados intentos. Esperá 15 minutos y volvé a probar.'
 const MENSAJE_ERROR = 'No se pudo verificar el código. Probá de nuevo en unos minutos.'
+const MENSAJE_CLAVE =
+  'Esa clave no parece válida. Copiala completa desde el gestor de contraseñas, sin espacios de más.'
 
 function mensajeIncorrecto(restantes?: number): string {
   const base = 'El código no es correcto. Usá el que muestra ahora la app del celular.'
@@ -52,18 +58,7 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
   const [enviando, setEnviando] = useState(false)
   /** Después de usar un código de recuperación: cuántos le quedan, para avisarle. */
   const [recuperacionRestantes, setRecuperacionRestantes] = useState<number | null>(null)
-  /** Si el servidor ofreció elegir perfil: sólo entonces tiene sentido "elegir otro perfil". */
-  const [variosPerfiles, setVariosPerfiles] = useState(false)
-
-  // El perfil elegido se lee desde callbacks asíncronos: en un ref no queda congelado en el valor
-  // que tenía cuando se creó el callback.
-  const perfilId = useRef<string | null>(null)
-
-  const pedir = useCallback(
-    (pedido: PedidoIngreso) =>
-      cliente.pedir({ ...pedido, ...(perfilId.current ? { perfilId: perfilId.current } : {}) }),
-    [cliente],
-  )
+  const pedir = useCallback((pedido: PedidoIngreso) => cliente.pedir(pedido), [cliente])
 
   const aplicar = useCallback(
     async (r: RespuestaIngreso): Promise<void> => {
@@ -76,25 +71,24 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
           setPaso((actual) => (actual.tipo === 'cargando' ? { tipo: 'error' } : actual))
           setMensaje(MENSAJE_ERROR)
           return
-        case 'elegir_perfil':
-          setVariosPerfiles(true)
-          setPaso({ tipo: 'elegir_perfil', perfiles: r.perfiles })
-          return
         case 'configurar':
-          perfilId.current = r.perfil.id
           if (r.otpauth && r.secreto) {
-            setPaso({ tipo: 'configurar', perfil: r.perfil, otpauth: r.otpauth, secreto: r.secreto })
+            setPaso({
+              tipo: 'configurar',
+              perfil: r.perfil,
+              otpauth: r.otpauth,
+              secreto: r.secreto,
+              puedeImportar: Boolean(r.puedeImportar),
+            })
           } else {
             // Primera vez: se pide el QR directamente, sin un clic intermedio que no decide nada.
             await aplicar(await pedir({ accion: 'iniciar' }))
           }
           return
         case 'verificar':
-          perfilId.current = r.perfil.id
           setPaso({ tipo: 'verificar', perfil: r.perfil })
           return
         case 'listo':
-          perfilId.current = r.perfil.id
           guardarSesionDelDia(r.sesion)
           setMensaje(null)
           if (r.recuperacionRestantes != null) setRecuperacionRestantes(r.recuperacionRestantes)
@@ -110,6 +104,9 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
           return
         case 'bloqueado':
           setMensaje(MENSAJE_BLOQUEADO)
+          return
+        case 'clave_invalida':
+          setMensaje(MENSAJE_CLAVE)
           return
       }
     },
@@ -166,15 +163,9 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
     mensaje,
     enviando,
     recuperacionRestantes,
-    variosPerfiles,
 
-    elegirPerfil: (id: string) => {
-      perfilId.current = id
-      setPaso({ tipo: 'cargando' })
-      void enviar({ accion: 'estado' })
-    },
-
-    confirmar: (codigo: string) => enviar({ accion: 'confirmar', codigo }),
+    confirmar: (codigo: string, clave?: string) =>
+      enviar({ accion: 'confirmar', codigo, ...(clave ? { clave } : {}) }),
 
     verificar: (codigo: string, recuperacion = false) =>
       enviar({ accion: 'verificar', codigo, recuperacion }),
@@ -189,15 +180,7 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
      */
     salir: () => {
       borrarSesionDelDia()
-      perfilId.current = null
       setRecuperacionRestantes(null)
-      setPaso({ tipo: 'cargando' })
-      void consultarEstado()
-    },
-
-    /** Vuelve a la lista de perfiles sin cerrar nada: todavía no había entrado. */
-    cambiarPerfil: () => {
-      perfilId.current = null
       setPaso({ tipo: 'cargando' })
       void consultarEstado()
     },

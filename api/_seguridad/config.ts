@@ -63,15 +63,19 @@ export const COL_LISTA_BLANCA = {
   email: 'email_mm72cz3e',
   appsIds: 'dropdown_mm72bgr3',
   tipoUsuario: 'color_mm728j0d',
-  perfiles: 'color_mm77n31x',
   desactivarAutenticador: 'color_mm779m2m',
 } as const
 
-/** Etiquetas de la Lista Blanca que deciden el acceso. */
+/**
+ * Etiquetas de la Lista Blanca que deciden el acceso.
+ *
+ * ADMIN es el que habilita usar una clave de autenticador YA existente (la de 1Password) en vez
+ * del QR que genera la app. Es la cuenta operativa que comparten varias personas: los usuarios
+ * MIEMBRO e INVITADO configuran el suyo escaneando el QR.
+ */
 export const ETIQUETA = {
   ACTIVO: 'Activo',
   ADMIN: 'ADMIN',
-  PERFILES_SI: 'SI',
   /**
    * La ÚNICA etiqueta que apaga el autenticador. Cualquier otro valor —"NO Desactivar", vacío, o
    * una etiqueta que alguien agregue mañana— lo deja encendido: ante la duda, se pide el código.

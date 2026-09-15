@@ -12,17 +12,18 @@ export interface PerfilIngreso {
   nombre: string
 }
 
-export interface PerfilElegible extends PerfilIngreso {
-  detalle: string
-  configurado: boolean
-}
-
 /** Lo que devuelve el servidor, ya traducido a un paso de la pantalla. */
 export type RespuestaIngreso =
   | { estado: 'sin_acceso' }
   | { estado: 'error' }
-  | { estado: 'elegir_perfil'; perfiles: PerfilElegible[] }
-  | { estado: 'configurar'; perfil: PerfilIngreso; otpauth?: string; secreto?: string }
+  | {
+      estado: 'configurar'
+      perfil: PerfilIngreso
+      otpauth?: string
+      secreto?: string
+      /** Sólo los ADMIN pueden usar una clave que ya tienen en vez del QR. */
+      puedeImportar?: boolean
+    }
   | { estado: 'verificar'; perfil: PerfilIngreso }
   | {
       estado: 'listo'
@@ -32,13 +33,15 @@ export type RespuestaIngreso =
       recuperacionRestantes?: number
     }
   | { estado: 'codigo_incorrecto'; intentosRestantes?: number }
+  | { estado: 'clave_invalida' }
   | { estado: 'bloqueado' }
 
 export interface PedidoIngreso {
   accion: 'estado' | 'iniciar' | 'confirmar' | 'verificar'
-  perfilId?: string
   codigo?: string
   recuperacion?: boolean
+  /** Clave de autenticador que el usuario ya tiene (gestor de contraseñas). Sólo ADMIN. */
+  clave?: string
 }
 
 export interface ClienteIngreso {
@@ -69,6 +72,7 @@ export const clienteIngreso: ClienteIngreso = {
     const cuerpo = (await res.json().catch(() => ({}))) as Record<string, unknown>
     if (res.status === 403) return { estado: 'sin_acceso' }
     if (res.status === 429) return { estado: 'bloqueado' }
+    if (cuerpo.error === 'clave_invalida') return { estado: 'clave_invalida' }
     if (cuerpo.error === 'codigo_incorrecto') {
       return { estado: 'codigo_incorrecto', intentosRestantes: cuerpo.intentosRestantes as number | undefined }
     }

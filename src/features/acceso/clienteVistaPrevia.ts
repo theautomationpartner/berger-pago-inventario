@@ -8,14 +8,12 @@
  * No verifica nada ni genera secretos reales: el QR es de una clave al azar que no se guarda. Se
  * importa sólo dentro de una rama `import.meta.env.DEV`, así que no llega al build de producción.
  *
- * Para probar los mensajes: `000000` es siempre un código incorrecto.
+ * Para probar los mensajes, `000000` es siempre un código incorrecto. Con
+ * `?vista-previa=verificar` arranca en la pantalla del código del día, como un día cualquiera.
  */
 import type { ClienteIngreso, RespuestaIngreso } from '@/services/acceso/cliente'
 
-const PERFILES = [
-  { id: '1', nombre: 'Camila TAP', detalle: 'Administrador', configurado: false },
-  { id: '2', nombre: 'Pamela TAP', detalle: 'Administrador', configurado: true },
-]
+const PERFIL = { id: '1', nombre: 'Camila TAP' }
 
 const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 const azar = (n: number) =>
@@ -23,33 +21,39 @@ const azar = (n: number) =>
 
 const pausa = () => new Promise((r) => setTimeout(r, 450))
 
+/** `?vista-previa=verificar` muestra el día a día; sin valor, la primera vez. */
+const yaConfigurado = new URLSearchParams(window.location.search).get('vista-previa') === 'verificar'
+
 export const clienteVistaPrevia: ClienteIngreso = {
   async pedir(pedido): Promise<RespuestaIngreso> {
     await pausa()
-    const perfil = PERFILES.find((p) => p.id === pedido.perfilId)
-
-    if (!perfil) return { estado: 'elegir_perfil', perfiles: PERFILES }
-    const publico = { id: perfil.id, nombre: perfil.nombre }
 
     switch (pedido.accion) {
       case 'estado':
-        return perfil.configurado ? { estado: 'verificar', perfil: publico } : { estado: 'configurar', perfil: publico }
+        return yaConfigurado
+          ? { estado: 'verificar', perfil: PERFIL }
+          : { estado: 'configurar', perfil: PERFIL, puedeImportar: true }
 
       case 'iniciar': {
         const secreto = azar(32)
+        const etiqueta = encodeURIComponent(PERFIL.nombre)
         return {
           estado: 'configurar',
-          perfil: publico,
+          perfil: PERFIL,
           secreto,
-          otpauth: `otpauth://totp/BERGER%20S.A.%3A${encodeURIComponent(perfil.nombre)}?secret=${secreto}&issuer=BERGER%20S.A.`,
+          otpauth: `otpauth://totp/BERGER%20S.A.%3A${etiqueta}?secret=${secreto}&issuer=BERGER%20S.A.`,
+          puedeImportar: true,
         }
       }
 
       case 'confirmar':
+        if (pedido.clave && pedido.clave.replace(/[\s-]/g, '').length < 16) {
+          return { estado: 'clave_invalida' }
+        }
         if (pedido.codigo === '000000') return { estado: 'codigo_incorrecto', intentosRestantes: 2 }
         return {
           estado: 'listo',
-          perfil: publico,
+          perfil: PERFIL,
           sesion: 'vista-previa',
           codigosRecuperacion: Array.from({ length: 10 }, () => `${azar(5)}-${azar(5)}`),
         }
@@ -58,7 +62,7 @@ export const clienteVistaPrevia: ClienteIngreso = {
         if (pedido.codigo === '000000') return { estado: 'codigo_incorrecto', intentosRestantes: 4 }
         return {
           estado: 'listo',
-          perfil: publico,
+          perfil: PERFIL,
           sesion: 'vista-previa',
           ...(pedido.recuperacion ? { recuperacionRestantes: 9 } : {}),
         }

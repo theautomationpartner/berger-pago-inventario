@@ -1,6 +1,10 @@
 /**
- * Estado del autenticador (TOTP) de cada perfil, guardado en el tablero
+ * Estado del autenticador (TOTP) de cada USUARIO de monday, guardado en el tablero
  * "🔐 Seguridad · Autenticador (no editar)".
+ *
+ * La fila es por usuario de monday y no por fila de la Lista Blanca. Esa es la diferencia que hace
+ * que la cuenta que comparten los administradores tenga UN solo autenticador: todas sus filas
+ * tienen el mismo ID de usuario, así que todas llegan al mismo secreto y al mismo código.
  *
  * Qué hay en ese tablero y por qué leerlo no sirve de nada:
  *
@@ -71,13 +75,13 @@ function aEstado(item: { id: string; column_values: ColumnaTexto[] }): EstadoAut
 }
 
 /**
- * Estado del autenticador de un perfil, o `null` si nunca empezó a configurarlo.
+ * Estado del autenticador de un usuario de monday, o `null` si nunca empezó a configurarlo.
  *
- * Si por una carrera quedaran dos filas para el mismo perfil, manda la que tiene el secreto
+ * Si por una carrera quedaran dos filas para el mismo usuario, manda la que tiene el secreto
  * confirmado: nunca se elige una fila vacía por sobre una configurada, porque eso equivaldría a
  * resetearle el autenticador a alguien sin que lo haya pedido.
  */
-export async function leerAutenticador(perfilId: string): Promise<EstadoAutenticador | null> {
+export async function leerAutenticador(usuarioId: string): Promise<EstadoAutenticador | null> {
   const { tableroAutenticador } = configSeguridad()
   const datos = await consultarMonday<{
     items_page_by_column_values: { items: { id: string; column_values: ColumnaTexto[] }[] }
@@ -89,10 +93,10 @@ export async function leerAutenticador(perfilId: string): Promise<EstadoAutentic
         columns: [{ column_id: $columna, column_values: $valor }]
       ) { items { id column_values(ids: $columnas) { id text } } }
     }`,
-    { tablero: tableroAutenticador, columna: COL_AUTENTICADOR.perfilId, valor: [perfilId], columnas: COLUMNAS },
+    { tablero: tableroAutenticador, columna: COL_AUTENTICADOR.usuarioId, valor: [usuarioId], columnas: COLUMNAS },
   )
   const filas = datos.items_page_by_column_values.items
-    .filter((i) => textoDe(i.column_values, COL_AUTENTICADOR.perfilId) === perfilId)
+    .filter((i) => textoDe(i.column_values, COL_AUTENTICADOR.usuarioId) === usuarioId)
     .map(aEstado)
   return filas.find((f) => f.secretoCifrado) ?? filas[0] ?? null
 }

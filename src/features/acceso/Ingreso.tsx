@@ -3,7 +3,6 @@ import { PantallaSinAcceso } from '@/components/ui/PantallaSinAcceso'
 import type { ClienteIngreso, PerfilIngreso } from '@/services/acceso/cliente'
 import { CodigosRecuperacion } from './CodigosRecuperacion'
 import { ConfigurarAutenticador } from './ConfigurarAutenticador'
-import { ElegirPerfil } from './ElegirPerfil'
 import { MarcoIngreso } from './MarcoIngreso'
 import { useIngreso } from './useIngreso'
 import { VerificarCodigo } from './VerificarCodigo'
@@ -55,19 +54,16 @@ export function Ingreso({ cliente, usuarioId, children }: Props) {
         </MarcoIngreso>
       )
 
-    case 'elegir_perfil':
-      return <ElegirPerfil perfiles={paso.perfiles} onElegir={ingreso.elegirPerfil} />
-
     case 'configurar':
       return (
         <ConfigurarAutenticador
           perfil={paso.perfil}
           otpauth={paso.otpauth}
           secreto={paso.secreto}
+          puedeImportar={paso.puedeImportar}
           mensaje={ingreso.mensaje}
           enviando={ingreso.enviando}
-          onConfirmar={(codigo) => void ingreso.confirmar(codigo)}
-          onCambiarPerfil={ingreso.variosPerfiles ? ingreso.cambiarPerfil : undefined}
+          onConfirmar={(codigo, clave) => void ingreso.confirmar(codigo, clave)}
         />
       )
 
@@ -81,7 +77,6 @@ export function Ingreso({ cliente, usuarioId, children }: Props) {
           mensaje={ingreso.mensaje}
           enviando={ingreso.enviando}
           onVerificar={(codigo, recuperacion) => void ingreso.verificar(codigo, recuperacion)}
-          onCambiarPerfil={ingreso.variosPerfiles ? ingreso.cambiarPerfil : undefined}
         />
       )
 

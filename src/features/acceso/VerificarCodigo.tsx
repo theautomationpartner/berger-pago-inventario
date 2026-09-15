@@ -8,7 +8,6 @@ interface Props {
   mensaje: string | null
   enviando: boolean
   onVerificar: (codigo: string, recuperacion: boolean) => void
-  onCambiarPerfil?: () => void
 }
 
 /**
@@ -17,7 +16,7 @@ interface Props {
  * El código de recuperación está a un clic pero no a la vista: es para el día que se pierde el
  * celular, y con los dos campos juntos cualquiera escribiría el código de 6 dígitos en el que no va.
  */
-export function VerificarCodigo({ perfil, mensaje, enviando, onVerificar, onCambiarPerfil }: Props) {
+export function VerificarCodigo({ perfil, mensaje, enviando, onVerificar }: Props) {
   const [recuperacion, setRecuperacion] = useState(false)
   const [codigoRecuperacion, setCodigoRecuperacion] = useState('')
 
@@ -87,11 +86,6 @@ export function VerificarCodigo({ perfil, mensaje, enviando, onVerificar, onCamb
           <i className={`fa-solid ${recuperacion ? 'fa-mobile-screen' : 'fa-life-ring'}`} aria-hidden="true" />
           {recuperacion ? 'Usar el código del celular' : '¿Perdiste el celular? Usá un código de recuperación'}
         </button>
-        {onCambiarPerfil && (
-          <button type="button" className="btn btn--texto btn--chico" onClick={onCambiarPerfil}>
-            <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Elegir otro perfil
-          </button>
-        )}
       </div>
     </MarcoIngreso>
   )

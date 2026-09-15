@@ -198,11 +198,10 @@ logueado tiene que tener una fila con:
 La Lista Blanca se vuelve a leer **en cada pedido de datos**, no sólo al entrar: pasar a alguien a
 Inactivo o quitarle la app le corta el acceso en el acto, aunque tenga la sesión del día abierta.
 
-**Perfiles compartidos.** Los administradores usan la misma cuenta de monday: varias filas con el
-mismo ID de usuario. Eso sólo es válido si **todas** esas filas tienen Tipo Usuario = **ADMIN** y
-Perfiles = **SI**; entonces, antes del autenticador, se elige con qué perfil se entra. Cada perfil
-tiene su propio autenticador en su propio celular. Si hay filas repetidas que no cumplen eso, es un
-error de carga y se niega el acceso: elegir una al azar le daría a alguien los permisos de otro.
+**Cuentas compartidas.** El autenticador es del **usuario de monday**, no de la fila. Si varias
+personas entran con la misma cuenta de monday —el caso de los administradores—, comparten un único
+autenticador y un único código. Si esa cuenta tuviera más de una fila en la Lista Blanca, manda la
+primera habilitada.
 
 **Mensaje único.** Cualquier rechazo —no está en la lista, inactivo, sin la app, otra cuenta— se
 muestra igual: *"No tenés acceso a esta aplicación. Contactá al administrador."* Nunca revela si el
@@ -216,6 +215,16 @@ Estándar abierto RFC 6238: sirve **Google Authenticator**, Microsoft Authentica
 - **Primera vez:** se muestra un QR (y la clave en texto para quien no puede escanear) y se
   confirma con el primer código. Después se entregan **10 códigos de recuperación de un solo uso**,
   que se muestran una única vez: no se puede seguir sin confirmar que se guardaron.
+- **Los ADMIN pueden usar una clave que ya tienen** —la del gestor de contraseñas del equipo, por
+  ejemplo 1Password— en vez del QR: la pegan y escriben el código que esa clave está generando, lo
+  que prueba que se copió completa. Es para la cuenta operativa que comparten varias personas, así
+  no hay que repartir un QR. Al resto sólo se le ofrece escanear, que es lo que garantiza que el
+  secreto lo generó la app y nadie más lo vio.
+
+  > Si esa clave es la misma que usa la verificación en dos pasos **de monday**, el segundo factor
+  > deja de ser independiente: quien pueda entrar a monday con esa cuenta ya tiene el código de la
+  > app. Escanear el QR con el gestor de contraseñas es igual de cómodo y mantiene los dos factores
+  > separados.
 - **Cada día:** el primer ingreso del día calendario (hora de Argentina) pide el código de 6
   dígitos. Quien entra a las 23:50 lo vuelve a necesitar a las 00:10.
 - **Un código sirve una sola vez**, se tolera ±30 segundos de reloj desfasado, y hay un **límite de 5
@@ -228,7 +237,7 @@ Estándar abierto RFC 6238: sirve **Google Authenticator**, Microsoft Authentica
 
 | Qué | Dónde | Protección |
 |-----|-------|-----------|
-| Secreto del autenticador | 🔐 Seguridad · Autenticador (no editar) | Cifrado AES-256-GCM. La clave vive sólo en Vercel. Si se edita a mano, no descifra. |
+| Secreto del autenticador (uno por usuario de monday) | 🔐 Seguridad · Autenticador (no editar) | Cifrado AES-256-GCM. La clave vive sólo en Vercel. Si se edita a mano, no descifra. |
 | Códigos de recuperación | mismo tablero | Sólo su HMAC con una clave del servidor. No están en claro. |
 | Intentos fallidos y último código usado | mismo tablero | — |
 | Cada ingreso e intento fallido | 🔐 Registro de Accesos | Fecha, email, IP, usuario, perfil y motivo. |
@@ -242,7 +251,7 @@ Los dos tableros de seguridad son **privados** y sólo los ve la cuenta administ
 |-------|--------|
 | Dar acceso a alguien | Agregar su fila en la Lista Blanca: ID de usuario, Activo y la app. |
 | Quitar el acceso | Pasar su fila a **Inactivo** (o quitarle la app). Corta al instante. |
-| Reiniciar el autenticador de alguien (perdió el celular) | **Borrar la fila de su perfil** en 🔐 Seguridad · Autenticador. En el próximo ingreso le aparece el QR. |
+| Reiniciar el autenticador de alguien (perdió el celular) | **Borrar su fila** en 🔐 Seguridad · Autenticador —está identificada por el ID de usuario de monday—. En el próximo ingreso le aparece el QR. |
 | Dejar entrar a alguien sin código, por un rato | Poner **Desactivar** en su fila de la Lista Blanca. Queda registrado como "Ingreso sin autenticador". |
 | Detectar a alguien tanteando | Revisar 🔐 Registro de Accesos: varios "Acceso denegado" o "Código incorrecto" seguidos del mismo usuario o IP. |
 

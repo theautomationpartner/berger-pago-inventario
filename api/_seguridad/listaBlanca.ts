@@ -1,10 +1,9 @@
 /**
  * Lectura de la 🔒Lista Blanca: quién puede entrar, a qué apps, y con qué exigencias.
  *
- * Cada fila es un PERFIL. Normalmente un perfil es una persona con su propio usuario de monday,
- * pero los administradores comparten una misma cuenta de monday: varias filas con el mismo ID de
- * usuario, que se distinguen eligiendo el perfil antes del autenticador. Por eso la unidad de
- * acceso es la fila, no el usuario de monday.
+ * Cada fila es una persona habilitada. Los administradores comparten una misma cuenta de monday,
+ * así que puede haber varias filas con el mismo ID de usuario: en ese caso comparten el acceso y
+ * el autenticador, porque para monday —y para la app— son el mismo usuario.
  */
 import { COL_LISTA_BLANCA, configSeguridad, ETIQUETA } from './config'
 import { consultarMonday, textoDe, type ColumnaTexto } from './mondayServidor'
@@ -20,7 +19,6 @@ export interface Perfil {
   /** Ids de las apps habilitadas (columna "ID APP Habilitadas"). */
   apps: string[]
   tipoUsuario: string
-  conPerfiles: boolean
   autenticadorDesactivado: boolean
 }
 
@@ -59,7 +57,6 @@ function aPerfil(item: ItemCrudo): Perfil {
     activo: textoDe(c, COL_LISTA_BLANCA.estado) === ETIQUETA.ACTIVO,
     apps: lista(textoDe(c, COL_LISTA_BLANCA.appsIds)),
     tipoUsuario: textoDe(c, COL_LISTA_BLANCA.tipoUsuario),
-    conPerfiles: textoDe(c, COL_LISTA_BLANCA.perfiles) === ETIQUETA.PERFILES_SI,
     autenticadorDesactivado:
       textoDe(c, COL_LISTA_BLANCA.desactivarAutenticador) === ETIQUETA.AUTENTICADOR_DESACTIVADO,
   }

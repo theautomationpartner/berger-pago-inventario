@@ -24,14 +24,15 @@ export class AccesoDenegado extends Error {
 export class SesionRequerida extends Error {}
 
 /**
- * Perfiles con los que este usuario de monday puede entrar a ESTA app.
+ * La fila de la Lista Blanca con la que este usuario de monday entra a ESTA app.
  *
- * Varias filas con el mismo ID de usuario sólo son válidas si TODAS son perfiles de administrador
- * (Tipo Usuario = ADMIN y Perfiles = SI). Si no, es un error de carga en la Lista Blanca —dos
- * personas distintas con el mismo usuario— y se rechaza: elegir una al azar le daría a alguien los
- * permisos de otro.
+ * La cuenta de los administradores la comparten varias personas, así que puede haber más de una
+ * fila con el mismo ID de usuario. Para monday —y por lo tanto para la app— son el MISMO usuario:
+ * comparten el acceso y el autenticador. Se toma la primera fila habilitada, que es la que aporta
+ * el nombre y las condiciones; si hubiera diferencias entre filas del mismo usuario, no habría
+ * forma de saber cuál es "la verdadera", y la app no puede inventarla.
  */
-export async function perfilesHabilitados(usuarioId: string): Promise<Perfil[]> {
+export async function identidadHabilitada(usuarioId: string): Promise<Perfil> {
   const { appId } = configSeguridad()
   const todos = await perfilesDeUsuario(usuarioId)
   const habilitados = todos.filter((p) => habilitadoParaApp(p, appId))
@@ -42,16 +43,19 @@ export async function perfilesHabilitados(usuarioId: string): Promise<Perfil[]> 
       todos.some((p) => p.activo) ? 'No tiene esta app habilitada.' : 'Usuario inactivo.',
     )
   }
-  if (
-    habilitados.length > 1 &&
-    !habilitados.every((p) => p.conPerfiles && p.tipoUsuario === ETIQUETA.ADMIN)
-  ) {
-    throw new AccesoDenegado(
-      'Varias filas con el mismo ID de usuario sin ser todas ADMIN con Perfiles = SI.',
-    )
-  }
-  return habilitados
+  return habilitados[0]
 }
+
+/**
+ * ¿Puede configurar el autenticador con una clave que YA tiene, en vez del QR que genera la app?
+ *
+ * Sólo los ADMIN. Es la cuenta operativa que comparten varias personas y que ya tiene su clave en
+ * el gestor de contraseñas del equipo: pegarla ahí evita repartir un QR entre varios. Para el
+ * resto, la única forma es escanear el QR, que es la que garantiza que el secreto lo generó la app
+ * y nadie más lo vio.
+ */
+export const puedeImportarClave = (perfil: Perfil): boolean =>
+  perfil.tipoUsuario === ETIQUETA.ADMIN
 
 /** ¿Esta sesión cumple lo que el perfil exige HOY? */
 export const sesionAlcanza = (sesion: SesionApp, perfil: Perfil): boolean =>

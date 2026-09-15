@@ -1,5 +1,4 @@
-/* Pantallas del ingreso: elección de perfil, configuración del autenticador, códigos de
-   recuperación y código del día.
+/* Pantallas del ingreso: configuración del autenticador, códigos de recuperación y código del día.
 
    Fondo bordó de BERGER a pantalla completa y una tarjeta blanca al centro. Es deliberadamente
    distinto del resto de la app, que es blanco: marca que todavía no se está adentro. */
@@ -72,72 +71,48 @@
   color: rgba(255, 255, 255, 0.75);
 }
 
-/* ===== Perfiles ===== */
-.ingreso-perfiles {
+/* ===== Cómo configurar: QR o clave existente (sólo ADMIN) ===== */
+.ingreso-modos {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ingreso-perfil {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  min-height: 68px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 18px;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  background: var(--tint-neutral);
 }
-.ingreso-perfil:hover,
-.ingreso-perfil:focus-visible {
-  outline: none;
-  border-color: var(--berger-red);
-  background: #fffafa;
-  box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.12);
-}
-.ingreso-perfil-ic {
-  flex: 0 0 auto;
+.ingreso-modo {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--berger-red-soft);
-  color: var(--berger-red-dark);
-  font-size: 16px;
-  font-weight: 800;
-}
-.ingreso-perfil-txt {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  min-width: 0;
-}
-.ingreso-perfil-nom {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-.ingreso-perfil-det {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 9px;
+  background: none;
   font-size: 13px;
+  font-weight: 700;
   color: var(--text-gray);
+  cursor: pointer;
 }
-.ingreso-perfil-flecha {
-  color: #c2c7d1;
-  font-size: 13px;
+.ingreso-modo--activo {
+  background: #fff;
+  color: var(--berger-red-dark);
+  box-shadow: var(--sombra);
 }
-.ingreso-perfil:hover .ingreso-perfil-flecha {
-  color: var(--berger-red);
+
+/* Campo donde se pega una clave que ya existe. Monoespaciada: se lee carácter por carácter, que
+   es como se revisa que no falte un pedazo. */
+.ingreso-clave-propia {
+  height: 52px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 /* ===== Configuración: pasos, QR y clave ===== */
@@ -287,10 +262,6 @@
   align-items: center;
   gap: 2px;
   margin-top: 16px;
-}
-.ingreso-volver {
-  display: flex;
-  margin: 14px auto 0;
 }
 
 /* ===== Códigos de recuperación ===== */
