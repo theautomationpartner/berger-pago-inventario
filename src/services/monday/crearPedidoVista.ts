@@ -1,0 +1,97 @@
+/**
+ * Impacto en Monday del despacho a la VISTA: el pedido se registra SIN pago previo.
+ *
+ * Es el mismo movimiento que la carga de una transferencia, con dos diferencias: no hay
+ * comprobante que adjuntar, y en vez de quedar "Listo para Pagar" cada tractor queda en
+ * "Pendiente de Pago", que es lo que dice que se despachó y todavía no se cobró.
+ *
+ * El orden importa, y por el mismo motivo que en el anticipado: los pasos 1 y 2 abortan —sin item
+ * y sin sus tractores no hay pedido—; del 3 en adelante los fallos se juntan como advertencias,
+ * porque el pedido ya existe en Monday y esconderlo dejaría al usuario creyendo que cargó algo que
+ * no está completo.
+ */
+import { aTextoMonday, fechaCorta, hoyISO } from '@/lib/format'
+import type { ResultadoCarga, Tractor } from '@/types'
+import {
+  COL_INV,
+  COL_PAGO,
+  COL_PAGO_SUB,
+  INV_ESTADO,
+  PAGO_OPERACION,
+  TABLEROS,
+} from './columns'
+import { mondayApi } from './sdk'
+
+const motivo = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+/** Nombre del item del pedido. Se lee solo en el tablero: modalidad y fecha. */
+export const nombreDelPedidoVista = (fecha: string): string => `PAGO VISTA - ${fechaCorta(fecha)}`
+
+interface Entrada {
+  tractores: Tractor[]
+  /** Reporte de contenedores que queda guardado para el mail al proveedor. */
+  reporteContenedores: string
+}
+
+export async function crearPedidoVista({
+  tractores,
+  reporteContenedores,
+}: Entrada): Promise<ResultadoCarga> {
+  if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
+
+  const fecha = hoyISO()
+
+  // 1. Item del pedido.
+  const creado = await mondayApi<{ create_item: { id: string } }>('crearPago', {
+    nombre: nombreDelPedidoVista(fecha),
+    valores: JSON.stringify({
+      [COL_PAGO.fechaPagoVista]: { date: fecha },
+      [COL_PAGO.operacionPend]: { label: PAGO_OPERACION.PENDIENTE_PAGO },
+      [COL_PAGO.contenedores]: { text: reporteContenedores },
+    }),
+  })
+  const pagoId = creado.create_item.id
+
+  const advertencias: string[] = []
+  const subitemIds: string[] = []
+
+  // 2. Un subitem por tractor, conectado a su item del Inventario.
+  for (const t of tractores) {
+    try {
+      const sub = await mondayApi<{ create_subitem: { id: string } }>('crearSubitemDePago', {
+        padre: pagoId,
+        nombre: t.nombre,
+        valores: JSON.stringify({
+          [COL_PAGO_SUB.valorNeto]: t.valorNeto == null ? '' : aTextoMonday(t.valorNeto),
+          [COL_PAGO_SUB.numDraft]: t.numDraft,
+          [COL_PAGO_SUB.codProducto]: t.codProducto,
+          [COL_PAGO_SUB.inventario]: { item_ids: [t.id] },
+        }),
+      })
+      subitemIds.push(sub.create_subitem.id)
+    } catch (e) {
+      advertencias.push(`No se pudo crear el subitem de ${t.nombre}: ${motivo(e)}`)
+    }
+  }
+
+  // 3. Estado del tractor en el Inventario.
+  let tractoresActualizados = 0
+  for (const t of tractores) {
+    try {
+      await mondayApi('actualizarColumnas', {
+        tablero: TABLEROS.inventario,
+        item: t.id,
+        valores: JSON.stringify({
+          [COL_INV.estadoPago]: { label: INV_ESTADO.PENDIENTE_PAGO },
+        }),
+      })
+      tractoresActualizados += 1
+    } catch (e) {
+      advertencias.push(
+        `No se pudo pasar ${t.nombre} a "${INV_ESTADO.PENDIENTE_PAGO}": ${motivo(e)}`,
+      )
+    }
+  }
+
+  return { pagoId, subitemIds, tractoresActualizados, advertencias }
+}

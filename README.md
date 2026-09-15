@@ -18,15 +18,22 @@ de monday el "atrás" del navegador no sirve).
 ```
 Operaciones   →  Modalidad           →  Etapa
 ────────────────────────────────────────────────────────────
-DESPACHO      →  ANTICIPADO          →  1. Cargar Transferencia
-                                        2. Aprobar Transferencia
-                                        3. Confirmar Pago - SWIFT
-              →  VISTA (CONTRA VL)   →  paso único
+DESPACHO  →  PAGO ANTICIPADO        →  1. Cargar Transferencia
+                                       2. Aprobar Transferencia
+                                       3. Confirmar Pago - SWIFT
+          →  PAGO VISTA (Contra BL) →  paso único
 ```
 
 El primer panel —**Operaciones**— hoy tiene sólo DESPACHO, y existe igual a propósito: es donde se
 suman los próximos tipos de operación sin cambiar la pantalla de entrada. Las opciones de los dos
 paneles están descriptas como datos en [`src/lib/navegacion.ts`](src/lib/navegacion.ts).
+
+### Qué tractores se pueden despachar
+
+En **las dos modalidades**, un tractor sólo aparece si su Fecha de Producción está **confirmada**:
+`Estado Confirmación Fecha Producción` (`color_mm6s8xp2`) en **Fecha Confirmada**. Los que están
+en *Fecha Pend Confirmar* no se muestran, porque armar un despacho sobre una fecha que todavía
+puede cambiar es prometer algo que no está.
 
 ### Lo que se ve de cada tractor
 
@@ -47,14 +54,14 @@ verde) y los atributos del tractor llevan cada uno su color fijo; el criterio vi
 
 ---
 
-## Despacho ANTICIPADO
+## PAGO ANTICIPADO
 
 El tractor se paga antes de despacharse. Son tres etapas que forman una cadena: cada una toma los
 pagos que dejó la anterior.
 
 | # | Etapa | Trabaja sobre | Deja el pago en |
 |---|-------|---------------|-----------------|
-| 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar` | `CARGADO` · `Pend de Aprobar Transf` |
+| 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar`, con fecha confirmada | `CARGADO` · `Pend de Aprobar Transf` |
 | 2 | **Aprobar Transferencia** | Pagos en `Pend de Aprobar Transf` | `APROBADO` · `Pend de Confirmar Transf` |
 | 3 | **Confirmar Pago - SWIFT** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
 
@@ -97,9 +104,10 @@ código de producto y fecha— y el **total del valor neto** de la selección.
 **Paso 2 · Transferencia.** Recuadro para adjuntar el PDF, monto —propuesto con el total,
 editable— y fecha de emisión.
 
-Al apretar *Cargar Pago* se crea el item en **Pagos del Inventario** con las columnas de la tabla
-de arriba, más el monto (`numeric_mm714xb2`) y la fecha de emisión (`date_mm71jrsz`); y sus
-**subitems** (`18430295515`), uno por tractor:
+Al apretar *Cargar Pago* se crea el item en **Pagos del Inventario**, llamado
+`PAGO ANTICIPADO - <fecha de emisión>`, con las columnas de la tabla de arriba, el monto
+(`numeric_mm714xb2`), la fecha de emisión (`date_mm71jrsz`) y el reporte de contenedores
+(`long_text_mm77ydg9`); y sus **subitems** (`18430295515`), uno por tractor:
 
 | Dato | Columna del subitem | Origen en Inventario |
 |------|---------------------|----------------------|
@@ -128,21 +136,79 @@ como datos en [`src/lib/flujos.ts`](src/lib/flujos.ts).
 
 ---
 
-## Despacho a la VISTA (contra VL)
+## PAGO VISTA (Contra BL)
 
 El pedido se hace **sin pago previo**. Es un único paso: se eligen del Inventario los tractores con
-`Forma de Pago` (`dropdown_mm6v2sa0`) en **VISTA**, con el mismo detalle que en ANTICIPADO
-—etiquetas, costo de flete, precio unitario, valor neto, forma de pago, N° de draft, código de
-producto y fecha— y el total del valor neto.
+`Forma de Pago` (`dropdown_mm6v2sa0`) en **VISTA** y la fecha de producción confirmada, con el
+mismo detalle que en anticipado y el total del valor neto.
 
-A diferencia de ANTICIPADO, cada fila muestra además el **Estado Pago** del tractor: en la vista no
+A diferencia de anticipado, cada fila muestra además el **Estado Pago** del tractor: en la vista no
 hay un estado que filtre la lista, así que ver en cuál está cada uno es parte de decidir si se pide.
 
-> **Pendiente:** el envío del pedido por mail todavía no está implementado. El botón *Enviar
-> pedido* aparece deshabilitado y lo indica, en vez de simular que hace algo.
+Al registrar el pedido se crea en **Pagos del Inventario** un item llamado
+`PAGO VISTA - <fecha>` con:
 
-La selección, la carga de tractores y el resumen son los mismos componentes que usa ANTICIPADO
+| Dato | Columna |
+|------|---------|
+| Fecha del pedido | `date_mm77cwrs` |
+| Operación = `Pendiente de Pago` | `color_mm71e2wc` |
+| Reporte de contenedores | `long_text_mm77ydg9` |
+| Un subitem por tractor, conectado a su item del Inventario | `18430295515` |
+
+Y cada tractor pasa a **Pendiente de Pago** (`color_mm6v6532`) en el Inventario.
+
+> **Pendiente:** el envío del pedido por mail al proveedor todavía no está implementado. El reporte
+> de contenedores ya queda guardado, que es lo que ese mail va a llevar.
+
+La selección, la carga de tractores y los resúmenes son los mismos componentes que usa anticipado
 ([`src/features/tractores/`](src/features/tractores/)).
+
+---
+
+## Contenedores
+
+Mientras se eligen tractores —en el paso 1 de PAGO ANTICIPADO y en PAGO VISTA— la app va armando
+los contenedores y lo muestra abajo, en vivo. La idea es enterarse **mientras se elige**, no
+después: ver que un contenedor viaja por la mitad cuando ya se registró el pago es tarde.
+
+El tablero **Contenedores** (`18430565324`) dice qué puede viajar junto. Cada fila es una
+**combinación**:
+
+| Columna | Qué dice |
+|---------|----------|
+| 🚜 Catálogo de Productos `board_relation_mm77crvy` | Qué modelos entran combinados entre sí |
+| Contenedor `status` | `40 H`, `20 H`, `20 H + 40 H`, `40 H + 40 H`, `CUALQUIER CONTENEDOR` |
+| Cantidad De Tractor `numeric_mm77r45y` | Cuántos tractores entran **en total** en esa combinación |
+| Ruedas `color_mm77eeke` | `Con Ruedas`, `Sin Ruedas` o `Con y Sin Ruedas` |
+
+El **+** de la etiqueta no es decorativo: `20 H + 40 H` son **dos** contenedores físicos para esa
+cantidad de tractores. `CUALQUIER CONTENEDOR` cuenta como uno.
+
+Un mismo grupo de modelos suele tener varias filas. Los 6205/6175/6155, por ejemplo: uno solo en un
+`40 H` con ruedas, dos en un `20 H + 40 H` con ruedas, o dos sin ruedas en un `40 H`.
+
+### Cómo se arman
+
+1. Cada tractor llega al catálogo por su conexión (`board_relation_mm6sxre2`) y de ahí a las
+   combinaciones que lo aceptan, **con su rodado**: el Inventario dice "Con Rodado" y Contenedores
+   dice "Con Ruedas", que son lo mismo con distinta palabra; "Con y Sin Ruedas" sirve para los dos.
+2. Los tractores que comparten las mismas combinaciones se agrupan: por eso dos modelos distintos
+   viajan juntos cuando el tablero los conectó a la misma fila.
+3. Para cada grupo se elige la combinación **más chica que alcance** para lo que queda —así cinco
+   tractores no viajan en un contenedor de seis si hay uno de cinco—. Si ninguna alcanza, se usa la
+   que mejor aprovecha cada contenedor y se sigue con el resto.
+
+En pantalla queda cada contenedor con lo que lleva, en **verde** si está completo y en **ámbar** si
+sobra lugar, y —cuando sobra— la sugerencia de qué otro tractor de la lista podría completarlo. Los
+que no entran en ninguna combinación se informan aparte con el motivo: el modelo no figura en el
+tablero, no hay fila para ese rodado, falta el dato de rodado, o el tractor no está conectado al
+catálogo.
+
+Lo mismo, en texto, queda guardado en el pago en **Contenedores Armados por APP**
+(`long_text_mm77ydg9`): es lo que después va al mail del proveedor.
+
+La cuenta está aparte de la pantalla y de monday, en
+[`src/lib/contenedores.ts`](src/lib/contenedores.ts), y se prueba sola.
 
 ---
 
@@ -385,6 +451,8 @@ src/
       DespachoVista.tsx         Despacho a la VISTA (paso único)
     tractores/                Lo que comparten las dos modalidades
       ListaTractores.tsx        Lista seleccionable
+      ResumenContenedores.tsx   Cuántos contenedores salen y qué lleva cada uno
+      useContenedores.ts        Combinaciones + armado en vivo
       ListaSeleccionados.tsx    Detalle desplegable de lo elegido
       ResumenSeleccion.tsx      Lo elegido + total del valor neto
       EtiquetasTractor.tsx      N° interno, modelo y rodado
@@ -395,6 +463,7 @@ src/
     etapas.ts                 Las tres etapas de ANTICIPADO
     flujos.ts                 Las etapas 2 y 3 descriptas como datos
     meses.ts                  Meses del filtro (12 atrás y 12 adelante)
+    contenedores.ts           Armado de contenedores y reporte para el proveedor
     chips.ts                  Color de cada etiqueta
     format.ts                 Números y fechas
   services/monday/            Todo lo que habla con monday
@@ -403,8 +472,10 @@ src/
     sdk.ts                    Cliente HTTP + subida de archivos
     parse.ts                  Lectura de column_values
     inventario.ts             Tractores listos para pagar y tractores VISTA
+    contenedores.ts           Combinaciones del tablero de Contenedores
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
+    crearPedidoVista.ts       Pedido a la vista: item, subitems y estados
     avanzarPago.ts            Etapas 2 y 3: comprobante, estados, fechas y aviso
   styles/                     base · layout · components · pago
 ```

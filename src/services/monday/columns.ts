@@ -26,6 +26,8 @@ export const TABLEROS = {
   pagos: '18430295445',
   /** Subelementos de Pagos del Inventario: un subitem por tractor pagado. */
   pagosSubitems: '18430295515',
+  /** Contenedores: qué modelos viajan juntos y en qué contenedor. */
+  contenedores: '18430565324',
 } as const
 
 /** URL del tablero de pagos, para los enlaces "ver en monday". */
@@ -55,7 +57,17 @@ export const COL_INV = {
   modelo: 'lookup_mm726zx1',
   /** Estado Rodado: "Con Rodado" / "Sin Rodado". Se muestra como etiqueta en todos los pasos. */
   estadoRodado: 'color_mm72mfyd',
+  /**
+   * Confirmación de la Fecha de Producción. Sólo los tractores con la fecha CONFIRMADA se pueden
+   * despachar: los demás no aparecen en ninguna de las dos modalidades.
+   */
+  confirmacionFecha: 'color_mm6s8xp2',
+  /** Conexión al Catálogo de Productos. Es lo que permite saber en qué contenedor entra. */
+  catalogo: 'board_relation_mm6sxre2',
 } as const
+
+/** Etiquetas de "Estado Confirmación Fecha Producción" (`color_mm6s8xp2`). */
+export const FECHA_CONFIRMADA = 'Fecha Confirmada'
 
 /**
  * Opciones de "Forma de Pago" (`dropdown_mm6v2sa0`), con el id de cada etiqueta.
@@ -85,6 +97,8 @@ export const RODADO = {
  */
 export const INV_ESTADO = {
   LISTO: 'Listo para Pagar',
+  /** En el que quedan los tractores pedidos a la vista: se despachan sin pago previo. */
+  PENDIENTE_PAGO: 'Pendiente de Pago',
   TRANSF_CARGADA: 'Transf Cargada',
   TRANSF_APROBADA: 'Transf Aprobada',
   PAGADO: 'Pagado',
@@ -117,6 +131,11 @@ export const COL_PAGO = {
   /** Operación Pendiente: es la columna que dice quién tiene que actuar a continuación. */
   operacionPend: 'color_mm71e2wc',
 
+  /** Fecha del pedido a la vista. */
+  fechaPagoVista: 'date_mm77cwrs',
+  /** Reporte de los contenedores que armó la app. Es lo que después va al mail del proveedor. */
+  contenedores: 'long_text_mm77ydg9',
+
   /** Fecha en que se completó cada operación. */
   fechaCargado: 'date_mm71zare',
   fechaAprobado: 'date_mm71xrq5',
@@ -142,6 +161,8 @@ export const PAGO_ESTADO = {
  */
 export const PAGO_OPERACION = {
   PEND_APROBAR: 'Pend de Aprobar Transf',
+  /** Pedido a la vista: se despachó sin pago, y el pago queda pendiente. */
+  PENDIENTE_PAGO: 'Pendiente de Pago',
   PEND_CONFIRMAR: 'Pend de Confirmar Transf',
   PAGADO: 'Pagado',
 } as const
@@ -154,6 +175,7 @@ export const PAGO_OPERACION_INDEX: Record<string, number> = {
   [PAGO_OPERACION.PEND_APROBAR]: 0,
   [PAGO_OPERACION.PAGADO]: 1,
   [PAGO_OPERACION.PEND_CONFIRMAR]: 2,
+  [PAGO_OPERACION.PENDIENTE_PAGO]: 3,
 }
 
 /**
@@ -173,4 +195,39 @@ export const COL_PAGO_SUB = {
   inventario: 'board_relation_mm718zjg',
   /** Mirror del N° Interno del tractor conectado. Sólo lectura. */
   numInterno: 'lookup_mm71zb7h',
+} as const
+
+/**
+ * 📦 Contenedores (18430565324): qué modelos del catálogo viajan juntos, en qué contenedor y
+ * cuántos entran.
+ *
+ * Cada fila es una COMBINACIÓN posible: los productos conectados pueden compartir contenedor hasta
+ * la cantidad indicada. Un mismo grupo de productos puede tener varias filas —distinto contenedor,
+ * distinto rodado, distinta capacidad— y la app elige entre ellas al armar el despacho.
+ */
+export const COL_CONTENEDOR = {
+  /** Productos del catálogo que entran combinados en esta fila. */
+  catalogo: 'board_relation_mm77crvy',
+  tipo: 'status',
+  capacidad: 'numeric_mm77r45y',
+  ruedas: 'color_mm77eeke',
+} as const
+
+/**
+ * Tipos de contenedor. El "+" no es decorativo: dice que esa combinación ocupa DOS contenedores,
+ * y por eso la cantidad de contenedores se cuenta partiendo la etiqueta.
+ */
+export const CONTENEDOR_CUALQUIERA = 'CUALQUIER CONTENEDOR'
+
+/**
+ * Etiquetas de la columna "Ruedas" de Contenedores.
+ *
+ * Ojo con los nombres: el Inventario dice "Con Rodado" / "Sin Rodado" y Contenedores dice "Con
+ * Ruedas" / "Sin Ruedas". Son la misma idea con distinta palabra, y hay una tercera —"Con y Sin
+ * Ruedas"— que sirve para los dos.
+ */
+export const RUEDAS_CONTENEDOR = {
+  CON: 'Con Ruedas',
+  SIN: 'Sin Ruedas',
+  AMBAS: 'Con y Sin Ruedas',
 } as const

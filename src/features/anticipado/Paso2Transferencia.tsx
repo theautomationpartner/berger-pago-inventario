@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
 import { EtiquetasTractor } from '@/features/tractores/EtiquetasTractor'
 import { aNumero, importe } from '@/lib/format'
@@ -9,6 +10,8 @@ interface Props {
   onCambiar: (datos: DatosTransferencia) => void
   /** Suma de los valores netos. Es la referencia contra la que se compara el monto tipeado. */
   total: number
+  /** Resumen de contenedores: última oportunidad de revisarlo antes de registrar. */
+  contenedores: ReactNode
 }
 
 /**
@@ -19,7 +22,7 @@ interface Props {
  * calculado obligaría a corregirlo después a mano en monday. Cuando difieren, la app lo dice en
  * vez de decidir por su cuenta cuál de los dos tiene razón.
  */
-export function Paso2Transferencia({ tractores, datos, onCambiar, total }: Props) {
+export function Paso2Transferencia({ tractores, datos, onCambiar, total, contenedores }: Props) {
   const montoNumero = aNumero(datos.monto)
   const difiere = montoNumero != null && Math.abs(montoNumero - total) > 0.005
 
@@ -111,7 +114,9 @@ export function Paso2Transferencia({ tractores, datos, onCambiar, total }: Props
         </div>
       </div>
 
-      <div className="aviso aviso--info" style={{ marginTop: 16, marginBottom: 0 }}>
+      <div style={{ marginTop: 16 }}>{contenedores}</div>
+
+      <div className="aviso aviso--info" style={{ marginBottom: 0 }}>
         <i className="fa-solid fa-circle-info" aria-hidden="true" />
         <span>
           Al cargar el pago se crea un item en <b>Pagos del Inventario</b> con la transferencia

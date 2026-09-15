@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { SelectorMeses } from '@/components/ui/SelectorMeses'
 import { ListaTractores } from '@/features/tractores/ListaTractores'
@@ -19,6 +20,8 @@ interface Props {
   cargando: boolean
   error: string | null
   onReintentar: () => void
+  /** Resumen de contenedores, armado con lo que se lleva elegido. */
+  contenedores: ReactNode
 }
 
 /**
@@ -43,6 +46,7 @@ export function Paso1Seleccion({
   cargando,
   error,
   onReintentar,
+  contenedores,
 }: Props) {
   const meses = useMemo(() => mesesDelFiltro(), [])
 
@@ -139,6 +143,8 @@ export function Paso1Seleccion({
         onQuitar={onAlternar}
         titulo="Tractores de esta transferencia"
       />
+
+      {contenedores}
     </>
   )
 }

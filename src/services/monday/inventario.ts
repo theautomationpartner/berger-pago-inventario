@@ -11,6 +11,7 @@
 import type { MesAnio, Tractor } from '@/types'
 import {
   COL_INV,
+  FECHA_CONFIRMADA,
   FORMA_PAGO,
   INV_ESTADO,
   INV_ESTADO_LISTO_INDEX,
@@ -19,10 +20,15 @@ import type { NombreOperacion } from './operaciones'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
+/** Una board_relation expone los items conectados sólo con este fragmento. */
+interface ColumnaConexion extends ColumnaCruda {
+  linked_item_ids?: string[] | null
+}
+
 interface ItemCrudo {
   id: string
   name: string
-  column_values: ColumnaCruda[]
+  column_values: ColumnaConexion[]
 }
 
 interface PaginaCruda {
@@ -43,6 +49,8 @@ const COLUMNAS = [
   COL_INV.codProducto,
   COL_INV.modelo,
   COL_INV.estadoRodado,
+  COL_INV.confirmacionFecha,
+  COL_INV.catalogo,
 ]
 
 const PAGINA = 200
@@ -65,8 +73,18 @@ function aTractor(item: ItemCrudo): Tractor {
     formaPago: texto(c[COL_INV.formaPago]),
     modelo: espejo(c[COL_INV.modelo]),
     estadoRodado: texto(c[COL_INV.estadoRodado]),
+    catalogoId: (c[COL_INV.catalogo] as ColumnaConexion | undefined)?.linked_item_ids?.[0] ?? null,
+    confirmacionFecha: texto(c[COL_INV.confirmacionFecha]),
   }
 }
+
+/**
+ * Sólo se puede despachar lo que tiene la Fecha de Producción CONFIRMADA.
+ *
+ * Vale para las dos modalidades. Un tractor con la fecha a confirmar no se muestra en ninguna
+ * lista: ofrecerlo sería armar un despacho sobre una fecha que todavía puede cambiar.
+ */
+const conFechaConfirmada = (t: Tractor): boolean => t.confirmacionFecha === FECHA_CONFIRMADA
 
 /**
  * Trae todas las páginas de una consulta filtrada del Inventario.
@@ -111,7 +129,7 @@ async function traerTodos(operacion: NombreOperacion, filtro: Record<string, unk
  */
 export async function tractoresListosParaPagar(): Promise<Tractor[]> {
   const tractores = await traerTodos('inventarioPorEstadoPago', { estado: [INV_ESTADO_LISTO_INDEX] })
-  return tractores.filter((t) => t.estadoPago === INV_ESTADO.LISTO)
+  return tractores.filter((t) => t.estadoPago === INV_ESTADO.LISTO && conFechaConfirmada(t))
 }
 
 /**
@@ -123,11 +141,13 @@ export async function tractoresListosParaPagar(): Promise<Tractor[]> {
  */
 export async function tractoresParaDespachoVista(): Promise<Tractor[]> {
   const tractores = await traerTodos('inventarioPorFormaDePago', { forma: [FORMA_PAGO.VISTA.id] })
-  return tractores.filter((t) =>
-    t.formaPago
-      .split(',')
-      .map((f) => f.trim())
-      .includes(FORMA_PAGO.VISTA.etiqueta),
+  return tractores.filter(
+    (t) =>
+      conFechaConfirmada(t) &&
+      t.formaPago
+        .split(',')
+        .map((f) => f.trim())
+        .includes(FORMA_PAGO.VISTA.etiqueta),
   )
 }
 

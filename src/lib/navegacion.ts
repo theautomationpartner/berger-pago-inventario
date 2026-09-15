@@ -21,8 +21,8 @@ export const OPERACIONES_PRINCIPALES: OpcionPanel<OperacionPrincipal>[] = [
 export const MODALIDADES_DESPACHO: OpcionPanel<ModalidadDespacho>[] = [
   {
     id: 'anticipado',
-    titulo: 'ANTICIPADO',
-    corto: 'Anticipado',
+    titulo: 'PAGO ANTICIPADO',
+    corto: 'Pago anticipado',
     detalle:
       'El tractor se paga antes de despacharse: carga de la transferencia, aprobación y ' +
       'confirmación del pago.',
@@ -30,8 +30,8 @@ export const MODALIDADES_DESPACHO: OpcionPanel<ModalidadDespacho>[] = [
   },
   {
     id: 'vista',
-    titulo: 'VISTA (CONTRA VL)',
-    corto: 'Vista',
+    titulo: 'PAGO VISTA (Contra BL)',
+    corto: 'Pago vista',
     detalle:
       'El pedido se hace sin pago previo, con los tractores que tienen Forma de Pago en VISTA.',
     icono: 'fa-solid fa-paper-plane',

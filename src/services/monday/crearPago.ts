@@ -13,7 +13,7 @@
  * porque el pago ya existe en Monday: esconder que un subitem no se creó dejaría al usuario
  * creyendo que cargó algo que no está.
  */
-import { aTextoMonday, hoyISO } from '@/lib/format'
+import { aTextoMonday, fechaCorta, hoyISO } from '@/lib/format'
 import type { ResultadoCarga, Tractor } from '@/types'
 import {
   COL_INV,
@@ -26,12 +26,9 @@ import {
 } from './columns'
 import { mondayApi, subirArchivoAColumna } from './sdk'
 
-/** Nombre del item de pago. Se lee solo en el tablero: fecha de la transferencia y volumen. */
-export function nombreDelPago(fechaEmision: string, cantidad: number): string {
-  const [anio, mes, dia] = fechaEmision.split('-')
-  const unidad = cantidad === 1 ? 'tractor' : 'tractores'
-  return `Transferencia ${dia}/${mes}/${anio} · ${cantidad} ${unidad}`
-}
+/** Nombre del item de pago: la modalidad y la fecha de emisión de la transferencia. */
+export const nombreDelPago = (fechaEmision: string): string =>
+  `PAGO ANTICIPADO - ${fechaCorta(fechaEmision)}`
 
 interface Entrada {
   tractores: Tractor[]
@@ -39,6 +36,8 @@ interface Entrada {
   monto: number
   /** ISO `YYYY-MM-DD`. */
   fechaEmision: string
+  /** Reporte de contenedores que queda guardado para el mail al proveedor. */
+  reporteContenedores: string
 }
 
 /** Texto corto de un error desconocido, para las advertencias. */
@@ -49,6 +48,7 @@ export async function cargarTransferencia({
   archivo,
   monto,
   fechaEmision,
+  reporteContenedores,
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
 
@@ -64,9 +64,10 @@ export async function cargarTransferencia({
     [COL_PAGO.estadoPago]: { label: PAGO_ESTADO.CARGADO },
     [COL_PAGO.operacionPend]: { label: PAGO_OPERACION.PEND_APROBAR },
     [COL_PAGO.fechaCargado]: { date: hoyISO() },
+    [COL_PAGO.contenedores]: { text: reporteContenedores },
   }
   const creado = await mondayApi<{ create_item: { id: string } }>('crearPago', {
-    nombre: nombreDelPago(fechaEmision, tractores.length),
+    nombre: nombreDelPago(fechaEmision),
     valores: JSON.stringify(valoresPago),
   })
   const pagoId = creado.create_item.id

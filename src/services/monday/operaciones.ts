@@ -27,6 +27,7 @@ import {
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
+  | 'contenedores'
   | 'inventarioPorEstadoPago'
   | 'inventarioPorFormaDePago'
   | 'inventarioPaginaSiguiente'
@@ -70,6 +71,8 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_PAGO.fechaConfirmado,
     COL_PAGO.estadoEmail1,
     COL_PAGO.estadoEmail2,
+    COL_PAGO.fechaPagoVista,
+    COL_PAGO.contenedores,
   ]),
   [TABLEROS.pagosSubitems]: new Set([
     COL_PAGO_SUB.valorNeto,
@@ -182,6 +185,30 @@ const CAMPOS_COLUMNA = `
  * ------------------------------------------------------------------ */
 
 export const OPERACIONES: Record<NombreOperacion, Operacion> = {
+  /**
+   * Las combinaciones del tablero de Contenedores: qué modelos viajan juntos y cuántos entran.
+   *
+   * Son pocas filas y cambian poco, así que se traen todas de una vez y la app arma los
+   * contenedores en el navegador mientras el usuario elige: así el resumen se actualiza en el acto
+   * con cada tractor que marca, sin un viaje a monday por cada clic.
+   */
+  contenedores: {
+    query: `
+      query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(limit: $limite) {
+            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.contenedores,
+      columnas: idsDeColumnas(v.columnas),
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
   /**
    * Tractores del Inventario filtrados por Estado Pago.
    *

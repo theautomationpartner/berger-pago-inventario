@@ -66,6 +66,59 @@ export interface Tractor {
   modelo: string
   /** "Con Rodado" / "Sin Rodado", o `''` si no está cargado. */
   estadoRodado: string
+  /** Producto del Catálogo al que está conectado. Es la llave para saber en qué contenedor entra. */
+  catalogoId: string | null
+  /** Etiqueta de la confirmación de la Fecha de Producción. */
+  confirmacionFecha: string
+}
+
+/**
+ * Una combinación del tablero de Contenedores: qué productos viajan juntos, en qué contenedor,
+ * cuántos entran y con qué rodado.
+ *
+ * Un mismo grupo de productos puede tener varias opciones. Por ejemplo los 6205/6175/6155: uno
+ * solo en un 40 H con ruedas, dos en un 20 H + 40 H con ruedas, o dos sin ruedas en un 40 H.
+ */
+export interface OpcionContenedor {
+  id: string
+  /** Nombre de la fila, como "6205 - 6175 - 6155". */
+  nombre: string
+  /** Ids de los productos del catálogo que entran combinados. */
+  catalogo: string[]
+  /** Etiqueta del contenedor: "40 H", "20 H + 40 H", "CUALQUIER CONTENEDOR"… */
+  tipo: string
+  /** Cuántos contenedores FÍSICOS ocupa esta opción: el "+" de la etiqueta suma uno. */
+  contenedores: number
+  /** Cuántos tractores entran en total. */
+  capacidad: number
+  /** "Con Ruedas", "Sin Ruedas" o "Con y Sin Ruedas". */
+  ruedas: string
+}
+
+/** Un contenedor (o par de contenedores) ya armado con tractores concretos. */
+export interface ContenedorArmado {
+  opcion: OpcionContenedor
+  tractores: Tractor[]
+  /** Lugares que quedan sin usar. */
+  libres: number
+  /** Otros tractores disponibles que podrían completarlo. */
+  sugerencias: Tractor[]
+}
+
+/** Un tractor que no se puede ubicar, con el motivo. */
+export interface TractorSinContenedor {
+  tractor: Tractor
+  motivo: string
+}
+
+/** Lo que la app le muestra al usuario mientras selecciona, y lo que después queda como reporte. */
+export interface ResumenContenedores {
+  armados: ContenedorArmado[]
+  sinContenedor: TractorSinContenedor[]
+  /** Contenedores físicos en total. */
+  totalContenedores: number
+  /** Lugares libres sumando todos los contenedores armados. */
+  totalLibres: number
 }
 
 /** Un mes del calendario. `mes` es 1-12, no el 0-11 de `Date`. */

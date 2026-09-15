@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
+import { ResumenContenedores } from '@/features/tractores/ResumenContenedores'
+import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
-import { aNumero, hoyISO, importe } from '@/lib/format'
+import { reporteContenedores } from '@/lib/contenedores'
+import { aNumero, fechaCorta, hoyISO, importe } from '@/lib/format'
 import { cargarTransferencia } from '@/services/monday/crearPago'
 import { tractoresListosParaPagar } from '@/services/monday/inventario'
 import type { DatosTransferencia, Etapa, ResultadoCarga } from '@/types'
@@ -25,6 +28,7 @@ export function CargarTransferencia() {
   const { tractores, cargando, error, recargar } = useTractores(tractoresListosParaPagar)
   const { seleccionados, alternar, marcar, desmarcar, limpiar, elegidos, total } =
     useSeleccionTractores(tractores)
+  const contenedores = useContenedores(elegidos, tractores)
 
   /* Vacío = todos los meses. Se conserva al cargar otra transferencia: quien trabaja con los
      tractores de ciertos meses suele seguir con esos mismos. */
@@ -68,6 +72,10 @@ export function CargarTransferencia() {
         archivo: datos.archivo,
         monto: montoNumero,
         fechaEmision: datos.fechaEmision,
+        reporteContenedores: reporteContenedores(
+          contenedores.resumen,
+          `PAGO ANTICIPADO - ${fechaCorta(datos.fechaEmision)}`,
+        ),
       })
       setResultado(r)
       setMontoRegistrado(montoNumero)
@@ -78,6 +86,16 @@ export function CargarTransferencia() {
       setEnviando(false)
     }
   }
+
+  const panelContenedores = (
+    <ResumenContenedores
+      resumen={contenedores.resumen}
+      cargando={contenedores.cargando}
+      error={contenedores.error}
+      onReintentar={() => void contenedores.recargar()}
+      seleccionados={elegidos.length}
+    />
+  )
 
   return (
     <>
@@ -100,6 +118,7 @@ export function CargarTransferencia() {
               cargando={cargando}
               error={error}
               onReintentar={() => void recargar()}
+              contenedores={panelContenedores}
             />
           )}
 
@@ -116,6 +135,7 @@ export function CargarTransferencia() {
                 datos={datos}
                 onCambiar={setDatos}
                 total={total}
+                contenedores={panelContenedores}
               />
             </>
           )}
