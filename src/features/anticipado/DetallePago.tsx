@@ -1,3 +1,4 @@
+import { EtiquetasTractor } from '@/features/tractores/EtiquetasTractor'
 import { tonoEstadoInventario, tonoEstadoPago, tonoOperacionPend } from '@/lib/chips'
 import { fechaCorta, importe } from '@/lib/format'
 import type { Pago } from '@/types'
@@ -113,7 +114,11 @@ export function DetallePago({ pago }: Props) {
                 <div className="tractor-fila-nom">
                   <span className="sel-nom">{t.nombre}</span>
                   <span className="tractor-fila-chips">
-                    {t.numInterno && <span className="chip chip--interno">N° {t.numInterno}</span>}
+                    <EtiquetasTractor
+                      numInterno={t.numInterno}
+                      modelo={t.modelo}
+                      estadoRodado={t.estadoRodado}
+                    />
                     <span className={`chip ${tonoEstadoInventario(t.estadoTractor)}`}>
                       {t.estadoTractor || 'sin estado'}
                     </span>

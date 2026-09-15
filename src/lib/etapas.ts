@@ -1,11 +1,11 @@
-import type { DefinicionOperacion } from '@/types'
+import type { DefinicionEtapa } from '@/types'
 
 /**
- * Las tres operaciones del circuito de pago de inventario, en el orden real en que ocurren.
+ * Las tres etapas del despacho ANTICIPADO, en el orden real en que ocurren.
  *
- * El orden del array ES el del circuito: cada operación toma los pagos que dejó la anterior.
+ * El orden del array ES el del circuito: cada etapa toma los pagos que dejó la anterior.
  */
-export const OPERACIONES: DefinicionOperacion[] = [
+export const ETAPAS_ANTICIPADO: DefinicionEtapa[] = [
   {
     id: 'cargar',
     titulo: 'Cargar Transferencia',

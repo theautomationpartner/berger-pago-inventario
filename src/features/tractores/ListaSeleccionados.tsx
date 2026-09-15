@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { fechaCorta, importe } from '@/lib/format'
 import type { Tractor } from '@/types'
+import { EtiquetasTractor } from './EtiquetasTractor'
 
 interface Props {
   tractores: Tractor[]
@@ -45,7 +46,11 @@ export function ListaSeleccionados({ tractores, onQuitar }: Props) {
                 <i className="fa-solid fa-chevron-right" aria-hidden="true" />
               </span>
               <span className="sel-nom">{t.nombre}</span>
-              {t.numInterno && <span className="chip chip--interno">N° {t.numInterno}</span>}
+              <EtiquetasTractor
+                numInterno={t.numInterno}
+                modelo={t.modelo}
+                estadoRodado={t.estadoRodado}
+              />
               <span className="sel-head-neto">{importe(t.valorNeto)}</span>
             </button>
 

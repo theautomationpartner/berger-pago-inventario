@@ -6,11 +6,36 @@
  * en `services/monday/` sin tocar una sola vista.
  */
 
-/** Las tres operaciones del circuito de pago. */
-export type Operacion = 'cargar' | 'aprobar' | 'confirmar'
+/**
+ * Navegación de la app, en tres niveles:
+ *
+ *   Operación principal  →  Modalidad  →  Etapa
+ *   DESPACHO             →  ANTICIPADO →  Cargar / Aprobar / Confirmar
+ *                        →  VISTA      →  (paso único)
+ *
+ * El primer nivel hoy tiene una sola opción, pero existe desde ya: es donde se van a sumar los
+ * próximos tipos de operación sin tener que rearmar la pantalla de entrada.
+ */
+export type OperacionPrincipal = 'despacho'
 
-export interface DefinicionOperacion {
-  id: Operacion
+/** Las dos formas de despachar: con el circuito de pago previo, o a la vista (contra VL). */
+export type ModalidadDespacho = 'anticipado' | 'vista'
+
+/** Las tres etapas del circuito de pago del despacho ANTICIPADO. */
+export type EtapaAnticipado = 'cargar' | 'aprobar' | 'confirmar'
+
+/** Tarjeta de un panel de elección (operación principal o modalidad). */
+export interface OpcionPanel<T extends string> {
+  id: T
+  titulo: string
+  /** Rótulo corto, para la miga de pan y las pantallas angostas. */
+  corto: string
+  detalle: string
+  icono: string
+}
+
+export interface DefinicionEtapa {
+  id: EtapaAnticipado
   titulo: string
   detalle: string
   icono: string
@@ -37,10 +62,14 @@ export interface Tractor {
   precioUnitario: number | null
   valorNeto: number | null
   formaPago: string
+  /** Modelo, espejado del Catálogo de Productos. `''` si el item no está conectado. */
+  modelo: string
+  /** "Con Rodado" / "Sin Rodado", o `''` si no está cargado. */
+  estadoRodado: string
 }
 
-/** Mes de trabajo de la operación 1. `mes` es 1-12, no el 0-11 de `Date`. */
-export interface PeriodoMes {
+/** Un mes del calendario. `mes` es 1-12, no el 0-11 de `Date`. */
+export interface MesAnio {
   anio: number
   mes: number
 }
@@ -78,6 +107,12 @@ export interface SubitemPago {
   tractorId: string | null
   /** Estado Pago actual del tractor en el Inventario. */
   estadoTractor: string
+  /**
+   * Modelo y rodado del tractor. El tablero de subitems NO tiene estas columnas: se leen del item
+   * del Inventario al que apunta la conexión, en la misma consulta que trae su estado.
+   */
+  modelo: string
+  estadoRodado: string
 }
 
 /** Un pago del tablero de Pagos del Inventario, con sus tractores. */
@@ -134,7 +169,7 @@ export type EtapaAvance = 'seleccion' | 'archivo' | 'listo'
  * que un arreglo en el manejo de errores valga para las dos.
  */
 export interface FlujoAvance {
-  operacion: Operacion
+  etapa: EtapaAnticipado
   /** Qué pagos se ofrecen: etiqueta de "Operacion Pend" y, si hace falta, de "Estado Pago". */
   filtroOperacionPend: string
   filtroEstadoPago?: string

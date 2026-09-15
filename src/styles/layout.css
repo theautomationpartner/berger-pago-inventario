@@ -171,3 +171,197 @@
     font-size: 20px;
   }
 }
+
+/* ===== Miga de pan =====
+   Fija entre la marca y el contenido: es el único camino para volver de un nivel al anterior,
+   porque dentro del iframe de monday el "atrás" del navegador no sirve. */
+.migas {
+  flex: 0 0 auto;
+  padding: 8px var(--gutter);
+  background: #fff;
+  border-bottom: 1px solid var(--border-soft);
+}
+.migas-in {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 13px;
+}
+.migas-paso {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.migas-sep {
+  font-size: 9px;
+  color: #b3b9c6;
+  margin: 0 2px;
+}
+.migas-link,
+.migas-actual {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.migas-link {
+  border: none;
+  background: none;
+  color: var(--primary-blue);
+  cursor: pointer;
+}
+.migas-link:hover {
+  background: #eaf2fd;
+}
+/* El lugar actual lleva el rojo de la marca: es lo mismo que marca la operación activa. */
+.migas-actual {
+  color: var(--berger-red-dark);
+  background: var(--berger-red-soft);
+}
+
+/* ===== Paneles de elección (operación principal y modalidad) ===== */
+.panel-head {
+  margin: 8px 0 20px;
+}
+.panel-tit {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-dark);
+  line-height: 1.2;
+}
+.panel-det {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-gray);
+}
+.panel-opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.panel-opcion {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 112px;
+  padding: 20px;
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: 14px;
+  background: var(--tint-neutral);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--sombra);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease,
+    transform 0.14s ease;
+}
+.panel-opcion:hover {
+  border-color: var(--berger-red);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.1), var(--sombra-alta);
+}
+.panel-opcion:active {
+  transform: scale(0.99);
+}
+.panel-opcion:focus-visible {
+  outline: none;
+  border-color: var(--berger-red);
+  box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.25);
+}
+.panel-opcion-ic {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: var(--berger-red);
+  color: #fff;
+  font-size: 22px;
+}
+.panel-opcion-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.panel-opcion-tit {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: var(--text-dark);
+}
+.panel-opcion-det {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-gray);
+}
+.panel-opcion-flecha {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: #b3b9c6;
+  transition: transform 0.14s ease, color 0.14s ease;
+}
+.panel-opcion:hover .panel-opcion-flecha {
+  color: var(--berger-red);
+  transform: translateX(3px);
+}
+
+/* Nota al lado del botón del pie: explica por qué el botón está deshabilitado. */
+.pie-nota {
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .migas {
+    padding: 6px var(--gutter);
+  }
+  .migas-link,
+  .migas-actual {
+    min-height: 34px;
+    font-size: 13px;
+  }
+  .panel-head {
+    margin: 4px 0 14px;
+  }
+  .panel-tit {
+    font-size: 20px;
+  }
+  .panel-det {
+    font-size: 13px;
+  }
+  /* Una tarjeta por fila: con 300px de mínimo ya pasa sola, pero así queda explícito. */
+  .panel-opciones {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .panel-opcion {
+    min-height: 92px;
+    padding: 16px;
+    gap: 14px;
+  }
+  .panel-opcion-ic {
+    width: 46px;
+    height: 46px;
+    font-size: 19px;
+    border-radius: 12px;
+  }
+  .panel-opcion-tit {
+    font-size: 16px;
+  }
+  /* En VISTA la nota y el botón comparten el pie: la nota pasa arriba, a lo ancho. */
+  .pie-acciones:has(.pie-nota) {
+    flex-wrap: wrap;
+  }
+  .pie-nota {
+    width: 100%;
+    justify-content: center;
+  }
+}

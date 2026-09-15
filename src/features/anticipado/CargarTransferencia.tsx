@@ -1,26 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
+import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
 import { aNumero, hoyISO, importe } from '@/lib/format'
 import { cargarTransferencia } from '@/services/monday/crearPago'
 import { tractoresListosParaPagar } from '@/services/monday/inventario'
-import { SinAcceso } from '@/services/monday/sdk'
-import type { DatosTransferencia, Etapa, PeriodoMes, ResultadoCarga, Tractor } from '@/types'
+import type { DatosTransferencia, Etapa, ResultadoCarga } from '@/types'
 import { PantallaFinal } from './PantallaFinal'
 import { Paso1Seleccion } from './Paso1Seleccion'
 import { Paso2Transferencia } from './Paso2Transferencia'
-
-/** Mes en curso: el que la operación propone por defecto. */
-function mesActual(): PeriodoMes {
-  const hoy = new Date()
-  return { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 }
-}
 
 const DATOS_VACIOS: DatosTransferencia = { archivo: null, monto: '', fechaEmision: hoyISO() }
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 /**
- * Operación 1 del circuito: cargar la transferencia de un grupo de tractores.
+ * Despacho ANTICIPADO · etapa 1: cargar la transferencia de un grupo de tractores.
  *
  * El estado vive todo acá y baja como props a los dos pasos. Es a propósito: la selección y el
  * comprobante son UNA sola operación —lo que se elige en el paso 1 es exactamente lo que se
@@ -28,12 +22,14 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  * que se desincronicen.
  */
 export function CargarTransferencia() {
-  const [periodo, setPeriodo] = useState<PeriodoMes>(mesActual)
-  const [tractores, setTractores] = useState<Tractor[]>([])
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { tractores, cargando, error, recargar } = useTractores(tractoresListosParaPagar)
+  const { seleccionados, alternar, marcar, desmarcar, limpiar, elegidos, total } =
+    useSeleccionTractores(tractores)
 
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
+  /* Vacío = todos los meses. Se conserva al cargar otra transferencia: quien trabaja con los
+     tractores de ciertos meses suele seguir con esos mismos. */
+  const [mesesElegidos, setMesesElegidos] = useState<string[]>([])
+
   const [etapa, setEtapa] = useState<Etapa>('seleccion')
   const [datos, setDatos] = useState<DatosTransferencia>(DATOS_VACIOS)
 
@@ -42,54 +38,13 @@ export function CargarTransferencia() {
   const [resultado, setResultado] = useState<ResultadoCarga | null>(null)
   const [montoRegistrado, setMontoRegistrado] = useState(0)
 
-  const buscar = useCallback(async (p: PeriodoMes) => {
-    setCargando(true)
-    setError(null)
-    try {
-      setTractores(await tractoresListosParaPagar(p))
-    } catch (e) {
-      setTractores([])
-      setError(
-        e instanceof SinAcceso
-          ? 'la app tiene que abrirse desde monday para consultar el tablero.'
-          : mensaje(e),
-      )
-    } finally {
-      setCargando(false)
-    }
-  }, [])
-
-  /* Al cambiar de mes se vuelve a consultar y se limpia la selección: los tractores marcados
-     pertenecían al mes anterior y arrastrarlos mezclaría dos operaciones distintas. */
-  useEffect(() => {
-    setSeleccionados(new Set())
-    void buscar(periodo)
-  }, [periodo, buscar])
-
-  const elegidos = useMemo(
-    () => tractores.filter((t) => seleccionados.has(t.id)),
-    [tractores, seleccionados],
-  )
-  const total = useMemo(
-    () => elegidos.reduce((suma, t) => suma + (t.valorNeto ?? 0), 0),
-    [elegidos],
-  )
-
-  const alternar = (id: string) =>
-    setSeleccionados((previos) => {
-      const proximos = new Set(previos)
-      if (proximos.has(id)) proximos.delete(id)
-      else proximos.add(id)
-      return proximos
-    })
-
   const reiniciar = () => {
-    setSeleccionados(new Set())
+    limpiar()
     setDatos({ ...DATOS_VACIOS, fechaEmision: hoyISO() })
     setResultado(null)
     setErrorEnvio(null)
     setEtapa('seleccion')
-    void buscar(periodo)
+    void recargar()
   }
 
   /** Pasar al paso 2 propone el total como monto, sin pisar lo que el usuario ya haya escrito. */
@@ -135,16 +90,16 @@ export function CargarTransferencia() {
 
           {etapa === 'seleccion' && (
             <Paso1Seleccion
-              periodo={periodo}
-              onCambiarPeriodo={setPeriodo}
               tractores={tractores}
+              mesesElegidos={mesesElegidos}
+              onCambiarMeses={setMesesElegidos}
               seleccionados={seleccionados}
               onAlternar={alternar}
-              onTodos={(ids) => setSeleccionados(new Set(ids))}
-              onNinguno={() => setSeleccionados(new Set())}
+              onMarcar={marcar}
+              onDesmarcar={desmarcar}
               cargando={cargando}
               error={error}
-              onReintentar={() => void buscar(periodo)}
+              onReintentar={() => void recargar()}
             />
           )}
 

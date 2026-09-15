@@ -1,4 +1,5 @@
 import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
+import { EtiquetasTractor } from '@/features/tractores/EtiquetasTractor'
 import { aNumero, importe } from '@/lib/format'
 import type { DatosTransferencia, Tractor } from '@/types'
 
@@ -99,7 +100,11 @@ export function Paso2Transferencia({ tractores, datos, onCambiar, total }: Props
           {tractores.map((t) => (
             <div key={t.id} className="resumen-fila">
               <span className="resumen-nom">{t.nombre}</span>
-              {t.numInterno && <span className="chip chip--interno">N° {t.numInterno}</span>}
+              <EtiquetasTractor
+                numInterno={t.numInterno}
+                modelo={t.modelo}
+                estadoRodado={t.estadoRodado}
+              />
               <span className="resumen-val">{importe(t.valorNeto)}</span>
             </div>
           ))}

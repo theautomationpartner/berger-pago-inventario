@@ -51,6 +51,30 @@ export const COL_INV = {
   formaPago: 'dropdown_mm6v2sa0',
   /** Mirror del Cod. de Producto. Viaja al subitem del pago (`text_mm71zgys`). */
   codProducto: 'lookup_mm6z4hd1',
+  /** Mirror del Modelo (viene del Catálogo de Productos). Se muestra como etiqueta en todos los pasos. */
+  modelo: 'lookup_mm726zx1',
+  /** Estado Rodado: "Con Rodado" / "Sin Rodado". Se muestra como etiqueta en todos los pasos. */
+  estadoRodado: 'color_mm72mfyd',
+} as const
+
+/**
+ * Opciones de "Forma de Pago" (`dropdown_mm6v2sa0`), con el id de cada etiqueta.
+ *
+ * Es la columna que separa las dos modalidades de despacho: ANTICIPADO pasa por el circuito de
+ * pago de tres operaciones; VISTA se pide sin pago previo. Como en los `status`, Monday filtra
+ * los `dropdown` por id y no por texto, así que el id viaja a la consulta y la etiqueta se vuelve
+ * a comprobar en el cliente.
+ */
+export const FORMA_PAGO = {
+  ANTICIPADO: { etiqueta: 'ANTICIPADO', id: 1 },
+  VISTA: { etiqueta: 'VISTA', id: 2 },
+  VENCIDO: { etiqueta: 'VENCIDO', id: 3 },
+} as const
+
+/** Etiquetas de "Estado Rodado" (`color_mm72mfyd`). */
+export const RODADO = {
+  CON: 'Con Rodado',
+  SIN: 'Sin Rodado',
 } as const
 
 /**

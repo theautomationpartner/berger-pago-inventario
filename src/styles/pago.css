@@ -1,27 +1,180 @@
-/* Piezas propias de las operaciones de pago: barra de período, listas seleccionables, ficha del
-   pago, totales y recuadros de comprobante. */
+/* Piezas propias de las operaciones de despacho: filtros, listas seleccionables, ficha del pago,
+   totales y recuadros de comprobante. */
 
-/* ===== Barra de período ===== */
-/* El mes de la operación es el filtro más importante de la pantalla: define qué tractores se
-   pueden pagar. Por eso vive arriba de la lista y no escondido en un panel. */
-.periodo {
+/* ===== Barra de filtros ===== */
+.filtros {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.periodo-sel {
-  width: 190px;
+.filtros-meses {
+  flex: 1 1 360px;
+  min-width: 0;
 }
-.periodo-nota {
+.filtros-nota {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  /* Alineada con la caja del selector y no con su rótulo. */
+  margin-top: 22px;
   font-size: 12px;
   color: var(--text-gray);
-  padding-bottom: 5px;
+}
+/* En VISTA no hay filtro al lado: la nota queda sola y sin el aire del rótulo. */
+.filtros-nota--sola {
+  margin-top: 0;
+}
+
+/* ===== Selector de meses ===== */
+.meses {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+.meses-disparador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-align: left;
+  cursor: pointer;
+}
+.meses-disparador > i:first-child {
+  color: var(--primary-blue);
+}
+.meses-disparador:hover,
+.meses-disparador--abierto {
+  border-color: var(--primary-blue);
+}
+.meses-disparador--abierto {
+  box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.14);
+}
+.meses-disparador-txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meses-caret {
+  font-size: 11px;
+  color: var(--text-gray);
+  transition: transform 0.16s ease;
+}
+.meses-disparador--abierto .meses-caret {
+  transform: rotate(180deg);
+}
+/* El panel flota sobre la lista en vez de empujarla: abrir el filtro no tiene que mover de lugar
+   los tractores que el usuario estaba mirando. */
+.meses-panel {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 340px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--sombra-alta);
+}
+.meses-anio {
+  position: sticky;
+  top: -6px;
+  z-index: 1;
+  padding: 8px 10px 4px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-gray);
+}
+.meses-opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: var(--text-dark);
+  text-align: left;
+  cursor: pointer;
+}
+.meses-opcion:hover {
+  background: #f5f8fd;
+}
+.meses-opcion--sel {
+  background: #f2f8ff;
+}
+.meses-opcion--sel .trow-check {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+.meses-opcion-txt {
+  flex: 1;
+  min-width: 0;
+}
+/* Cantidad de tractores del mes. En cero va en un violeta suave —no gris, que se leería como
+   desactivado— para que los meses con tractores resalten solos en teal. */
+.meses-cuenta {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: #f7f3fd;
+  color: #9a7cc4;
+}
+.meses-cuenta--hay {
+  background: #e6f7f6;
+  color: #0f766e;
+}
+.meses-etiquetas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.meses-etiqueta {
+  padding-right: 3px;
+}
+.meses-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.meses-quitar:hover {
+  background: rgba(0, 96, 194, 0.14);
 }
 
 /* ===== Listas seleccionables (tractores y pagos) ===== */
@@ -42,6 +195,9 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--text-mid);
+}
+.lista-head-cuenta {
+  margin-left: 8px;
 }
 .lista-head-acciones {
   margin-left: auto;
@@ -562,17 +718,34 @@
 
 /* ===== Celular ===== */
 @media (max-width: 640px) {
-  .periodo {
+  .filtros {
     gap: 10px;
   }
-  /* El selector de mes ocupa el ancho completo: es el filtro que decide la pantalla entera. */
-  .periodo-sel {
-    width: 100%;
+  /* El filtro de meses ocupa el ancho completo: es lo que decide la pantalla entera. */
+  .meses {
+    max-width: none;
   }
-  .periodo-nota {
-    margin-left: 0;
+  .meses-disparador {
+    min-height: var(--toque);
+    font-size: 14px;
+  }
+  .meses-panel {
+    top: 50px;
+    max-height: 52dvh;
+  }
+  .meses-opcion {
+    min-height: var(--toque);
+    font-size: 14px;
+  }
+  /* La X de cada etiqueta es un blanco de 18px: en el dedo se agranda sin cambiar el dibujo. */
+  .meses-quitar {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .filtros-nota {
+    margin: 0;
     width: 100%;
-    padding-bottom: 0;
     justify-content: space-between;
   }
 

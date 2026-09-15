@@ -1,4 +1,4 @@
-import { INV_ESTADO, PAGO_ESTADO, PAGO_OPERACION } from '@/services/monday/columns'
+import { INV_ESTADO, PAGO_ESTADO, PAGO_OPERACION, RODADO } from '@/services/monday/columns'
 
 /**
  * Color de cada etiqueta de la app.
@@ -9,8 +9,10 @@ import { INV_ESTADO, PAGO_ESTADO, PAGO_OPERACION } from '@/services/monday/colum
  *
  *   ámbar → recién empezado    azul → a mitad de camino    verde → cerrado
  *
- * El rojo queda reservado para lo que está mal (un subitem sin conexión, un tractor sin estado) y
- * el violeta para lo que no es un estado sino un atributo: forma de pago, número interno.
+ * El rojo queda reservado para lo que está mal (un subitem sin conexión, un tractor sin estado).
+ * Los atributos del tractor —que no son una etapa del circuito— llevan cada uno su color fijo,
+ * para reconocerlos de un vistazo sin leer: índigo el número interno, magenta el modelo, violeta
+ * la forma de pago, y el rodado en lima o naranja según lo tenga o no.
  */
 export type Tono =
   | 'chip--verde'
@@ -20,6 +22,9 @@ export type Tono =
   | 'chip--violeta'
   | 'chip--teal'
   | 'chip--indigo'
+  | 'chip--magenta'
+  | 'chip--lima'
+  | 'chip--naranja'
 
 /** Estado Pago del tablero de Pagos: CARGADO → APROBADO → CONFIRMADO. */
 export function tonoEstadoPago(estado: string): Tono {
@@ -64,6 +69,25 @@ export function tonoOperacionPend(operacion: string): Tono {
       return 'chip--azul'
     case PAGO_OPERACION.PEND_APROBAR:
       return 'chip--ambar'
+    default:
+      return 'chip--violeta'
+  }
+}
+
+/**
+ * Estado Rodado del tractor.
+ *
+ * "Sin Rodado" va en naranja y no en rojo: no es un error del dato, es una condición del tractor
+ * que conviene ver antes de despacharlo. El rojo queda para cuando el dato directamente falta.
+ */
+export function tonoRodado(estado: string): Tono {
+  switch (estado) {
+    case RODADO.CON:
+      return 'chip--lima'
+    case RODADO.SIN:
+      return 'chip--naranja'
+    case '':
+      return 'chip--rojo'
     default:
       return 'chip--violeta'
   }

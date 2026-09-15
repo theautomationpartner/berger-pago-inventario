@@ -1,13 +1,13 @@
-import { OPERACIONES } from '@/lib/operaciones'
-import type { Operacion } from '@/types'
+import { ETAPAS_ANTICIPADO } from '@/lib/etapas'
+import type { EtapaAnticipado } from '@/types'
 
 interface Props {
-  activa: Operacion
-  onCambiar: (op: Operacion) => void
+  activa: EtapaAnticipado
+  onCambiar: (etapa: EtapaAnticipado) => void
 }
 
 /**
- * Las tres operaciones del circuito, siempre a la vista.
+ * Las tres etapas del despacho ANTICIPADO, siempre a la vista.
  *
  * Son botones y no un `select`: con tres opciones fijas, un desplegable esconde justamente lo
  * que hay que entender de la pantalla —que el pago tiene tres etapas y que cada una toma lo que
@@ -17,28 +17,28 @@ interface Props {
  * tarjetas apiladas con su descripción comen la pantalla entera antes de que aparezca un solo
  * dato.
  */
-export function SelectorOperacion({ activa, onCambiar }: Props) {
+export function SelectorEtapa({ activa, onCambiar }: Props) {
   return (
-    <div className="ops" role="tablist" aria-label="Operación">
-      {OPERACIONES.map((op, i) => {
-        const esActiva = op.id === activa
+    <div className="ops" role="tablist" aria-label="Etapa del despacho anticipado">
+      {ETAPAS_ANTICIPADO.map((etapa, i) => {
+        const esActiva = etapa.id === activa
         return (
           <button
-            key={op.id}
+            key={etapa.id}
             type="button"
             role="tab"
             aria-selected={esActiva}
             className={`op${esActiva ? ' op--activa' : ''}`}
-            onClick={() => op.id !== activa && onCambiar(op.id)}
+            onClick={() => etapa.id !== activa && onCambiar(etapa.id)}
           >
             <span className="op-ic">
-              <i className={op.icono} aria-hidden="true" />
+              <i className={etapa.icono} aria-hidden="true" />
             </span>
             <span className="op-txt">
               <span className="op-tit">
-                <span className="op-nro">{i + 1}.</span> {op.titulo}
+                <span className="op-nro">{i + 1}.</span> {etapa.titulo}
               </span>
-              <span className="op-det">{op.detalle}</span>
+              <span className="op-det">{etapa.detalle}</span>
             </span>
           </button>
         )

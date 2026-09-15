@@ -1,10 +1,23 @@
 /**
- * Lectura del tablero de Inventario: qué tractores se pueden pagar este mes.
+ * Lectura del tablero de Inventario, para las dos modalidades de despacho:
+ *
+ * - ANTICIPADO: los tractores con Estado Pago en "Listo para Pagar".
+ * - VISTA: los tractores con Forma de Pago en "VISTA".
+ *
+ * Las dos piden lo mismo —un tractor con todos sus datos— y sólo cambian en por qué columna se
+ * filtra. Por eso comparten la paginación y la normalización, y cada una se reduce a decir qué
+ * filtro manda y qué etiqueta vuelve a comprobar.
  */
-import { COL_INV, INV_ESTADO, INV_ESTADO_LISTO_INDEX } from './columns'
+import type { MesAnio, Tractor } from '@/types'
+import {
+  COL_INV,
+  FORMA_PAGO,
+  INV_ESTADO,
+  INV_ESTADO_LISTO_INDEX,
+} from './columns'
+import type { NombreOperacion } from './operaciones'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
-import type { PeriodoMes, Tractor } from '@/types'
 
 interface ItemCrudo {
   id: string
@@ -12,8 +25,9 @@ interface ItemCrudo {
   column_values: ColumnaCruda[]
 }
 
-interface RespuestaItems {
-  boards: { items_page: { cursor: string | null; items: ItemCrudo[] } }[]
+interface PaginaCruda {
+  cursor: string | null
+  items: ItemCrudo[]
 }
 
 /** Columnas que se piden. Pedir sólo estas es lo que mantiene la respuesta chica. */
@@ -27,6 +41,8 @@ const COLUMNAS = [
   COL_INV.valorNeto,
   COL_INV.formaPago,
   COL_INV.codProducto,
+  COL_INV.modelo,
+  COL_INV.estadoRodado,
 ]
 
 const PAGINA = 200
@@ -47,48 +63,76 @@ function aTractor(item: ItemCrudo): Tractor {
     precioUnitario: aNumeroEspejo(espejo(c[COL_INV.precioUnitario])),
     valorNeto: aNumeroEspejo(espejo(c[COL_INV.valorNeto])),
     formaPago: texto(c[COL_INV.formaPago]),
+    modelo: espejo(c[COL_INV.modelo]),
+    estadoRodado: texto(c[COL_INV.estadoRodado]),
   }
 }
 
-/** ¿La Fecha de Prod del tractor cae en el mes de la operación? */
-export function esDelPeriodo(tractor: Tractor, periodo: PeriodoMes): boolean {
-  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(tractor.fechaProd)
-  if (!m) return false
-  return Number(m[1]) === periodo.anio && Number(m[2]) === periodo.mes
-}
-
 /**
- * Tractores listos para pagar en el mes indicado.
+ * Trae todas las páginas de una consulta filtrada del Inventario.
  *
- * El filtro por estado se manda a Monday (por índice, que es lo único que entiende) para traer
- * menos filas, pero la decisión final se toma acá comparando la ETIQUETA y el mes de la Fecha de
- * Prod. Si mañana cambia el orden de las etiquetas de la columna, la app trae de más y filtra
- * bien; nunca muestra un tractor que no corresponde.
+ * `query_params` no se puede combinar con un cursor —el filtro ya quedó grabado en el cursor de
+ * la primera página—, así que la primera página y las siguientes son operaciones distintas.
  */
-export async function tractoresListosParaPagar(periodo: PeriodoMes): Promise<Tractor[]> {
-  const items: ItemCrudo[] = []
-
-  const primera = await mondayApi<RespuestaItems>('inventarioListos', {
+async function traerTodos(operacion: NombreOperacion, filtro: Record<string, unknown>): Promise<Tractor[]> {
+  const primera = await mondayApi<{ boards: { items_page: PaginaCruda }[] }>(operacion, {
+    ...filtro,
     columnas: COLUMNAS,
-    estado: [INV_ESTADO_LISTO_INDEX],
     limite: PAGINA,
   })
 
   const pagina = primera.boards?.[0]?.items_page
   if (!pagina) return []
-  items.push(...pagina.items)
+  const items = [...pagina.items]
 
   let cursor = pagina.cursor
   for (let i = 0; cursor && i < MAX_PAGINAS; i += 1) {
-    const siguiente = await mondayApi<{
-      next_items_page: { cursor: string | null; items: ItemCrudo[] }
-    }>('inventarioPaginaSiguiente', { cursor, columnas: COLUMNAS, limite: PAGINA })
+    const siguiente = await mondayApi<{ next_items_page: PaginaCruda }>(
+      'inventarioPaginaSiguiente',
+      { cursor, columnas: COLUMNAS, limite: PAGINA },
+    )
     items.push(...siguiente.next_items_page.items)
     cursor = siguiente.next_items_page.cursor
   }
 
-  return items
-    .map(aTractor)
-    .filter((t) => t.estadoPago === INV_ESTADO.LISTO && esDelPeriodo(t, periodo))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  return items.map(aTractor).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+}
+
+/**
+ * TODOS los tractores listos para pagar, sin importar el mes.
+ *
+ * El filtro por mes de producción ya no vive acá: lo aplica la pantalla sobre esta lista, así
+ * que combinar o quitar meses es instantáneo y no vuelve a consultar monday.
+ *
+ * El filtro por estado se manda a Monday por índice —que es lo único que entiende— para traer
+ * menos filas, pero la decisión final se toma acá comparando la ETIQUETA: si mañana cambia el
+ * orden de las etiquetas de la columna, la app trae de más y filtra bien, y nunca muestra un
+ * tractor que no corresponde.
+ */
+export async function tractoresListosParaPagar(): Promise<Tractor[]> {
+  const tractores = await traerTodos('inventarioPorEstadoPago', { estado: [INV_ESTADO_LISTO_INDEX] })
+  return tractores.filter((t) => t.estadoPago === INV_ESTADO.LISTO)
+}
+
+/**
+ * Tractores con Forma de Pago en VISTA: los que se pueden pedir sin pago previo.
+ *
+ * Mismo criterio que arriba: se filtra por id en Monday y se vuelve a comprobar la etiqueta acá.
+ * La columna es un `dropdown` y admite más de una opción, por eso se busca "VISTA" entre las
+ * elegidas en vez de comparar el texto completo.
+ */
+export async function tractoresParaDespachoVista(): Promise<Tractor[]> {
+  const tractores = await traerTodos('inventarioPorFormaDePago', { forma: [FORMA_PAGO.VISTA.id] })
+  return tractores.filter((t) =>
+    t.formaPago
+      .split(',')
+      .map((f) => f.trim())
+      .includes(FORMA_PAGO.VISTA.etiqueta),
+  )
+}
+
+/** Mes de la Fecha de Prod del tractor, o `null` si no la tiene cargada. */
+export function mesDeProduccion(tractor: Tractor): MesAnio | null {
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(tractor.fechaProd)
+  return m ? { anio: Number(m[1]), mes: Number(m[2]) } : null
 }

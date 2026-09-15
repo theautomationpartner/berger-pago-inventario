@@ -452,6 +452,25 @@
   border-color: #d5d9f7;
   color: #3f45a0;
 }
+/* Modelo del tractor. Magenta porque no se parece a ningún color de estado: el modelo es un
+   atributo, y no tiene que poder leerse como una etapa del circuito. */
+.chip--magenta {
+  background: #fdf2fb;
+  border-color: #f5cdea;
+  color: #a1227f;
+}
+/* Rodado: lima si lo tiene, naranja si no. Naranja y no rojo, porque "Sin Rodado" es una
+   condición del tractor, no un error del dato. */
+.chip--lima {
+  background: #f3fbe6;
+  border-color: #d3ecae;
+  color: #4d7c0f;
+}
+.chip--naranja {
+  background: #fff3eb;
+  border-color: #fdd2b5;
+  color: #c2410c;
+}
 
 /* ===== Campos ===== */
 .campo {

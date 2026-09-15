@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Monday board view app · BERGER S.A. — Pago de Inventario de Tractores",
+  "description": "Monday board view app · BERGER S.A. — Operaciones de Inventario de Tractores",
   "engines": {
     "node": ">=22.12"
   },

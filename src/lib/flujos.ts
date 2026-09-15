@@ -17,7 +17,7 @@ import type { FlujoAvance } from '@/types'
 
 /** Operación 2 · Aprobar Transferencia. */
 export const FLUJO_APROBAR: FlujoAvance = {
-  operacion: 'aprobar',
+  etapa: 'aprobar',
 
   filtroOperacionPend: PAGO_OPERACION.PEND_APROBAR,
 
@@ -53,7 +53,7 @@ export const FLUJO_APROBAR: FlujoAvance = {
 
 /** Operación 3 · Confirmar Pago. */
 export const FLUJO_CONFIRMAR: FlujoAvance = {
-  operacion: 'confirmar',
+  etapa: 'confirmar',
 
   filtroOperacionPend: PAGO_OPERACION.PEND_CONFIRMAR,
   /* La operación 3 pide las DOS condiciones: que esté esperando confirmación y que ya figure

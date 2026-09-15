@@ -27,10 +27,11 @@ import {
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
-  | 'inventarioListos'
+  | 'inventarioPorEstadoPago'
+  | 'inventarioPorFormaDePago'
   | 'inventarioPaginaSiguiente'
   | 'pagosPendientes'
-  | 'estadoDeTractores'
+  | 'datosDeTractores'
   | 'crearPago'
   | 'crearSubitemDePago'
   | 'actualizarColumnas'
@@ -188,7 +189,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * acotarlo a uno solo: pedir otro estado del mismo tablero no muestra nada que la app no pueda
    * mostrar igual.
    */
-  inventarioListos: {
+  inventarioPorEstadoPago: {
     query: `
       query ($tablero: ID!, $columnas: [String!], $estado: CompareValue!, $limite: Int!) {
         boards(ids: [$tablero]) {
@@ -208,6 +209,37 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       tablero: TABLEROS.inventario,
       columnas: idsDeColumnas(v.columnas),
       estado: [entero(Array.isArray(v.estado) ? v.estado[0] : v.estado, 'estado', 0, 999)],
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /**
+   * Tractores del Inventario filtrados por Forma de Pago: es la fuente del despacho a la VISTA.
+   *
+   * Igual que el filtro por estado, el tablero lo fija el servidor y del cliente sólo llega el id
+   * de la etiqueta. Monday filtra los `dropdown` por id, no por texto: mandar "VISTA" devuelve una
+   * lista vacía sin dar error.
+   */
+  inventarioPorFormaDePago: {
+    query: `
+      query ($tablero: ID!, $columnas: [String!], $forma: CompareValue!, $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(
+            limit: $limite
+            query_params: {
+              rules: [{ column_id: "${COL_INV.formaPago}", compare_value: $forma, operator: any_of }]
+            }
+          ) {
+            cursor
+            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.inventario,
+      columnas: idsDeColumnas(v.columnas),
+      forma: [entero(Array.isArray(v.forma) ? v.forma[0] : v.forma, 'forma', 0, 999)],
       limite: entero(v.limite, 'limite', 1, 500),
     }),
   },
@@ -263,18 +295,23 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
   },
 
   /**
-   * Estado Pago de los tractores conectados a los subitems de un pago.
+   * Estado Pago, Modelo y Estado Rodado de los tractores conectados a los subitems de un pago.
    *
-   * Los ids los elige el cliente, así que en teoría podría pedir items de otro tablero. La
-   * consulta devuelve UNA sola columna, la de estado de pago del Inventario, que en cualquier otro
-   * item vuelve vacía: no hay nada que sacar por acá.
+   * El tablero de subitems no tiene esas columnas: se leen del item del Inventario al que apunta
+   * cada conexión, todos en una sola consulta.
+   *
+   * Los ids los elige el cliente, así que en teoría podría pedir items de otro tablero. Las tres
+   * columnas están FIJAS en el texto de la consulta y son del Inventario: en un item de cualquier
+   * otro tablero vuelven vacías, así que no hay nada que sacar por acá.
    */
-  estadoDeTractores: {
+  datosDeTractores: {
     query: `
       query ($ids: [ID!]!) {
         items(ids: $ids) {
           id
-          column_values(ids: ["${COL_INV.estadoPago}"]) { id text }
+          column_values(ids: ["${COL_INV.estadoPago}", "${COL_INV.modelo}", "${COL_INV.estadoRodado}"]) {
+            ${CAMPOS_COLUMNA}
+          }
         }
       }
     `,

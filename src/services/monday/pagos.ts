@@ -6,7 +6,7 @@
  * ellos obligaría a abrir monday para saber qué se está aprobando.
  */
 import type { Pago, SubitemPago } from '@/types'
-import { COL_PAGO, COL_PAGO_SUB, PAGO_OPERACION_INDEX } from './columns'
+import { COL_INV, COL_PAGO, COL_PAGO_SUB, PAGO_OPERACION_INDEX } from './columns'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
@@ -54,10 +54,18 @@ const COLUMNAS_SUB = [
  */
 const LIMITE = 200
 
-function aSubitem(s: SubitemCrudo, estados: Map<string, string>): SubitemPago {
+/** Lo que se lee del item del Inventario al que apunta cada subitem. */
+interface DatosTractor {
+  estado: string
+  modelo: string
+  estadoRodado: string
+}
+
+function aSubitem(s: SubitemCrudo, datosTractores: Map<string, DatosTractor>): SubitemPago {
   const c = porId(s.column_values) as Record<string, ColumnaConexion | undefined>
   const conectados = c[COL_PAGO_SUB.inventario]?.linked_item_ids ?? []
   const tractorId = conectados[0] ?? null
+  const delInventario = tractorId ? datosTractores.get(tractorId) : undefined
   return {
     id: s.id,
     nombre: s.name,
@@ -66,11 +74,13 @@ function aSubitem(s: SubitemCrudo, estados: Map<string, string>): SubitemPago {
     numInterno: espejo(c[COL_PAGO_SUB.numInterno]),
     valorNeto: aNumeroEspejo(texto(c[COL_PAGO_SUB.valorNeto])),
     tractorId,
-    estadoTractor: tractorId ? (estados.get(tractorId) ?? '') : '',
+    estadoTractor: delInventario?.estado ?? '',
+    modelo: delInventario?.modelo ?? '',
+    estadoRodado: delInventario?.estadoRodado ?? '',
   }
 }
 
-function aPago(item: PagoCrudo, estados: Map<string, string>): Pago {
+function aPago(item: PagoCrudo, datosTractores: Map<string, DatosTractor>): Pago {
   const c = porId(item.column_values)
   return {
     id: item.id,
@@ -84,7 +94,7 @@ function aPago(item: PagoCrudo, estados: Map<string, string>): Pago {
     urlTransferencia: texto(c[COL_PAGO.transferencia]),
     urlTransferenciaConNumero: texto(c[COL_PAGO.transferenciaConNumero]),
     urlComprobanteBanco: texto(c[COL_PAGO.comprobanteBanco]),
-    tractores: (item.subitems ?? []).map((s) => aSubitem(s, estados)),
+    tractores: (item.subitems ?? []).map((s) => aSubitem(s, datosTractores)),
   }
 }
 
@@ -110,8 +120,8 @@ export async function pagosPendientes(
 
   const items = datos.boards?.[0]?.items_page.items ?? []
 
-  /* El estado de los tractores se pide en UNA sola query para todos los pagos de la pantalla, no
-     una por subitem: con diez pagos de seis tractores serían sesenta viajes a la API. */
+  /* Estado, modelo y rodado de los tractores se piden en UNA sola query para todos los pagos de la
+     pantalla, no una por subitem: con diez pagos de seis tractores serían sesenta viajes a la API. */
   const idsTractores = [
     ...new Set(
       items.flatMap((p) =>
@@ -123,17 +133,25 @@ export async function pagosPendientes(
     ),
   ]
 
-  const estados = new Map<string, string>()
+  const datosTractores = new Map<string, DatosTractor>()
   if (idsTractores.length > 0) {
     const r = await mondayApi<{ items: { id: string; column_values: ColumnaCruda[] }[] }>(
-      'estadoDeTractores',
+      'datosDeTractores',
       { ids: idsTractores },
     )
-    for (const it of r.items) estados.set(it.id, texto(it.column_values[0]))
+    for (const it of r.items) {
+      const c = porId(it.column_values)
+      datosTractores.set(it.id, {
+        estado: texto(c[COL_INV.estadoPago]),
+        // El modelo es un mirror: su valor viene en `display_value`, nunca en `text`.
+        modelo: espejo(c[COL_INV.modelo]),
+        estadoRodado: texto(c[COL_INV.estadoRodado]),
+      })
+    }
   }
 
   return items
-    .map((p) => aPago(p, estados))
+    .map((p) => aPago(p, datosTractores))
     .filter((p) => p.operacionPend === operacionPend)
     .filter((p) => !estadoPago || p.estadoPago === estadoPago)
     .sort((a, b) => b.id.localeCompare(a.id))

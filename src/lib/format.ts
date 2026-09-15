@@ -15,17 +15,6 @@ export function fechaCorta(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : '—'
 }
 
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-]
-
-/** `mes` es 1-12, no el 0-11 de `Date`. */
-export const nombreMes = (mes: number): string => MESES[mes - 1] ?? ''
-
-export const periodoLargo = (anio: number, mes: number): string =>
-  `${nombreMes(mes)} de ${anio}`
-
 /** Fecha de hoy en ISO local. `toISOString()` no sirve: convierte a UTC y puede correr el día. */
 export function hoyISO(): string {
   const d = new Date()

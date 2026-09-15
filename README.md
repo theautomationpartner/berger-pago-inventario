@@ -1,6 +1,6 @@
-# BERGER S.A. · Pago de Inventario de Tractores
+# BERGER S.A. · Operaciones de Inventario de Tractores
 
-Aplicación de **vista de tablero** (board view) de monday.com para el circuito de pago del
+Aplicación de **vista de tablero** (board view) de monday.com para las operaciones sobre el
 inventario de tractores de BERGER S.A. Se instala en el workspace como un tablero más y se usa
 tanto desde la computadora como desde la app de monday del celular.
 
@@ -9,13 +9,52 @@ tableros reales de la cuenta.
 
 ---
 
-## Las tres operaciones
+## Navegación
 
-Las tres están implementadas y forman una cadena: cada una toma los pagos que dejó la anterior.
+La app tiene tres niveles, y cada uno se elige en su propia pantalla. Una miga de pan arriba
+muestra dónde está parado el usuario y permite volver a cualquier nivel anterior (dentro del iframe
+de monday el "atrás" del navegador no sirve).
 
-| # | Operación | Trabaja sobre | Deja el pago en |
-|---|-----------|---------------|-----------------|
-| 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar` del mes | `CARGADO` · `Pend de Aprobar Transf` |
+```
+Operaciones   →  Modalidad           →  Etapa
+────────────────────────────────────────────────────────────
+DESPACHO      →  ANTICIPADO          →  1. Cargar Transferencia
+                                        2. Aprobar Transferencia
+                                        3. Confirmar Pago
+              →  VISTA (CONTRA VL)   →  paso único
+```
+
+El primer panel —**Operaciones**— hoy tiene sólo DESPACHO, y existe igual a propósito: es donde se
+suman los próximos tipos de operación sin cambiar la pantalla de entrada. Las opciones de los dos
+paneles están descriptas como datos en [`src/lib/navegacion.ts`](src/lib/navegacion.ts).
+
+### Lo que se ve de cada tractor
+
+En **todos** los pasos donde aparece un tractor —las listas de selección, el detalle desplegable,
+el resumen de la transferencia, la ficha del pago y el pedido a la vista— se muestran las mismas
+etiquetas de color, de la misma forma
+([`EtiquetasTractor`](src/features/tractores/EtiquetasTractor.tsx)):
+
+| Etiqueta | Columna del Inventario | Color |
+|----------|------------------------|-------|
+| N° Interno | `text_mm6n7mk6` | índigo |
+| Modelo | `lookup_mm726zx1` (mirror del Catálogo de Productos) | magenta |
+| Estado Rodado | `color_mm72mfyd` | lima **Con Rodado** · naranja **Sin Rodado** · rojo si falta |
+
+Ninguna etiqueta de la app va en gris. Los estados siguen el avance del circuito (ámbar → azul →
+verde) y los atributos del tractor llevan cada uno su color fijo; el criterio vive en
+[`src/lib/chips.ts`](src/lib/chips.ts).
+
+---
+
+## Despacho ANTICIPADO
+
+El tractor se paga antes de despacharse. Son tres etapas que forman una cadena: cada una toma los
+pagos que dejó la anterior.
+
+| # | Etapa | Trabaja sobre | Deja el pago en |
+|---|-------|---------------|-----------------|
+| 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar` | `CARGADO` · `Pend de Aprobar Transf` |
 | 2 | **Aprobar Transferencia** | Pagos en `Pend de Aprobar Transf` | `APROBADO` · `Pend de Confirmar Transf` |
 | 3 | **Confirmar Pago** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
 
@@ -34,16 +73,23 @@ Tablero de **Pagos del Inventario** (`18430295445`):
 Y en paralelo, cada tractor del pago avanza en **Inventario** (`color_mm6v6532`):
 `Listo para Pagar` → `Transf Cargada` → `Transf Aprobada` → `Pagado`.
 
-### Operación 1 — Cargar Transferencia
+### Etapa 1 — Cargar Transferencia
 
-**Paso 1 · Selección.** La app trae del tablero de **Inventario** los tractores que cumplen las
-dos condiciones a la vez:
+**Paso 1 · Selección.** La app trae del tablero de **Inventario** **todos** los tractores con
+`Estado Pago` = **Listo para Pagar**, sin importar el mes.
 
-- `Estado Pago` = **Listo para Pagar**
-- el **mes y el año** de `Fecha Prod` coinciden con el mes de la operación (por defecto, el mes en
-  curso; se puede cambiar desde el selector).
+Para acotar, se eligen **meses de producción** (`Fecha Prod`, `date_mm6nymx`) desde un desplegable
+que ofrece desde 12 meses antes hasta 12 meses después del actual. Cada mes elegido queda como una
+etiqueta con su **X** para quitarlo, y se pueden combinar: sin ninguno se ve todo; con uno o más,
+sólo los tractores de esos meses. Cada opción del desplegable muestra cuántos tractores listos
+tiene ese mes.
 
-Cada fila muestra el nombre del item, el **N° Interno** al costado, la forma de pago, la fecha de
+El filtro se aplica sobre la lista ya cargada —no vuelve a consultar monday— y **no borra la
+selección**: un tractor ya elegido sigue en el resumen de abajo aunque su mes salga del filtro. Así
+se arma una transferencia con tractores de varios meses. Si hay tractores sin `Fecha Prod`, con un
+filtro activo se avisa cuántos quedan afuera.
+
+Cada fila muestra el nombre del item, sus etiquetas (N° interno, modelo, rodado), la fecha de
 producción y el valor neto. Al marcarlos se arma abajo una lista desplegable con el detalle
 completo de cada uno —costo de flete, precio unitario, valor neto, forma de pago, N° de draft,
 código de producto y fecha— y el **total del valor neto** de la selección.
@@ -63,7 +109,7 @@ de arriba, más el monto (`numeric_mm714xb2`) y la fecha de emisión (`date_mm71
 | Cod. de Producto | `text_mm71zgys` | `lookup_mm6z4hd1` |
 | Conexión al tractor | `board_relation_mm718zjg` | item del Inventario |
 
-### Operaciones 2 y 3 — avanzar un pago
+### Etapas 2 y 3 — avanzar un pago
 
 Las dos tienen la misma forma: se elige **un** pago pendiente (de a uno, porque cada uno tiene su
 propio comprobante), se ve la ficha completa —datos del item y los tractores del subitem con su
@@ -79,6 +125,24 @@ recibió.
 
 Las dos operaciones comparten componente y servicio; lo único propio de cada una está descripto
 como datos en [`src/lib/flujos.ts`](src/lib/flujos.ts).
+
+---
+
+## Despacho a la VISTA (contra VL)
+
+El pedido se hace **sin pago previo**. Es un único paso: se eligen del Inventario los tractores con
+`Forma de Pago` (`dropdown_mm6v2sa0`) en **VISTA**, con el mismo detalle que en ANTICIPADO
+—etiquetas, costo de flete, precio unitario, valor neto, forma de pago, N° de draft, código de
+producto y fecha— y el total del valor neto.
+
+A diferencia de ANTICIPADO, cada fila muestra además el **Estado Pago** del tractor: en la vista no
+hay un estado que filtre la lista, así que ver en cuál está cada uno es parte de decidir si se pide.
+
+> **Pendiente:** el envío del pedido por mail todavía no está implementado. El botón *Enviar
+> pedido* aparece deshabilitado y lo indica, en vez de simular que hace algo.
+
+La selección, la carga de tractores y el resumen son los mismos componentes que usa ANTICIPADO
+([`src/features/tractores/`](src/features/tractores/)).
 
 ---
 
@@ -182,32 +246,50 @@ Variables de entorno del deploy:
 ## Estructura
 
 ```
-api/                        Funciones serverless del deploy (Vercel, runtime edge)
-  _guard.ts                 Verificación del sessionToken de monday
-  monday.ts                 Proxy GraphQL con el token del lado servidor
-  monday-file.ts            Proxy de subida de archivos (multipart)
+api/                          Funciones serverless del deploy (Vercel, runtime edge)
+  _guard.ts                   Verificación del sessionToken de monday
+  monday.ts                   Proxy GraphQL: resuelve operaciones del catálogo
+  monday-file.ts              Proxy de subida de archivos (multipart)
 public/
-  logo-berger.svg           Logo de la barra superior — reemplazable sin recompilar
+  logo-berger.svg             Logo de la barra superior — reemplazable sin recompilar
 src/
-  App.tsx                   Marca + selector de operación
-  types.ts                  Estructuras de datos de la app
-  components/ui/            Piezas reutilizables (marca, stepper, selector, zona de archivo)
-  features/pago/            Los tres flujos de operación
-    CargarTransferencia.tsx   Operación 1 (asistente de dos pasos)
-    FlujoAvancePago.tsx       Operaciones 2 y 3 (mismo flujo, distinta configuración)
-    DetallePago.tsx           Ficha de un pago con sus tractores
-  lib/                      Formato de números y fechas, catálogo de operaciones
-    flujos.ts                 Las operaciones 2 y 3 descriptas como datos
-  services/monday/          Todo lo que habla con monday
-    columns.ts              IDs de tableros y columnas (única fuente de verdad)
-    operaciones.ts          Catálogo de operaciones permitidas + validación de variables
-    sdk.ts                  Cliente HTTP + subida de archivos
-    parse.ts                Lectura de column_values
-    inventario.ts           Consulta de tractores listos para pagar
-    pagos.ts                Consulta de pagos pendientes con sus subitems
-    crearPago.ts            Operación 1: pago, subitems y estados
-    avanzarPago.ts          Operaciones 2 y 3: comprobante, estados, fechas y aviso
-  styles/                   base · layout · components · pago
+  App.tsx                     Verificación de acceso + navegación de tres niveles
+  types.ts                    Estructuras de datos de la app
+  components/ui/              Piezas genéricas (marca, stepper, selector de etapa y de meses…)
+  features/
+    inicio/                   Paneles de elección y miga de pan
+    anticipado/               Despacho ANTICIPADO
+      DespachoAnticipado.tsx    Selector de las tres etapas
+      CargarTransferencia.tsx   Etapa 1 (asistente de dos pasos)
+      Paso1Seleccion.tsx        Selección con filtro de meses
+      FlujoAvancePago.tsx       Etapas 2 y 3 (mismo flujo, distinta configuración)
+      DetallePago.tsx           Ficha de un pago con sus tractores
+    vista/
+      DespachoVista.tsx         Despacho a la VISTA (paso único)
+    tractores/                Lo que comparten las dos modalidades
+      ListaTractores.tsx        Lista seleccionable
+      ListaSeleccionados.tsx    Detalle desplegable de lo elegido
+      ResumenSeleccion.tsx      Lo elegido + total del valor neto
+      EtiquetasTractor.tsx      N° interno, modelo y rodado
+      useTractores.ts           Carga de tractores y manejo de la selección
+  hooks/                      Acceso a monday, clic afuera
+  lib/
+    navegacion.ts             Opciones de los paneles de entrada
+    etapas.ts                 Las tres etapas de ANTICIPADO
+    flujos.ts                 Las etapas 2 y 3 descriptas como datos
+    meses.ts                  Meses del filtro (12 atrás y 12 adelante)
+    chips.ts                  Color de cada etiqueta
+    format.ts                 Números y fechas
+  services/monday/            Todo lo que habla con monday
+    columns.ts                IDs de tableros y columnas (única fuente de verdad)
+    operaciones.ts            Catálogo de operaciones permitidas + validación de variables
+    sdk.ts                    Cliente HTTP + subida de archivos
+    parse.ts                  Lectura de column_values
+    inventario.ts             Tractores listos para pagar y tractores VISTA
+    pagos.ts                  Pagos pendientes con sus subitems
+    crearPago.ts              Etapa 1: pago, subitems y estados
+    avanzarPago.ts            Etapas 2 y 3: comprobante, estados, fechas y aviso
+  styles/                     base · layout · components · pago
 ```
 
 ### Celular

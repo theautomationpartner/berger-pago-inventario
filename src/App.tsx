@@ -4,16 +4,20 @@ import {
   PantallaSinAcceso,
   PantallaVerificando,
 } from '@/components/ui/PantallaSinAcceso'
-import { SelectorOperacion } from '@/components/ui/SelectorOperacion'
-import { CargarTransferencia } from '@/features/pago/CargarTransferencia'
-import { FlujoAvancePago } from '@/features/pago/FlujoAvancePago'
+import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
+import { Migas, type Miga } from '@/features/inicio/Migas'
+import { PanelOpciones } from '@/features/inicio/PanelOpciones'
+import { DespachoVista } from '@/features/vista/DespachoVista'
 import { useAccesoMonday } from '@/hooks/useAccesoMonday'
-import { FLUJOS } from '@/lib/flujos'
+import { MODALIDADES_DESPACHO, OPERACIONES_PRINCIPALES } from '@/lib/navegacion'
 import { mondayHabilitado } from '@/services/monday/sdk'
-import type { Operacion } from '@/types'
+import type { ModalidadDespacho, OperacionPrincipal } from '@/types'
+
+const TITULO = 'Operaciones de Inventario'
+const SUBTITULO = 'Tractores · BERGER S.A.'
 
 /**
- * Vista de tablero de BERGER S.A. — Pago de Inventario de Tractores.
+ * Vista de tablero de BERGER S.A. — Operaciones de Inventario de Tractores.
  *
  * La app se monta como un tablero más dentro del workspace de monday, y se usa tanto desde la
  * computadora como desde la app del celular.
@@ -21,22 +25,16 @@ import type { Operacion } from '@/types'
  * Lo PRIMERO que pasa es la verificación de acceso, antes de dibujar cualquier otra cosa. La app
  * se puede instalar en cualquier cuenta de monday y su URL es pública, así que hasta que monday
  * no confirme que del otro lado hay un usuario de BERGER, lo único que existe en pantalla es el
- * cartel de acceso denegado: ni la barra de marca, ni el circuito de operaciones, ni una sola
- * consulta al tablero.
+ * cartel de acceso denegado.
  *
- * Después de eso, cada operación se remonta con `key`: al cambiar de tarjeta se descarta el
- * estado de la anterior en vez de arrastrarlo. Una selección que sobrevive a un cambio de
- * operación es exactamente la clase de dato viejo que termina registrándose sin que nadie lo mire.
+ * Después, la navegación tiene tres niveles —operación principal, modalidad y etapa— y cada uno
+ * se elige en su propia pantalla. El estado de cada nivel se descarta al volver al anterior: la
+ * modalidad se desmonta entera, y con ella cualquier selección a medio hacer.
  */
 export function App() {
   const acceso = useAccesoMonday()
-  const [operacion, setOperacion] = useState<Operacion>('cargar')
-  const [ronda, setRonda] = useState(0)
-
-  const cambiar = (op: Operacion) => {
-    setOperacion(op)
-    setRonda((n) => n + 1)
-  }
+  const [principal, setPrincipal] = useState<OperacionPrincipal | null>(null)
+  const [modalidad, setModalidad] = useState<ModalidadDespacho | null>(null)
 
   if (acceso === 'verificando') return <PantallaVerificando />
   if (acceso !== 'habilitado') return <PantallaSinAcceso motivo={acceso} />
@@ -46,7 +44,7 @@ export function App() {
   if (!mondayHabilitado()) {
     return (
       <div className="app">
-        <BarraMarca titulo="Pago de Inventario" subtitulo="Tractores · BERGER S.A." />
+        <BarraMarca titulo={TITULO} subtitulo={SUBTITULO} />
         <div className="scroll">
           <div className="view">
             <div className="aviso aviso--error">
@@ -63,21 +61,43 @@ export function App() {
     )
   }
 
+  const irAlInicio = () => {
+    setPrincipal(null)
+    setModalidad(null)
+  }
+
+  const defPrincipal = OPERACIONES_PRINCIPALES.find((o) => o.id === principal)
+  const defModalidad = MODALIDADES_DESPACHO.find((m) => m.id === modalidad)
+
+  const migas: Miga[] = [{ rotulo: 'Operaciones', onIr: irAlInicio }]
+  if (defPrincipal) migas.push({ rotulo: defPrincipal.corto, onIr: () => setModalidad(null) })
+  if (defModalidad) migas.push({ rotulo: defModalidad.corto })
+
   return (
     <div className="app">
-      <BarraMarca titulo="Pago de Inventario" subtitulo="Tractores · BERGER S.A." />
+      <BarraMarca titulo={TITULO} subtitulo={SUBTITULO} />
+      <Migas migas={migas} />
 
-      <div className="barra-ops">
-        <div className="view">
-          <SelectorOperacion activa={operacion} onCambiar={cambiar} />
-        </div>
-      </div>
-
-      {operacion === 'cargar' ? (
-        <CargarTransferencia key={ronda} />
-      ) : (
-        <FlujoAvancePago key={ronda} flujo={FLUJOS[operacion]} />
+      {principal === null && (
+        <PanelOpciones
+          titulo="¿Qué operación vas a hacer?"
+          detalle="Elegí el tipo de operación sobre el inventario de tractores."
+          opciones={OPERACIONES_PRINCIPALES}
+          onElegir={setPrincipal}
+        />
       )}
+
+      {principal === 'despacho' && modalidad === null && (
+        <PanelOpciones
+          titulo="Despacho"
+          detalle="Elegí cómo se despachan los tractores."
+          opciones={MODALIDADES_DESPACHO}
+          onElegir={setModalidad}
+        />
+      )}
+
+      {principal === 'despacho' && modalidad === 'anticipado' && <DespachoAnticipado />}
+      {principal === 'despacho' && modalidad === 'vista' && <DespachoVista />}
     </div>
   )
 }
