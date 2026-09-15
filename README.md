@@ -20,7 +20,7 @@ Operaciones   →  Modalidad           →  Etapa
 ────────────────────────────────────────────────────────────
 DESPACHO      →  ANTICIPADO          →  1. Cargar Transferencia
                                         2. Aprobar Transferencia
-                                        3. Confirmar Pago
+                                        3. Confirmar Pago - SWIFT
               →  VISTA (CONTRA VL)   →  paso único
 ```
 
@@ -56,7 +56,7 @@ pagos que dejó la anterior.
 |---|-------|---------------|-----------------|
 | 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar` | `CARGADO` · `Pend de Aprobar Transf` |
 | 2 | **Aprobar Transferencia** | Pagos en `Pend de Aprobar Transf` | `APROBADO` · `Pend de Confirmar Transf` |
-| 3 | **Confirmar Pago** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
+| 3 | **Confirmar Pago - SWIFT** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
 
 ### El circuito, columna por columna
 
@@ -161,28 +161,95 @@ npm run dev                    # http://localhost:5182
 | `npm run preview` | Sirve el build ya compilado. |
 | `npm run typecheck` | `tsc --noEmit` sobre `src/` y `api/`. |
 
+En localhost **el ingreso no corre** (Vite no ejecuta las funciones de `api/`) y se entra directo.
+Para ver las pantallas del ingreso con un servidor simulado, abrí
+`http://localhost:5182/?vista-previa`. Ahí `000000` es siempre un código incorrecto, para probar los
+mensajes.
+
 El navegador no puede pegarle directo a `api.monday.com` (CORS), así que Vite hace de proxy en dos
 rutas: `/monday-api` → `/v2` (GraphQL) y `/monday-file` → `/v2/file` (subida de archivos).
 
 ---
 
-## Acceso: sólo el monday de BERGER
+## Ingreso: Lista Blanca y autenticador
 
-La URL del deploy es pública y la app se puede instalar en cualquier cuenta de monday, así que el
-permiso **no** depende de dónde esté instalada. Lo decide el `sessionToken` que monday le entrega
-a la app: un JWT firmado con el secreto de la aplicación, que dice de qué cuenta viene el usuario.
+Para entrar hay que pasar tres barreras, en orden. Ninguna dibuja la app hasta que pasa:
 
-- **En el cliente** (`src/hooks/useAccesoMonday.ts`): la verificación corre ANTES de dibujar nada.
-  Si monday no responde —porque no hay iframe padre, o sea, alguien abrió la URL suelta— o si la
-  cuenta no es la de BERGER (`36618349`), lo único que existe en pantalla es el cartel de acceso
-  denegado. Ni barra de marca, ni operaciones, ni una sola consulta al tablero.
-- **En el servidor** (`api/_guard.ts`): la misma comprobación, y ésta es la barrera de verdad. El
-  proxy verifica la firma HMAC del token y que la cuenta coincida antes de hablar con Monday. Sin
-  eso, cualquiera podría pedirle datos salteándose la interfaz.
+```
+1. monday     ¿Se abrió dentro del monday de BERGER?            sessionToken firmado por monday
+2. ingreso    ¿Está en la Lista Blanca y pasó el autenticador?  /api/acceso
+3. datos      Cada pedido vuelve a comprobar 1 y 2              /api/monday · /api/monday-file
+```
 
-Esconder la pantalla es cortesía; la barrera es la del servidor. Están las dos porque resuelven
-cosas distintas: una evita mostrar el circuito interno de la empresa a quien pasa por la URL, la
-otra evita que se lleve los datos.
+Las dos primeras deciden qué pantalla se ve. La que decide si se puede leer o escribir un dato es
+la tercera, y está en el servidor: esconder la interfaz sin eso sería una cortina, no una puerta.
+
+### Lista Blanca
+
+Tablero **🔒Lista Blanca**. Cada fila es un **perfil**. Para entrar a esta app, el usuario de monday
+logueado tiene que tener una fila con:
+
+| Columna | Condición |
+|---------|-----------|
+| 🤚ID Usuarios `text_mm72j4e6` | igual al ID de usuario de monday de quien entra |
+| 🤚Estado Usuario `status` | **Activo** |
+| 🤚ID APP Habilitadas `dropdown_mm72bgr3` | incluye el id de esta app (`APP_ID`) |
+
+La Lista Blanca se vuelve a leer **en cada pedido de datos**, no sólo al entrar: pasar a alguien a
+Inactivo o quitarle la app le corta el acceso en el acto, aunque tenga la sesión del día abierta.
+
+**Perfiles compartidos.** Los administradores usan la misma cuenta de monday: varias filas con el
+mismo ID de usuario. Eso sólo es válido si **todas** esas filas tienen Tipo Usuario = **ADMIN** y
+Perfiles = **SI**; entonces, antes del autenticador, se elige con qué perfil se entra. Cada perfil
+tiene su propio autenticador en su propio celular. Si hay filas repetidas que no cumplen eso, es un
+error de carga y se niega el acceso: elegir una al azar le daría a alguien los permisos de otro.
+
+**Mensaje único.** Cualquier rechazo —no está en la lista, inactivo, sin la app, otra cuenta— se
+muestra igual: *"No tenés acceso a esta aplicación. Contactá al administrador."* Nunca revela si el
+usuario existe ni qué hay adentro. El motivo real queda en el Registro de Accesos.
+
+### Autenticador (TOTP)
+
+Estándar abierto RFC 6238: sirve **Google Authenticator**, Microsoft Authenticator, Authy o
+1Password. No hay servidor externo, mails ni costo.
+
+- **Primera vez:** se muestra un QR (y la clave en texto para quien no puede escanear) y se
+  confirma con el primer código. Después se entregan **10 códigos de recuperación de un solo uso**,
+  que se muestran una única vez: no se puede seguir sin confirmar que se guardaron.
+- **Cada día:** el primer ingreso del día calendario (hora de Argentina) pide el código de 6
+  dígitos. Quien entra a las 23:50 lo vuelve a necesitar a las 00:10.
+- **Un código sirve una sola vez**, se tolera ±30 segundos de reloj desfasado, y hay un **límite de 5
+  intentos fallidos cada 15 minutos** por perfil.
+- **🤚Desactivar Google Authenticator** (`color_mm779m2m`): sólo la etiqueta exacta **Desactivar**
+  lo apaga. "NO Desactivar", vacío o cualquier otra lo deja encendido. Si el admin lo vuelve a
+  encender, la sesión sin código de esa persona deja de servir en el siguiente pedido.
+
+### Dónde se guarda cada cosa
+
+| Qué | Dónde | Protección |
+|-----|-------|-----------|
+| Secreto del autenticador | 🔐 Seguridad · Autenticador (no editar) | Cifrado AES-256-GCM. La clave vive sólo en Vercel. Si se edita a mano, no descifra. |
+| Códigos de recuperación | mismo tablero | Sólo su HMAC con una clave del servidor. No están en claro. |
+| Intentos fallidos y último código usado | mismo tablero | — |
+| Cada ingreso e intento fallido | 🔐 Registro de Accesos | Fecha, email, IP, usuario, perfil y motivo. |
+| Sesión del día | `localStorage` del navegador | Token firmado por el servidor. No es una cookie: dentro del iframe de monday las cookies de terceros se bloquean de forma distinta en cada navegador. |
+
+Los dos tableros de seguridad son **privados** y sólo los ve la cuenta administradora.
+
+### Tareas del administrador
+
+| Para… | Hacer… |
+|-------|--------|
+| Dar acceso a alguien | Agregar su fila en la Lista Blanca: ID de usuario, Activo y la app. |
+| Quitar el acceso | Pasar su fila a **Inactivo** (o quitarle la app). Corta al instante. |
+| Reiniciar el autenticador de alguien (perdió el celular) | **Borrar la fila de su perfil** en 🔐 Seguridad · Autenticador. En el próximo ingreso le aparece el QR. |
+| Dejar entrar a alguien sin código, por un rato | Poner **Desactivar** en su fila de la Lista Blanca. Queda registrado como "Ingreso sin autenticador". |
+| Detectar a alguien tanteando | Revisar 🔐 Registro de Accesos: varios "Acceso denegado" o "Código incorrecto" seguidos del mismo usuario o IP. |
+
+> **Límite a tener presente.** La Lista Blanca vive en monday, así que quien controle la cuenta de
+> monday de los administradores puede editarla —por ejemplo, desactivarle el autenticador a un
+> perfil—. El autenticador de esos perfiles es tan fuerte como la contraseña de esa cuenta. Por eso
+> conviene **activar la verificación en dos pasos de monday** en la cuenta compartida.
 
 ---
 
@@ -229,14 +296,25 @@ consultas al servidor. Lo que sí quedó cerrado es lo que se puede *hacer* con 
 > por su valor literal dentro del JavaScript que descarga el navegador. Cargarla en el deploy
 > publica el token para cualquiera que abra la URL y mire el bundle. Es exclusiva de `.env.local`.
 
-Variables de entorno del deploy:
+Variables de entorno del deploy (los valores **no** están en el repositorio; están en Vercel):
 
 | Variable | ¿Obligatoria? | Para qué |
 |----------|---------------|----------|
 | `MONDAY_TOKEN` | Sí | Token de la API. **Sin** prefijo `VITE_`. |
 | `MONDAY_SIGNING_SECRET` | Sí (o la de abajo) | Signing secret de la app. Developer Center → tu app → Basic Information. |
-| `MONDAY_CLIENT_SECRET` | Sí (o la de arriba) | Client secret de la misma pantalla. Se prueban las dos: cuál valida depende de cómo se creó la app. |
-| `MONDAY_ACCOUNT_ID` | No | Cuenta habilitada. Por defecto, la de BERGER S.A. (`36618349`). |
+| `MONDAY_CLIENT_SECRET` | Sí (o la de arriba) | Client secret de la misma pantalla. Se prueban las dos. |
+| `MONDAY_ACCOUNT_ID` | No | Cuenta habilitada. Por defecto, la de BERGER S.A. |
+| `SEGURIDAD_CLAVE_MAESTRA` | Sí | 32 bytes en base64url. Cifra los secretos del autenticador, firma la sesión del día y protege los códigos de recuperación. Marcarla como *Sensitive*. **Cambiarla obliga a todos a configurar el autenticador de nuevo.** |
+| `LISTA_BLANCA_TABLERO_ID` | Sí | Tablero 🔒Lista Blanca. |
+| `SEGURIDAD_AUTENTICADOR_TABLERO_ID` | Sí | Tablero 🔐 Seguridad · Autenticador. |
+| `SEGURIDAD_REGISTRO_TABLERO_ID` | Sí | Tablero 🔐 Registro de Accesos. |
+| `APP_ID` | Sí | Id de esta app en la columna "ID APP Habilitadas". La Lista Blanca es compartida entre apps: cada deploy declara cuál es. |
+
+Para generar la clave maestra:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
 
 > Si el token de la API se filtró alguna vez (mail, chat, captura, un bundle publicado), hay que
 > **revocarlo y generar uno nuevo** desde monday: developers → My access tokens.
@@ -248,8 +326,18 @@ Variables de entorno del deploy:
 ```
 api/                          Funciones serverless del deploy (Vercel, runtime edge)
   _guard.ts                   Verificación del sessionToken de monday
+  acceso.ts                   Ingreso: Lista Blanca, perfiles y autenticador
   monday.ts                   Proxy GraphQL: resuelve operaciones del catálogo
   monday-file.ts              Proxy de subida de archivos (multipart)
+  _seguridad/                 Sólo servidor: nunca llega al navegador
+    porton.ts                 Las tres comprobaciones de cada pedido de datos
+    acceso.ts                 Reglas de la Lista Blanca y de la sesión
+    listaBlanca.ts            Lectura de la Lista Blanca
+    autenticador.ts           Estado del TOTP y códigos de recuperación
+    sesionApp.ts              Sesión del día firmada
+    registro.ts               Registro de Accesos
+    cripto.ts                 TOTP (RFC 6238), AES-256-GCM y HMAC sobre WebCrypto
+    config.ts                 Variables de entorno e ids de columnas
 public/
   logo-berger.svg             Logo de la barra superior — reemplazable sin recompilar
 src/
@@ -257,6 +345,7 @@ src/
   types.ts                    Estructuras de datos de la app
   components/ui/              Piezas genéricas (marca, stepper, selector de etapa y de meses…)
   features/
+    acceso/                   Pantallas del ingreso (perfil, QR, códigos, código del día)
     inicio/                   Paneles de elección y miga de pan
     anticipado/               Despacho ANTICIPADO
       DespachoAnticipado.tsx    Selector de las tres etapas

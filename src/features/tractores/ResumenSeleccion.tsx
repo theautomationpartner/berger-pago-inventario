@@ -41,10 +41,6 @@ export function ResumenSeleccion({ tractores, onQuitar, titulo, detalleTotal }: 
         <span className="total-ic">
           <i className="fa-solid fa-coins" aria-hidden="true" />
         </span>
-        <span className="total-txt">
-          <span className="total-lbl">Total valor neto</span>
-          <span className="total-val">{importe(total)}</span>
-        </span>
         <span className="total-detalle">
           <span>
             {tractores.length} tractor{tractores.length === 1 ? '' : 'es'}
@@ -56,6 +52,12 @@ export function ResumenSeleccion({ tractores, onQuitar, titulo, detalleTotal }: 
               valor neto cargado: el total está incompleto
             </span>
           )}
+        </span>
+        {/* El importe va a la derecha, alineado con la columna de importes de las listas de
+            arriba: así el total queda debajo de los números que suma. */}
+        <span className="total-txt">
+          <span className="total-lbl">Total valor neto</span>
+          <span className="total-val">{importe(total)}</span>
         </span>
       </div>
     </>

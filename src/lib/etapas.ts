@@ -20,7 +20,7 @@ export const ETAPAS_ANTICIPADO: DefinicionEtapa[] = [
   },
   {
     id: 'confirmar',
-    titulo: 'Confirmar Pago',
+    titulo: 'Confirmar Pago - SWIFT',
     detalle: 'Cerrá el circuito con el comprobante del banco que acredita el depósito.',
     icono: 'fa-solid fa-landmark',
   },

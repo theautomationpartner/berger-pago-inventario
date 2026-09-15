@@ -13,7 +13,7 @@
  * El formulario se arma de nuevo en vez de retocar el que llegó: así el `boundary` lo calcula
  * `fetch` y no hay que confiar en el `Content-Type` del cliente.
  */
-import { MalConfigurado, NoAutorizado, verificarSesion } from './_guard'
+import { porton } from './_seguridad/porton'
 import {
   MUTATION_ARCHIVO,
   OperacionInvalida,
@@ -37,13 +37,8 @@ const error = (status: number, message: string): Response =>
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return error(405, 'Método no permitido.')
 
-  try {
-    await verificarSesion(req.headers.get('authorization'))
-  } catch (e: unknown) {
-    if (e instanceof NoAutorizado) return error(401, e.message)
-    if (e instanceof MalConfigurado) return error(500, e.message)
-    return error(401, 'No se pudo validar la sesión de monday.')
-  }
+  const rechazo = await porton(req)
+  if (rechazo) return rechazo
 
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')

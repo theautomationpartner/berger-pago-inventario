@@ -137,10 +137,13 @@ export function CargarTransferencia() {
               {elegidos.length} tractor{elegidos.length === 1 ? '' : 'es'} seleccionado
               {elegidos.length === 1 ? '' : 's'}
             </span>
-            <span className="xs">Total valor neto: {importe(total)}</span>
           </div>
 
           <div className="pie-acciones">
+            <span className="pie-total">
+              <span className="pie-total-lbl">Total valor neto</span>
+              <span className="pie-total-val">{importe(total)}</span>
+            </span>
             {etapa === 'transferencia' && (
               <button
                 type="button"

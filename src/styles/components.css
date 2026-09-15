@@ -53,9 +53,29 @@
 }
 /* Sello de versión: dice qué build está corriendo. Sin esto, saber si un deploy tomó el último
    commit es adivinar mirando la interfaz. */
-.marca-build {
+/* Lado derecho de la barra: con qué perfil se entró, cómo salir y el build. */
+.marca-derecha {
   margin-left: auto;
-  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.marca-perfil {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.marca-salir {
+  color: var(--berger-red-dark);
+}
+.marca-salir:hover:not(:disabled) {
+  background: var(--berger-red-soft);
+  color: var(--berger-red-dark);
+}
+.marca-build {
+  align-self: center;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -322,6 +342,26 @@
   font-weight: 700;
   color: var(--text-dark);
   margin-bottom: 14px;
+}
+/* Importe en el encabezado de una card: del lado derecho, como todos los totales. */
+.ctitle-importe {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  text-align: right;
+}
+.ctitle-importe-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-gray);
+}
+.ctitle-importe-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
 }
 .ctitle-cont {
   margin-left: auto;
@@ -613,6 +653,15 @@
   /* El sello de build es información de diagnóstico: en una pantalla chica compite con el
      nombre de la app por el poco ancho que hay. Sigue en el DOM para inspeccionarlo. */
   .marca-build {
+    display: none;
+  }
+  .marca-derecha {
+    gap: 2px;
+  }
+  .marca-perfil {
+    max-width: 110px;
+  }
+  .marca-salir-txt {
     display: none;
   }
 

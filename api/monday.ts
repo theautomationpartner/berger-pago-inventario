@@ -18,7 +18,7 @@
  *    catálogo y el texto de la consulta lo pone este archivo, así que no se puede falsificar.
  *    Las variables, que sí siguen viniendo de afuera, las valida el propio catálogo.
  */
-import { MalConfigurado, NoAutorizado, verificarSesion } from './_guard'
+import { porton } from './_seguridad/porton'
 import { OperacionInvalida, resolverOperacion } from '../src/services/monday/operaciones'
 
 const API = 'https://api.monday.com/v2'
@@ -41,14 +41,10 @@ const error = (status: number, message: string): Response =>
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return error(405, 'Método no permitido.')
 
-  // Portón: se verifica ANTES de leer el cuerpo o de tocar el token de la API.
-  try {
-    await verificarSesion(req.headers.get('authorization'))
-  } catch (e: unknown) {
-    if (e instanceof NoAutorizado) return error(401, e.message)
-    if (e instanceof MalConfigurado) return error(500, e.message)
-    return error(401, 'No se pudo validar la sesión de monday.')
-  }
+  // Portón: sesión de monday, sesión del día y Lista Blanca, ANTES de leer el cuerpo o de tocar el
+  // token de la API.
+  const rechazo = await porton(req)
+  if (rechazo) return rechazo
 
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')

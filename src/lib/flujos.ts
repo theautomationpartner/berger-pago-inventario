@@ -51,7 +51,7 @@ export const FLUJO_APROBAR: FlujoAvance = {
   detalleEmail: 'se le avisa al proveedor que la transferencia fue aprobada',
 }
 
-/** Operación 3 · Confirmar Pago. */
+/** Operación 3 · Confirmar Pago - SWIFT. */
 export const FLUJO_CONFIRMAR: FlujoAvance = {
   etapa: 'confirmar',
 
@@ -74,7 +74,7 @@ export const FLUJO_CONFIRMAR: FlujoAvance = {
     'Es el comprobante que emite el banco indicando que el monto ya fue depositado. Con esto se ' +
     'cierra el circuito del pago.',
   zonaTitulo: 'Arrastrá el comprobante del banco acá o hacé clic para buscarlo',
-  botonAccion: 'Confirmar Pago',
+  botonAccion: 'Confirmar Pago - SWIFT',
 
   finalTitulo: 'Pago confirmado',
   finalDetalle:

@@ -1,0 +1,114 @@
+/**
+ * Configuración de la capa de seguridad.
+ *
+ * Los ids de los tableros de seguridad y el id de la app NO están escritos en el código: vienen de
+ * variables de entorno del deploy. Hay dos motivos, y sólo uno es de seguridad:
+ *
+ * 1. No quedan en el repositorio. Un id de tablero solo no habilita nada —sin el token de la
+ *    cuenta no se puede leer—, pero no hay por qué publicar dónde vive la lista de quién tiene
+ *    acceso ni dónde están guardados los secretos del autenticador.
+ * 2. La Lista Blanca es COMPARTIDA entre varias apps. Cada deploy declara con `APP_ID` qué app es,
+ *    y así el mismo código de seguridad sirve para la próxima app sin tocar una línea.
+ *
+ * Los ids de COLUMNAS sí están en el código (acá abajo): este archivo vive en `api/`, que corre
+ * sólo en el servidor y nunca llega al navegador.
+ */
+import { ErrorDeConfiguracion } from './cripto'
+
+function requerida(nombre: string): string {
+  const valor = process.env[nombre]?.trim()
+  if (!valor) throw new ErrorDeConfiguracion(`Falta ${nombre} en el entorno del deploy.`)
+  return valor
+}
+
+export function configSeguridad() {
+  return {
+    /** Tablero "🔒Lista Blanca". */
+    tableroListaBlanca: requerida('LISTA_BLANCA_TABLERO_ID'),
+    /** Tablero "🔐 Seguridad · Autenticador (no editar)". */
+    tableroAutenticador: requerida('SEGURIDAD_AUTENTICADOR_TABLERO_ID'),
+    /** Tablero "🔐 Registro de Accesos". */
+    tableroRegistro: requerida('SEGURIDAD_REGISTRO_TABLERO_ID'),
+    /**
+     * Id con el que esta app figura en la columna "ID APP Habilitadas" de la Lista Blanca.
+     *
+     * Para Operaciones de Inventario es el id del tablero "OPS: Despechos", donde está instalada la
+     * vista. monday no incluye el tablero en el token de sesión, así que no se puede leer del
+     * pedido: lo declara el deploy, que es el único que sabe con certeza qué app es.
+     */
+    appId: requerida('APP_ID'),
+  }
+}
+
+/** 🔒Lista Blanca — columnas que lee la app. */
+export const COL_LISTA_BLANCA = {
+  nombreCompleto: 'text_mm77m57b',
+  estado: 'status',
+  usuarioId: 'text_mm72j4e6',
+  email: 'email_mm72cz3e',
+  appsIds: 'dropdown_mm72bgr3',
+  tipoUsuario: 'color_mm728j0d',
+  perfiles: 'color_mm77n31x',
+  desactivarAutenticador: 'color_mm779m2m',
+} as const
+
+/** Etiquetas de la Lista Blanca que deciden el acceso. */
+export const ETIQUETA = {
+  ACTIVO: 'Activo',
+  ADMIN: 'ADMIN',
+  PERFILES_SI: 'SI',
+  /**
+   * La ÚNICA etiqueta que apaga el autenticador. Cualquier otro valor —"NO Desactivar", vacío, o
+   * una etiqueta que alguien agregue mañana— lo deja encendido: ante la duda, se pide el código.
+   */
+  AUTENTICADOR_DESACTIVADO: 'Desactivar',
+} as const
+
+/** 🔐 Seguridad · Autenticador — una fila por perfil. */
+export const COL_AUTENTICADOR = {
+  perfilId: 'perfil_id',
+  usuarioId: 'usuario_id',
+  secreto: 'secreto',
+  secretoPendiente: 'secreto_pendiente',
+  recuperacion: 'recuperacion',
+  ultimoPeriodo: 'ultimo_periodo',
+  intentos: 'intentos',
+  configurado: 'configurado',
+} as const
+
+/** 🔐 Registro de Accesos — una fila por evento. */
+export const COL_REGISTRO = {
+  fecha: 'fecha',
+  evento: 'evento',
+  email: 'email',
+  ip: 'ip',
+  usuarioId: 'usuario_id',
+  perfil: 'perfil',
+  cuentaId: 'cuenta_id',
+  appId: 'app_id',
+  detalle: 'detalle',
+} as const
+
+/** Etiquetas de la columna "Evento" del Registro de Accesos. */
+export type Evento =
+  | 'Ingreso OK'
+  | 'Ingreso sin autenticador'
+  | 'Acceso denegado'
+  | 'Código incorrecto'
+  | 'Bloqueado por intentos'
+  | 'Autenticador configurado'
+  | 'Código de recuperación usado'
+
+/** Límite de intentos fallidos del código: 5 cada 15 minutos, por perfil. */
+export const MAX_INTENTOS = 5
+export const VENTANA_INTENTOS_MS = 15 * 60 * 1000
+
+/** Cantidad de códigos de recuperación que se entregan al configurar el autenticador. */
+export const CANTIDAD_CODIGOS_RECUPERACION = 10
+
+/**
+ * Zona horaria del "día" de la sesión. El autenticador se pide una vez por día CALENDARIO en
+ * Argentina: quien entra a las 23:50 lo vuelve a necesitar a las 00:10. Es a propósito —así lo
+ * pidió BERGER—, y es más fácil de explicar que una ventana móvil de 24 horas.
+ */
+export const ZONA_HORARIA = 'America/Argentina/Buenos_Aires'

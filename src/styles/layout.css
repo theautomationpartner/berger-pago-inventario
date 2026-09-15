@@ -88,6 +88,25 @@
   align-items: center;
   gap: 10px;
 }
+/* Total del pie: del lado derecho, junto al botón que lo registra. */
+.pie-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 6px;
+  text-align: right;
+  line-height: 1.15;
+}
+.pie-total-lbl {
+  font-size: 11px;
+  color: var(--text-gray);
+}
+.pie-total-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ===== Celular ===== */
 @media (max-width: 640px) {
@@ -110,6 +129,16 @@
   .pie-acciones {
     margin-left: 0;
     width: 100%;
+    flex-wrap: wrap;
+  }
+  /* En el celular el total ocupa su propio renglón: rótulo a la izquierda, importe contra el
+     borde derecho, y los botones debajo a lo ancho. */
+  .pie-total {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-right: 0;
   }
   /* El botón principal manda; "Volver" se queda con lo mínimo. */
   .pie-acciones .btn {
@@ -364,4 +393,16 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Aviso a todo el ancho, entre la barra y el contenido (por ejemplo, después de entrar con un
+   código de recuperación). No es una card: es un estado de la sesión, no del contenido. */
+.aviso--banda {
+  flex: 0 0 auto;
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  padding: 10px var(--gutter);
 }

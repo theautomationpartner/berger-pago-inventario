@@ -81,10 +81,13 @@ export function DespachoVista() {
             {elegidos.length} tractor{elegidos.length === 1 ? '' : 'es'} seleccionado
             {elegidos.length === 1 ? '' : 's'}
           </span>
-          <span className="xs">Total valor neto: {importe(total)}</span>
         </div>
 
         <div className="pie-acciones">
+          <span className="pie-total">
+            <span className="pie-total-lbl">Total valor neto</span>
+            <span className="pie-total-val">{importe(total)}</span>
+          </span>
           <span className="chip chip--ambar pie-nota">
             <i className="fa-solid fa-clock" aria-hidden="true" /> Envío por mail: próximamente
           </span>

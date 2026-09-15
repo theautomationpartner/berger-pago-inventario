@@ -310,14 +310,18 @@ export function FlujoAvancePago({ flujo }: Props) {
             </span>
             <span className="xs">
               {elegido
-                ? `${importe(elegido.monto)} · ${elegido.tractores.length} tractor${
-                    elegido.tractores.length === 1 ? '' : 'es'
-                  }`
+                ? `${elegido.tractores.length} tractor${elegido.tractores.length === 1 ? '' : 'es'}`
                 : 'Elegí el pago sobre el que querés trabajar'}
             </span>
           </div>
 
           <div className="pie-acciones">
+            {elegido && (
+              <span className="pie-total">
+                <span className="pie-total-lbl">Monto transferencia</span>
+                <span className="pie-total-val">{importe(elegido.monto)}</span>
+              </span>
+            )}
             {etapa === 'archivo' && (
               <button
                 type="button"

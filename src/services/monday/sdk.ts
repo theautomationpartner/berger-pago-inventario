@@ -15,6 +15,11 @@
  *   incrustado en el bundle que descarga el navegador.
  */
 import {
+  EVENTO_REINGRESAR,
+  EVENTO_SIN_ACCESO,
+  sesionDelDia,
+} from '@/services/acceso/sesionDelDia'
+import {
   MUTATION_ARCHIVO,
   resolverOperacion,
   type NombreOperacion,
@@ -72,10 +77,35 @@ async function motivoDelFallo(res: Response): Promise<string> {
  * consultar la API: sirve para que el proxy compruebe que del otro lado hay un usuario real de
  * la cuenta habilitada, y recién ahí lo cambia por el token de la cuenta.
  */
-async function autorizacion(): Promise<string> {
-  if (import.meta.env.DEV) return TOKEN ?? ''
+async function autorizacion(): Promise<Record<string, string>> {
+  if (import.meta.env.DEV) return { Authorization: TOKEN ?? '' }
   const { obtenerSessionToken } = await import('./sesion')
-  return `Bearer ${await obtenerSessionToken()}`
+  const sesion = sesionDelDia()
+  return {
+    Authorization: `Bearer ${await obtenerSessionToken()}`,
+    // La sesión del día: la prueba de que este perfil pasó la Lista Blanca y el autenticador.
+    // Sin ella el proxy rechaza el pedido aunque la sesión de monday sea válida.
+    ...(sesion ? { 'X-Sesion-App': sesion } : {}),
+  }
+}
+
+/**
+ * Revisa si el servidor rechazó el pedido por acceso, y avisa a la pantalla de ingreso.
+ *
+ * Un rechazo así no es un error de la pantalla que hizo el pedido: la sesión venció —pasó la
+ * medianoche con la app abierta— o al perfil lo dieron de baja. Por eso no se resuelve acá sino
+ * con un evento que escucha el ingreso, que vuelve a pedir el código o muestra el cartel de
+ * acceso denegado sin que cada pantalla tenga que saber de sesiones.
+ */
+async function revisarRechazo(res: Response): Promise<void> {
+  if (res.status !== 401 && res.status !== 403) return
+  const cuerpo = (await res
+    .clone()
+    .json()
+    .catch(() => ({}))) as { codigo?: string }
+  if (cuerpo.codigo === 'SESION_REQUERIDA') window.dispatchEvent(new Event(EVENTO_REINGRESAR))
+  if (cuerpo.codigo === 'SIN_ACCESO') window.dispatchEvent(new Event(EVENTO_SIN_ACCESO))
+  throw new SinAcceso(await motivoDelFallo(res))
 }
 
 /**
@@ -89,9 +119,9 @@ export async function mondayApi<T>(
   operacion: NombreOperacion,
   variables: Variables = {},
 ): Promise<T> {
-  let cabecera: string
+  let cabeceras: Record<string, string>
   try {
-    cabecera = await autorizacion()
+    cabeceras = await autorizacion()
   } catch {
     throw new SinAcceso('No hay una sesión de monday activa.')
   }
@@ -109,12 +139,12 @@ export async function mondayApi<T>(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: cabecera,
+      ...cabeceras,
       'API-Version': API_VERSION,
     },
     body: JSON.stringify(cuerpo),
   })
-  if (res.status === 401) throw new SinAcceso(await motivoDelFallo(res))
+  await revisarRechazo(res)
   if (!res.ok) throw new Error(await motivoDelFallo(res))
 
   const json = (await res.json()) as Respuesta<T>
@@ -142,9 +172,9 @@ export async function subirArchivoAColumna(
   columnId: string,
   archivo: File,
 ): Promise<string> {
-  let cabecera: string
+  let cabeceras: Record<string, string>
   try {
-    cabecera = await autorizacion()
+    cabeceras = await autorizacion()
   } catch {
     throw new SinAcceso('No hay una sesión de monday activa.')
   }
@@ -160,10 +190,10 @@ export async function subirArchivoAColumna(
 
   const res = await fetch(ENDPOINT_ARCHIVO, {
     method: 'POST',
-    headers: { Authorization: cabecera, 'API-Version': API_VERSION },
+    headers: { ...cabeceras, 'API-Version': API_VERSION },
     body: form,
   })
-  if (res.status === 401) throw new SinAcceso(await motivoDelFallo(res))
+  await revisarRechazo(res)
   if (!res.ok) throw new Error(await motivoDelFallo(res))
 
   const json = (await res.json()) as Respuesta<{ add_file_to_column: { id: string } | null }>

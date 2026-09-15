@@ -28,7 +28,22 @@ export interface SesionMonday {
 /** Cuenta de monday habilitada: BERGER S.A. (slug `maquinariasagricolas`). */
 const CUENTA_BERGER = 36618349
 
-export class NoAutorizado extends Error {}
+/**
+ * El pedido no puede pasar.
+ *
+ * Cuando el token es auténtico pero de otra cuenta, lleva quién era: es un intento real de entrar
+ * y tiene que quedar en el Registro de Accesos. Cuando el token es falso o está vencido no hay
+ * identidad confiable que registrar, y los campos quedan vacíos.
+ */
+export class NoAutorizado extends Error {
+  constructor(
+    message: string,
+    readonly usuarioId?: string,
+    readonly cuentaId?: number,
+  ) {
+    super(message)
+  }
+}
 export class MalConfigurado extends Error {}
 
 interface PayloadToken {
@@ -164,7 +179,7 @@ export async function verificarSesion(authHeader: string | null): Promise<Sesion
      existiendo para poder cambiar la cuenta habilitada sin volver a compilar. */
   const cuentaEsperada = Number(process.env.MONDAY_ACCOUNT_ID) || CUENTA_BERGER
   if (accountId !== cuentaEsperada) {
-    throw new NoAutorizado('La cuenta de monday no está habilitada para esta app.')
+    throw new NoAutorizado('Cuenta de monday no habilitada.', String(dat.user_id), accountId)
   }
 
   return {

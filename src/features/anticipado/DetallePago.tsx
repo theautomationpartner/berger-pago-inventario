@@ -33,15 +33,14 @@ export function DetallePago({ pago }: Props) {
       <div className="card card--data">
         <div className="ctitle">
           <i className="fa-solid fa-file-invoice-dollar" aria-hidden="true" />
-          Datos del pago
-          <span className="ctitle-cont">#{pago.id}</span>
+          Datos del pago <span className="xs">#{pago.id}</span>
+          <span className="ctitle-importe">
+            <span className="ctitle-importe-lbl">Monto transferencia</span>
+            <span className="ctitle-importe-val">{importe(pago.monto)}</span>
+          </span>
         </div>
 
         <div className="datos">
-          <div className="dato dato--neto">
-            <span className="dato-lbl">Monto transferencia</span>
-            <span className="dato-val">{importe(pago.monto)}</span>
-          </div>
           <div className="dato">
             <span className="dato-lbl">Fecha emisión</span>
             <span className="dato-val">{fechaCorta(pago.fechaEmision)}</span>

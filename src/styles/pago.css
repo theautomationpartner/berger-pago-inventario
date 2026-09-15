@@ -513,10 +513,15 @@
   font-size: 15px;
   flex: 0 0 auto;
 }
+/* El importe va contra el borde derecho: es donde terminan las columnas de importes de las listas,
+   así que el total queda debajo de los números que suma. */
 .total-txt {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 2px;
+  margin-left: auto;
+  text-align: right;
 }
 .total-lbl {
   font-size: 12px;
@@ -532,8 +537,8 @@
   line-height: 1.1;
 }
 .total-detalle {
-  margin-left: auto;
-  text-align: right;
+  flex: 1 1 140px;
+  min-width: 0;
   font-size: 12px;
   color: var(--green-dark);
   display: flex;
@@ -795,12 +800,9 @@
   .total-val {
     font-size: 22px;
   }
+  /* El detalle cede ancho antes que el importe: el total nunca se parte ni baja de renglón. */
   .total-detalle {
-    /* Debajo del importe y alineado a la izquierda: colgado a la derecha en 320px queda una
-       columna de dos palabras por renglón. */
-    margin-left: 0;
-    width: 100%;
-    text-align: left;
+    flex-basis: 90px;
   }
 
   .zona {
