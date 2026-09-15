@@ -193,7 +193,7 @@ logueado tiene que tener una fila con:
 |---------|-----------|
 | 🤚ID Usuarios `text_mm72j4e6` | igual al ID de usuario de monday de quien entra |
 | 🤚Estado Usuario `status` | **Activo** |
-| 🤚ID APP Habilitadas `dropdown_mm72bgr3` | incluye el id de esta app (`APP_ID`) |
+| 🤚ID APP Habilitadas `dropdown_mm72bgr3` | incluye el id de esta app (`SEGURIDAD_APP_ID`) |
 
 La Lista Blanca se vuelve a leer **en cada pedido de datos**, no sólo al entrar: pasar a alguien a
 Inactivo o quitarle la app le corta el acceso en el acto, aunque tenga la sesión del día abierta.
@@ -304,11 +304,30 @@ Variables de entorno del deploy (los valores **no** están en el repositorio; es
 | `MONDAY_SIGNING_SECRET` | Sí (o la de abajo) | Signing secret de la app. Developer Center → tu app → Basic Information. |
 | `MONDAY_CLIENT_SECRET` | Sí (o la de arriba) | Client secret de la misma pantalla. Se prueban las dos. |
 | `MONDAY_ACCOUNT_ID` | No | Cuenta habilitada. Por defecto, la de BERGER S.A. |
-| `SEGURIDAD_CLAVE_MAESTRA` | Sí | 32 bytes en base64url. Cifra los secretos del autenticador, firma la sesión del día y protege los códigos de recuperación. Marcarla como *Sensitive*. **Cambiarla obliga a todos a configurar el autenticador de nuevo.** |
-| `LISTA_BLANCA_TABLERO_ID` | Sí | Tablero 🔒Lista Blanca. |
-| `SEGURIDAD_AUTENTICADOR_TABLERO_ID` | Sí | Tablero 🔐 Seguridad · Autenticador. |
-| `SEGURIDAD_REGISTRO_TABLERO_ID` | Sí | Tablero 🔐 Registro de Accesos. |
-| `APP_ID` | Sí | Id de esta app en la columna "ID APP Habilitadas". La Lista Blanca es compartida entre apps: cada deploy declara cuál es. |
+| `SEGURIDAD_CLAVE_MAESTRA` | Sí · **compartida** | 32 bytes en base64url. Cifra los secretos del autenticador, firma la sesión del día y protege los códigos de recuperación. Marcarla como *Sensitive*. **Cambiarla obliga a todos a configurar el autenticador de nuevo.** |
+| `SEGURIDAD_LISTA_BLANCA_TABLERO_ID` | Sí · **compartida** | Tablero 🔒Lista Blanca. |
+| `SEGURIDAD_AUTENTICADOR_TABLERO_ID` | Sí · **compartida** | Tablero 🔐 Seguridad · Autenticador. |
+| `SEGURIDAD_REGISTRO_TABLERO_ID` | Sí · **compartida** | Tablero 🔐 Registro de Accesos. |
+| `SEGURIDAD_APP_ID` | Sí · **de cada app** | Id de esta app en la columna "ID APP Habilitadas" de la Lista Blanca. |
+
+### Más de una app
+
+La Lista Blanca y los dos tableros de seguridad son **de BERGER, no de esta app**: todas las apps
+futuras usan los mismos. Por eso las variables `SEGURIDAD_` son de dos clases:
+
+- **Compartidas** —la clave maestra y los tres ids de tablero—: mismo valor en todos los proyectos.
+  Conviene cargarlas **una sola vez** en Vercel como *Shared Environment Variables* del equipo
+  (Team Settings → Environment Variables → Shared) y vincularlas a cada proyecto. Cambiar una se
+  hace en un lugar.
+- **De cada app** —`SEGURIDAD_APP_ID`—: la única que cambia entre proyectos.
+
+La clave maestra no sólo *puede* ser la misma: **tiene** que serlo. Todas las apps leen y escriben
+el mismo tablero del autenticador, así que cada una tiene que poder descifrar el secreto que guardó
+otra. Una persona configura el autenticador **una vez** y le sirve para todas las apps. Compartir la
+clave no mezcla los accesos: la sesión del día lleva adentro para qué app es y sólo vale para esa.
+
+Para sumar una app nueva: crear su proyecto en Vercel, vincularle las compartidas, cargarle su
+`SEGURIDAD_APP_ID`, y agregar ese id en "ID APP Habilitadas" de quienes tengan que entrar.
 
 Para generar la clave maestra:
 

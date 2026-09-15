@@ -2,13 +2,28 @@
  * Configuración de la capa de seguridad.
  *
  * Los ids de los tableros de seguridad y el id de la app NO están escritos en el código: vienen de
- * variables de entorno del deploy. Hay dos motivos, y sólo uno es de seguridad:
+ * variables de entorno del deploy, todas con el prefijo `SEGURIDAD_` para que queden juntas en
+ * Vercel. Así no quedan en el repositorio, y el mismo código sirve para la próxima app sin tocar
+ * una línea.
  *
- * 1. No quedan en el repositorio. Un id de tablero solo no habilita nada —sin el token de la
- *    cuenta no se puede leer—, pero no hay por qué publicar dónde vive la lista de quién tiene
- *    acceso ni dónde están guardados los secretos del autenticador.
- * 2. La Lista Blanca es COMPARTIDA entre varias apps. Cada deploy declara con `APP_ID` qué app es,
- *    y así el mismo código de seguridad sirve para la próxima app sin tocar una línea.
+ * Las variables son de dos clases, y la diferencia importa el día que haya más de una app:
+ *
+ * COMPARTIDAS por todas las apps de BERGER — mismo valor en todos los proyectos. Conviene cargarlas
+ * una sola vez como "Shared Environment Variables" del equipo en Vercel y vincularlas a cada
+ * proyecto:
+ *
+ *   SEGURIDAD_CLAVE_MAESTRA            SEGURIDAD_AUTENTICADOR_TABLERO_ID
+ *   SEGURIDAD_LISTA_BLANCA_TABLERO_ID  SEGURIDAD_REGISTRO_TABLERO_ID
+ *
+ *   La clave maestra no sólo PUEDE ser la misma: TIENE que serlo. Todas las apps leen y escriben el
+ *   mismo tablero del autenticador, y cada una tiene que poder descifrar el secreto que guardó
+ *   otra. Con claves distintas, la segunda app encontraría el secreto de la persona y no podría
+ *   leerlo. Compartirla no mezcla las sesiones: cada sesión del día lleva la app adentro y sólo
+ *   vale para esa.
+ *
+ * PROPIA de cada app — distinta en cada proyecto:
+ *
+ *   SEGURIDAD_APP_ID   el id con el que la app figura en "ID APP Habilitadas" de la Lista Blanca
  *
  * Los ids de COLUMNAS sí están en el código (acá abajo): este archivo vive en `api/`, que corre
  * sólo en el servidor y nunca llega al navegador.
@@ -24,7 +39,7 @@ function requerida(nombre: string): string {
 export function configSeguridad() {
   return {
     /** Tablero "🔒Lista Blanca". */
-    tableroListaBlanca: requerida('LISTA_BLANCA_TABLERO_ID'),
+    tableroListaBlanca: requerida('SEGURIDAD_LISTA_BLANCA_TABLERO_ID'),
     /** Tablero "🔐 Seguridad · Autenticador (no editar)". */
     tableroAutenticador: requerida('SEGURIDAD_AUTENTICADOR_TABLERO_ID'),
     /** Tablero "🔐 Registro de Accesos". */
@@ -36,7 +51,7 @@ export function configSeguridad() {
      * vista. monday no incluye el tablero en el token de sesión, así que no se puede leer del
      * pedido: lo declara el deploy, que es el único que sabe con certeza qué app es.
      */
-    appId: requerida('APP_ID'),
+    appId: requerida('SEGURIDAD_APP_ID'),
   }
 }
 
