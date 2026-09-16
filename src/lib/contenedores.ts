@@ -10,6 +10,7 @@ import type {
   TractorSinContenedor,
 } from '@/types'
 import { fechaCorta } from './format'
+import { textoOrigen } from './puertos'
 
 /**
  * Armado de contenedores: con qué tractores se llena cada uno y cuántos hacen falta.
@@ -193,13 +194,17 @@ const lineaTractor = (t: Tractor): string =>
  *
  * - **Berger** necesita el detalle para decidir: qué lleva cada contenedor, dónde sobró lugar y qué
  *   tractores quedaron sin ubicar.
- * - **El despachante** necesita lo mínimo para operar: cuántos contenedores de cada medida, cuántos
- *   tractores, origen y destino. Nada más, porque de acá sale el mail que se le manda.
+ * - **El despachante** necesita lo mínimo para operar: cuántos contenedores, de qué medidas,
+ *   cuántos tractores y de qué puerto salen. Nada más, porque de acá sale el mail que se le manda.
  *
  * Va en texto plano, sin colores ni formato: tiene que leerse igual en una celda de monday y en un
  * correo.
  */
-export function reporteContenedores(resumen: ResumenContenedores, titulo: string): string {
+export function reporteContenedores(
+  resumen: ResumenContenedores,
+  titulo: string,
+  puertos: string[] = [],
+): string {
   const tractores = resumen.armados.reduce((n, a) => n + a.tractores.length, 0) + resumen.sinContenedor.length
   const desglose = desgloseDeContenedores(resumen)
 
@@ -249,13 +254,32 @@ export function reporteContenedores(resumen: ResumenContenedores, titulo: string
     '',
     'Informacion para Despachante:',
     '',
-    `* Cantidad de contenedores: ${desglose || '—'}`,
+    // El total va solo y en su propia línea, sin el desglose al lado: es el número que se copia al
+    // tablero del Despachante, y es lo que la operación 3 vuelve a leer de acá.
+    `* Cantidad de contenedores: ${resumen.totalContenedores}`,
+    `* Contenedores por tipo: ${desglose || '—'}`,
     `* Cantidad de tractores: ${tractores}`,
-    // Origen y destino todavía no se cargan en ningún lado: van igual, para que el despachante vea
-    // el formato completo y se note que faltan, en vez de que el dato desaparezca sin más.
-    '* Origen: (a definir)',
-    '* Destino: (a definir)',
+    `* Origen: ${textoOrigen(puertos)}`,
   )
 
   return lineas.join('\n').trim()
+}
+
+/** La línea del total, tal cual la escribe `reporteContenedores`. */
+const LINEA_TOTAL = /^\* Cantidad de contenedores: (\d+)\s*$/m
+
+/**
+ * Cuántos contenedores declara un reporte ya guardado.
+ *
+ * La operación 3 lo necesita para el tablero del Despachante, y lo LEE del reporte en vez de
+ * volver a armar los contenedores: entre el primer paso y la confirmación del SWIFT pueden pasar
+ * semanas, y si en el medio cambió una combinación del tablero, recalcular declararía un número
+ * distinto del que ya se le reportó a Berger.
+ *
+ * Devuelve `null` si el pago no tiene reporte o su texto no es de esta app: quien llama avisa, en
+ * vez de mandar un cero que parecería un despacho sin contenedores.
+ */
+export function cantidadDeContenedoresDelReporte(reporte: string): number | null {
+  const m = LINEA_TOTAL.exec(reporte ?? '')
+  return m ? Number(m[1]) : null
 }

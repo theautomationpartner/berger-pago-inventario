@@ -28,6 +28,12 @@ export const TABLEROS = {
   pagosSubitems: '18430295515',
   /** Contenedores: qué modelos viajan juntos y en qué contenedor. */
   contenedores: '18430565324',
+  /** Catálogo de Productos: un item por modelo. De acá sale el puerto de carga. */
+  catalogo: '18428421090',
+  /** Despachante de aduana: un item por despacho, con lo que el despachante necesita operar. */
+  despachante: '18430575903',
+  /** Subelementos del Despachante: un subitem por tractor despachado. */
+  despachanteSubitems: '18431188087',
 } as const
 
 /** URL del tablero de pagos, para los enlaces "ver en monday". */
@@ -65,6 +71,53 @@ export const COL_INV = {
   /** Conexión al Catálogo de Productos. Es lo que permite saber en qué contenedor entra. */
   catalogo: 'board_relation_mm6sxre2',
 } as const
+
+/** 🚜 Catálogo de Productos (18428421090) — de acá sale el puerto de carga de cada modelo. */
+export const COL_CATALOGO = {
+  /** Puerto(s) de carga del modelo. Es un dropdown: un modelo puede salir por más de uno. */
+  puerto: 'dropdown_mm78jn1v',
+} as const
+
+/**
+ * En qué país está cada puerto de carga.
+ *
+ * El Catálogo guarda sólo la ciudad ("Chennai") y el tablero del Despachante pide el país
+ * ("India"), así que la traducción tiene que vivir en algún lado. Vive acá, al lado del resto de
+ * lo que sabe de monday, y no dentro de la cuenta: son cinco puertos de dos columnas distintas y
+ * ninguna de las dos guarda la relación.
+ */
+export const PAIS_POR_PUERTO: Record<string, string> = {
+  Chennai: 'India',
+  Gemlik: 'Turquia',
+  Bremerhaven: 'Alemania',
+  Hamburgo: 'Alemania',
+  Genova: 'Italia',
+}
+
+/** 👮 Despachante de aduana (18430575903) — el item que la app crea al cerrar un despacho. */
+export const COL_DESPACHANTE = {
+  /** Conexión al item de Pagos del Inventario que originó el despacho. */
+  pago: 'board_relation_mm7815ae',
+  /** Cuántos contenedores se generaron en ese pago. */
+  cantidadContenedores: 'numeric_mm77sq5g',
+  /** País de origen, deducido del puerto del Catálogo. Admite más de uno. */
+  paisOrigen: 'dropdown_mm776ha7',
+  proveedor: 'dropdown_mm77czh3',
+  importador: 'color_mm77sys5',
+} as const
+
+/** 👮 Subelementos del Despachante (18431188087) — los mismos datos que el subitem del pago. */
+export const COL_DESPACHANTE_SUB = {
+  valorNeto: 'numeric_mm78rw31',
+  numDraft: 'text_mm78wee6',
+  codProducto: 'text_mm78m15e',
+  /** Conexión al item del tractor en el Inventario. */
+  inventario: 'board_relation_mm78fqs9',
+} as const
+
+/** Valores fijos del despacho: hoy la app despacha un solo proveedor y un solo importador. */
+export const PROVEEDOR_DESPACHO = 'Same Deutz Fahr SPA'
+export const IMPORTADOR_DESPACHO = 'Berger SA'
 
 /** Etiquetas de "Estado Confirmación Fecha Producción" (`color_mm6s8xp2`). */
 export const FECHA_CONFIRMADA = 'Fecha Confirmada'

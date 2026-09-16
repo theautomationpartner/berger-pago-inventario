@@ -38,6 +38,7 @@ const COLUMNAS_PAGO = [
   COL_PAGO.transferencia,
   COL_PAGO.transferenciaConNumero,
   COL_PAGO.comprobanteBanco,
+  COL_PAGO.contenedores,
 ]
 
 const COLUMNAS_SUB = [
@@ -59,6 +60,8 @@ interface DatosTractor {
   estado: string
   modelo: string
   estadoRodado: string
+  /** Producto del Catálogo: de ahí sale el puerto, y del puerto el país de origen del despacho. */
+  catalogoId: string | null
 }
 
 function aSubitem(s: SubitemCrudo, datosTractores: Map<string, DatosTractor>): SubitemPago {
@@ -77,6 +80,7 @@ function aSubitem(s: SubitemCrudo, datosTractores: Map<string, DatosTractor>): S
     estadoTractor: delInventario?.estado ?? '',
     modelo: delInventario?.modelo ?? '',
     estadoRodado: delInventario?.estadoRodado ?? '',
+    catalogoId: delInventario?.catalogoId ?? null,
   }
 }
 
@@ -94,6 +98,7 @@ function aPago(item: PagoCrudo, datosTractores: Map<string, DatosTractor>): Pago
     urlTransferencia: texto(c[COL_PAGO.transferencia]),
     urlTransferenciaConNumero: texto(c[COL_PAGO.transferenciaConNumero]),
     urlComprobanteBanco: texto(c[COL_PAGO.comprobanteBanco]),
+    reporteContenedores: texto(c[COL_PAGO.contenedores]),
     tractores: (item.subitems ?? []).map((s) => aSubitem(s, datosTractores)),
   }
 }
@@ -135,17 +140,18 @@ export async function pagosPendientes(
 
   const datosTractores = new Map<string, DatosTractor>()
   if (idsTractores.length > 0) {
-    const r = await mondayApi<{ items: { id: string; column_values: ColumnaCruda[] }[] }>(
+    const r = await mondayApi<{ items: { id: string; column_values: ColumnaConexion[] }[] }>(
       'datosDeTractores',
       { ids: idsTractores },
     )
     for (const it of r.items) {
-      const c = porId(it.column_values)
+      const c = porId(it.column_values) as Record<string, ColumnaConexion | undefined>
       datosTractores.set(it.id, {
         estado: texto(c[COL_INV.estadoPago]),
         // El modelo es un mirror: su valor viene en `display_value`, nunca en `text`.
         modelo: espejo(c[COL_INV.modelo]),
         estadoRodado: texto(c[COL_INV.estadoRodado]),
+        catalogoId: c[COL_INV.catalogo]?.linked_item_ids?.[0] ?? null,
       })
     }
   }

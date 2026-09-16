@@ -5,6 +5,7 @@ import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
 import { reporteContenedores } from '@/lib/contenedores'
 import { aNumero, fechaCorta, hoyISO, importe } from '@/lib/format'
+import { puertosDeTractores } from '@/lib/puertos'
 import { cargarTransferencia } from '@/services/monday/crearPago'
 import { tractoresListosParaPagar } from '@/services/monday/inventario'
 import type { DatosTransferencia, Etapa, ResultadoCarga } from '@/types'
@@ -75,6 +76,7 @@ export function CargarTransferencia() {
         reporteContenedores: reporteContenedores(
           contenedores.resumen,
           `PAGO ANTICIPADO - ${fechaCorta(datos.fechaEmision)}`,
+          puertosDeTractores(elegidos),
         ),
       })
       setResultado(r)

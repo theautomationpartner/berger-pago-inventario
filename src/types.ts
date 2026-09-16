@@ -68,6 +68,11 @@ export interface Tractor {
   estadoRodado: string
   /** Producto del Catálogo al que está conectado. Es la llave para saber en qué contenedor entra. */
   catalogoId: string | null
+  /**
+   * Puertos de carga del modelo, leídos del Catálogo. Vacío si el item no está conectado o el
+   * modelo no tiene puerto cargado. Un modelo puede salir por más de uno.
+   */
+  puertos: string[]
   /** Etiqueta de la confirmación de la Fecha de Producción. */
   confirmacionFecha: string
 }
@@ -166,6 +171,8 @@ export interface SubitemPago {
    */
   modelo: string
   estadoRodado: string
+  /** Producto del Catálogo del tractor conectado: de ahí cuelga el puerto de carga. */
+  catalogoId: string | null
 }
 
 /** Un pago del tablero de Pagos del Inventario, con sus tractores. */
@@ -182,6 +189,13 @@ export interface Pago {
   urlTransferencia: string
   urlTransferenciaConNumero: string
   urlComprobanteBanco: string
+  /**
+   * Reporte de contenedores que dejó escrito la operación que creó el pago. La operación 3 lo lee
+   * —no lo vuelve a calcular— para saber cuántos contenedores declarar ante el despachante: lo que
+   * se informa tiene que ser lo mismo que ya se reportó, aunque el tablero de Contenedores haya
+   * cambiado desde entonces.
+   */
+  reporteContenedores: string
   tractores: SubitemPago[]
 }
 
@@ -205,6 +219,18 @@ export interface ResultadoAvance {
   pagoId: string
   tractoresActualizados: number
   advertencias: string[]
+  /** Item creado en el Despachante de aduana, cuando la etapa cierra el despacho. */
+  despachanteId?: string | null
+}
+
+/** Un tractor, como se lo carga en el tablero del Despachante de aduana. */
+export interface TractorDeDespacho {
+  nombre: string
+  valorNeto: number | null
+  numDraft: string
+  codProducto: string
+  /** Item del Inventario al que se conecta el subitem, o `null` si no se sabe cuál es. */
+  tractorId: string | null
 }
 
 /** Etapa del asistente de la operación 1. */
@@ -251,4 +277,9 @@ export interface FlujoAvance {
   columnaEmail: string
   /** Qué hace ese mail, para poder contarlo en pantalla. */
   detalleEmail: string
+  /**
+   * Si esta etapa cierra el despacho: crea el item en el tablero del Despachante de aduana y deja
+   * el aviso al despachante en "Enviar". En ANTICIPADO eso pasa recién al confirmar el SWIFT.
+   */
+  cierraDespacho?: boolean
 }

@@ -7,7 +7,9 @@
  *   2. Se sube el PDF de la transferencia a su columna de archivo.
  *   3. Se crea un subitem por tractor, conectado al item del Inventario.
  *   4. Se pasa el Estado Pago de cada tractor a `Transf Cargada`.
- *   5. Se deja el aviso al despachante en "Enviar", ya con el item completo.
+ *
+ * El aviso al despachante NO se toca acá: en ANTICIPADO el despacho se le informa recién cuando el
+ * pago está confirmado (operación 3), porque hasta entonces la transferencia todavía puede caerse.
  *
  * Los pasos 1 y 2 son los únicos que abortan la operación: sin item o sin comprobante no hay
  * nada que registrar. Del 3 en adelante los fallos se juntan como ADVERTENCIAS y se devuelven,
@@ -20,7 +22,6 @@ import {
   COL_INV,
   COL_PAGO,
   COL_PAGO_SUB,
-  EMAIL_ENVIAR,
   INV_ESTADO,
   PAGO_ESTADO,
   PAGO_OPERACION,
@@ -118,19 +119,6 @@ export async function cargarTransferencia({
     } catch (e) {
       advertencias.push(`No se pudo pasar ${t.nombre} a "${INV_ESTADO.TRANSF_CARGADA}": ${motivo(e)}`)
     }
-  }
-
-  /* 5. Aviso al despachante. Va ÚLTIMO, cuando el item ya quedó completo: de esa columna sale el
-     mail, y dispararlo antes sería avisar sobre un despacho a medio cargar. Si falla, el pago ya
-     está bien hecho, así que se informa como advertencia en vez de dar la operación por perdida. */
-  try {
-    await mondayApi('actualizarColumnas', {
-      tablero: TABLEROS.pagos,
-      item: pagoId,
-      valores: JSON.stringify({ [COL_PAGO.emailDespacho]: { label: EMAIL_ENVIAR } }),
-    })
-  } catch (e) {
-    advertencias.push(`No se pudo avisar al despachante: ${motivo(e)}`)
   }
 
   return { pagoId, subitemIds, tractoresActualizados, advertencias }

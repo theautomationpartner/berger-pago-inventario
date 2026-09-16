@@ -10,8 +10,10 @@
  * porque el pedido ya existe en Monday y esconderlo dejaría al usuario creyendo que cargó algo que
  * no está completo.
  */
+import { paisesDePuertos, puertosDeTractores } from '@/lib/puertos'
 import { aTextoMonday, fechaCorta, hoyISO } from '@/lib/format'
 import type { ResultadoCarga, Tractor } from '@/types'
+import { crearDespachoDeAduana } from './despachante'
 import {
   COL_INV,
   COL_PAGO,
@@ -33,6 +35,8 @@ interface Entrada {
   tractores: Tractor[]
   /** Lo que queda por cobrar: la suma de los valores netos de lo que se despacha. */
   montoPendiente: number
+  /** Contenedores que armó la app para este pedido: es lo que se le declara al despachante. */
+  totalContenedores: number
   /** Reporte de contenedores que queda guardado para el mail al proveedor. */
   reporteContenedores: string
 }
@@ -40,6 +44,7 @@ interface Entrada {
 export async function crearPedidoVista({
   tractores,
   montoPendiente,
+  totalContenedores,
   reporteContenedores,
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
@@ -100,8 +105,29 @@ export async function crearPedidoVista({
     }
   }
 
-  /* 4. Aviso al despachante, con el pedido ya completo. Igual que en el anticipado: es lo último,
-     porque de esa columna sale el mail. */
+  /* 4. El despacho, en el tablero del Despachante de aduana. En la vista el pedido se cierra acá
+     mismo: no hay pago posterior que esperar, así que el despachante ya puede trabajar. */
+  try {
+    const despacho = await crearDespachoDeAduana({
+      pagoId,
+      nombre: nombreDelPedidoVista(fecha),
+      cantidadContenedores: totalContenedores,
+      paises: paisesDePuertos(puertosDeTractores(tractores)),
+      tractores: tractores.map((t) => ({
+        nombre: t.nombre,
+        valorNeto: t.valorNeto,
+        numDraft: t.numDraft,
+        codProducto: t.codProducto,
+        tractorId: t.id,
+      })),
+    })
+    advertencias.push(...despacho.advertencias)
+  } catch (e) {
+    advertencias.push(`No se pudo crear el despacho en el Despachante de aduana: ${motivo(e)}`)
+  }
+
+  /* 5. Aviso al despachante, con todo ya escrito. Va ÚLTIMO a propósito: de esa columna sale el
+     mail, y es lo único de la operación que no se puede deshacer. */
   try {
     await mondayApi('actualizarColumnas', {
       tablero: TABLEROS.pagos,

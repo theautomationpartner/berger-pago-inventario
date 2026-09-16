@@ -19,6 +19,9 @@
  * falla nada más que en producción, que es donde peor se detecta.
  */
 import {
+  COL_CATALOGO,
+  COL_DESPACHANTE,
+  COL_DESPACHANTE_SUB,
   COL_INV,
   COL_PAGO,
   COL_PAGO_SUB,
@@ -28,6 +31,7 @@ import {
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
   | 'contenedores'
+  | 'puertosDeCatalogo'
   | 'inventarioPorEstadoPago'
   | 'inventarioPorFormaDePago'
   | 'inventarioPaginaSiguiente'
@@ -35,6 +39,8 @@ export type NombreOperacion =
   | 'datosDeTractores'
   | 'crearPago'
   | 'crearSubitemDePago'
+  | 'crearItemDeDespachante'
+  | 'crearSubitemDeDespachante'
   | 'actualizarColumnas'
 
 export type Variables = Record<string, unknown>
@@ -82,6 +88,19 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_PAGO_SUB.numDraft,
     COL_PAGO_SUB.codProducto,
     COL_PAGO_SUB.inventario,
+  ]),
+  [TABLEROS.despachante]: new Set([
+    COL_DESPACHANTE.pago,
+    COL_DESPACHANTE.cantidadContenedores,
+    COL_DESPACHANTE.paisOrigen,
+    COL_DESPACHANTE.proveedor,
+    COL_DESPACHANTE.importador,
+  ]),
+  [TABLEROS.despachanteSubitems]: new Set([
+    COL_DESPACHANTE_SUB.valorNeto,
+    COL_DESPACHANTE_SUB.numDraft,
+    COL_DESPACHANTE_SUB.codProducto,
+    COL_DESPACHANTE_SUB.inventario,
   ]),
 }
 
@@ -213,6 +232,30 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
   },
 
   /**
+   * Puertos de carga de los modelos del Catálogo.
+   *
+   * Se piden por id —los que salieron de la conexión al Catálogo de cada tractor— y la columna
+   * está fija en el texto: es la única del Catálogo que la app mira.
+   */
+  puertosDeCatalogo: {
+    query: `
+      query ($ids: [ID!]!) {
+        items(ids: $ids) {
+          id
+          column_values(ids: ["${COL_CATALOGO.puerto}"]) { id type text }
+        }
+      }
+    `,
+    validar: (v) => {
+      if (!Array.isArray(v.ids) || v.ids.length === 0) {
+        throw new OperacionInvalida('Faltan los ids del catálogo.')
+      }
+      if (v.ids.length > 500) throw new OperacionInvalida('Demasiados ids.')
+      return { ids: v.ids.map((id) => idMonday(id, 'ids')) }
+    },
+  },
+
+  /**
    * Tractores del Inventario filtrados por Estado Pago.
    *
    * El tablero lo pone el servidor. El índice del estado sí viene del cliente, y no hace falta
@@ -325,12 +368,14 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
   },
 
   /**
-   * Estado Pago, Modelo y Estado Rodado de los tractores conectados a los subitems de un pago.
+   * Estado Pago, Modelo, Estado Rodado y Catálogo de los tractores conectados a los subitems de
+   * un pago.
    *
    * El tablero de subitems no tiene esas columnas: se leen del item del Inventario al que apunta
-   * cada conexión, todos en una sola consulta.
+   * cada conexión, todos en una sola consulta. El Catálogo viaja porque de ahí cuelga el puerto de
+   * carga, que es lo que la operación 3 necesita para el país de origen del despacho.
    *
-   * Los ids los elige el cliente, así que en teoría podría pedir items de otro tablero. Las tres
+   * Los ids los elige el cliente, así que en teoría podría pedir items de otro tablero. Las cuatro
    * columnas están FIJAS en el texto de la consulta y son del Inventario: en un item de cualquier
    * otro tablero vuelven vacías, así que no hay nada que sacar por acá.
    */
@@ -339,7 +384,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       query ($ids: [ID!]!) {
         items(ids: $ids) {
           id
-          column_values(ids: ["${COL_INV.estadoPago}", "${COL_INV.modelo}", "${COL_INV.estadoRodado}"]) {
+          column_values(ids: ["${COL_INV.estadoPago}", "${COL_INV.modelo}", "${COL_INV.estadoRodado}", "${COL_INV.catalogo}"]) {
             ${CAMPOS_COLUMNA}
           }
         }
@@ -379,6 +424,34 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       padre: idMonday(v.padre, 'padre'),
       nombre: nombre(v.nombre),
       valores: valoresDeColumnas(v.valores, TABLEROS.pagosSubitems),
+    }),
+  },
+
+  /** Item del despacho en el tablero del Despachante de aduana. */
+  crearItemDeDespachante: {
+    query: `
+      mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
+        create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.despachante,
+      nombre: nombre(v.nombre),
+      valores: valoresDeColumnas(v.valores, TABLEROS.despachante),
+    }),
+  },
+
+  /** Un subitem por tractor, colgando del item del despacho. */
+  crearSubitemDeDespachante: {
+    query: `
+      mutation ($padre: ID!, $nombre: String!, $valores: JSON!) {
+        create_subitem(parent_item_id: $padre, item_name: $nombre, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      padre: idMonday(v.padre, 'padre'),
+      nombre: nombre(v.nombre),
+      valores: valoresDeColumnas(v.valores, TABLEROS.despachanteSubitems),
     }),
   },
 

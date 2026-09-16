@@ -78,8 +78,8 @@ export const FLUJO_CONFIRMAR: FlujoAvance = {
 
   finalTitulo: 'Pago confirmado',
   finalDetalle:
-    'El pago quedó en CONFIRMADO y los tractores pasaron a Pagado. El circuito de este pago está ' +
-    'cerrado.',
+    'El pago quedó en CONFIRMADO y los tractores pasaron a Pagado. Se creó el despacho en el ' +
+    'Despachante de aduana y se le avisó. El circuito de este pago está cerrado.',
 
   columnaArchivo: COL_PAGO.comprobanteBanco,
   nuevoEstadoPago: PAGO_ESTADO.CONFIRMADO,
@@ -88,6 +88,10 @@ export const FLUJO_CONFIRMAR: FlujoAvance = {
   nuevoEstadoInventario: INV_ESTADO.PAGADO,
   columnaEmail: COL_PAGO.estadoEmail2,
   detalleEmail: 'se le avisa al proveedor que el pago fue confirmado',
+  /* Es la etapa que cierra el despacho del ANTICIPADO: acá se crea el item en el Despachante de
+     aduana y se le manda la información. Antes no, porque hasta que el pago no está confirmado la
+     transferencia todavía puede caerse. */
+  cierraDespacho: true,
 }
 
 export const FLUJOS = {

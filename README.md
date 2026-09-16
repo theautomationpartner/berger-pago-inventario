@@ -77,9 +77,12 @@ Tablero de **Pagos del Inventario** (`18430295445`):
 | Comprobante adjunto | `file_mm71eqv5` transferencia | `file_mm71s567` transf. c/número | `file_mm713dbc` comprobante del banco |
 | Aviso por mail | — | `color_mm71tfkp` = `Enviar` | `color_mm71bk6h` = `Enviar` |
 
-Además, todo pago lleva su **Tipo de Pago** (`color_mm78170z`) —`ANTICIPADO` o `VISTA`— y, una vez
-que el item quedó completo, el **aviso al despachante** (`color_mm78m8pn`) pasa a `Enviar`: de esa
-columna sale el mail con la información del despacho, así que se toca al final y nunca antes.
+Además, todo pago lleva su **Tipo de Pago** (`color_mm78170z`): `ANTICIPADO` o `VISTA`.
+
+El **aviso al despachante** (`color_mm78m8pn`) no está en esa tabla porque no es de una etapa
+intermedia: en ANTICIPADO pasa a `Enviar` recién en la **etapa 3**, junto con el aviso al proveedor.
+Hasta que el pago no está confirmado la transferencia todavía puede caerse, y avisarle antes al
+despachante sería mandarlo a trabajar sobre un despacho que puede no ocurrir.
 
 Y en paralelo, cada tractor del pago avanza en **Inventario** (`color_mm6v6532`):
 `Listo para Pagar` → `Transf Cargada` → `Transf Aprobada` → `Pagado`.
@@ -111,8 +114,8 @@ editable— y fecha de emisión.
 Al apretar *Cargar Pago* se crea el item en **Pagos del Inventario**, llamado
 `PAGO ANTICIPADO - <fecha de emisión>`, con las columnas de la tabla de arriba, el monto
 (`numeric_mm714xb2`), la fecha de emisión (`date_mm71jrsz`), el tipo de pago (`color_mm78170z` =
-`ANTICIPADO`) y el reporte de contenedores (`long_text_mm77ydg9`); y sus **subitems**
-(`18430295515`), uno por tractor:
+`ANTICIPADO`) y el reporte de contenedores (`long_text_mm77ydg9`) —que se calcula **acá**, en el
+primer paso, y no se vuelve a tocar—; y sus **subitems** (`18430295515`), uno por tractor:
 
 | Dato | Columna del subitem | Origen en Inventario |
 |------|---------------------|----------------------|
@@ -165,8 +168,10 @@ Al registrar el pedido se crea en **Pagos del Inventario** un item llamado
 Y cada tractor pasa a **Pendiente de Pago** (`color_mm6v6532`) en el Inventario.
 
 El monto va a **Monto Pendiente VISTA** y no a la columna del monto transferido: en la vista todavía
-no se pagó nada, y es justamente lo que queda por cobrar contra el BL. Cerrado el item, el aviso al
-despachante (`color_mm78m8pn`) pasa a `Enviar`, igual que en anticipado.
+no se pagó nada, y es justamente lo que queda por cobrar contra el BL.
+
+Como el pedido se cierra en esta única operación, acá mismo se crea el **despacho en el Despachante
+de aduana** y se deja el aviso al despachante (`color_mm78m8pn`) en `Enviar`.
 
 > **Pendiente:** el envío del pedido por mail al proveedor todavía no está implementado. El reporte
 > de contenedores ya queda guardado, que es lo que ese mail va a llevar.
@@ -220,16 +225,73 @@ Lo mismo, en texto, queda guardado en el pago en **Contenedores Armados por APP*
 
 - **`Informacion para Berger:`** — el detalle para decidir: el total, qué lleva cada contenedor,
   dónde sobró lugar, con qué se podría completar y qué tractores quedaron sin ubicar y por qué.
-- **`Informacion para Despachante:`** — lo mínimo para operar, en cuatro líneas: cantidad de
-  contenedores **por medida física** (`2 x 40 H, 1 x 20 H`, no "una combinación 20 H + 40 H"),
-  cantidad de tractores, origen y destino.
+- **`Informacion para Despachante:`** — lo mínimo para operar, en cuatro líneas:
 
-> **Pendiente:** origen y destino todavía no se cargan en ningún lado, así que salen como
-> `(a definir)`. Van igual, para que se vea el formato completo y se note que faltan, en vez de que
-> el dato desaparezca sin dejar rastro.
+```
+* Cantidad de contenedores: 3
+* Contenedores por tipo: 1 x 20 H, 2 x 40 H
+* Cantidad de tractores: 5
+* Origen: Puerto 1: Alemania (Bremerhaven) ó Puerto 2: Alemania (Hamburgo)
+```
+
+El total va **solo, en su propia línea**: además de leerse de un vistazo, es el número que la etapa
+3 vuelve a leer de este texto para cargarlo en el tablero del Despachante. El desglose cuenta
+contenedores **físicos** (`20 H + 40 H` son dos, no uno).
+
+El **origen** sale del puerto de carga del Catálogo de Productos (`dropdown_mm78jn1v`), que es un
+dato del modelo, no del tractor. Si el modelo tiene más de un puerto se numeran —son alternativas
+entre las que todavía hay que elegir, y esa elección no la hace la app—. El **destino** no va en el
+reporte: se escribe a mano en el cuerpo del mail.
+
+> Un tractor cuyo modelo no tenga puerto cargado deja el origen en
+> `(sin puerto cargado en el Catálogo)`, en vez de que la línea desaparezca sin dejar rastro.
 
 La cuenta está aparte de la pantalla y de monday, en
 [`src/lib/contenedores.ts`](src/lib/contenedores.ts), y se prueba sola.
+
+---
+
+## Despachante de aduana
+
+Cuando un despacho queda cerrado, la app crea un item en **👮Despachante de aduana**
+(`18430575903`) con lo que el despachante necesita para empezar a trabajar. Ocurre en un momento
+distinto según la modalidad, y por el mismo motivo en los dos casos: cuando ya no puede volverse
+atrás.
+
+| Modalidad | Cuándo se crea |
+|-----------|----------------|
+| PAGO ANTICIPADO | En la etapa 3, al confirmar el SWIFT |
+| PAGO VISTA | Al registrar el pedido, que es su única operación |
+
+| Dato | Columna | De dónde sale |
+|------|---------|----------------|
+| Conexión al pago | `board_relation_mm7815ae` | el item de Pagos del Inventario |
+| Cantidad de contenedores | `numeric_mm77sq5g` | del reporte ya guardado en el pago |
+| País de origen | `dropdown_mm776ha7` | del puerto del Catálogo de cada tractor |
+| Proveedor = `Same Deutz Fahr SPA` | `dropdown_mm77czh3` | fijo |
+| Importador = `Berger SA` | `color_mm77sys5` | fijo |
+
+Y un **subitem por tractor** (`18431188087`) con los mismos datos que su subitem del pago: valor
+neto (`numeric_mm78rw31`), N° de draft (`text_mm78wee6`), cód. de producto (`text_mm78m15e`) y la
+conexión al Inventario (`board_relation_mm78fqs9`).
+
+Dos decisiones que conviene saber:
+
+- **La cantidad de contenedores se LEE del reporte del pago, no se vuelve a calcular.** Entre cargar
+  la transferencia y confirmar el SWIFT pueden pasar semanas; si en el medio cambió una combinación
+  del tablero de Contenedores, recalcular declararía un número distinto del que ya se le reportó a
+  Berger. Si el pago no tiene reporte de la app, la columna queda vacía y se avisa en pantalla.
+- **El item lleva el nombre del pago.** El pedido era crearlo sin nombre, pero monday rechaza los
+  items con el nombre vacío (`InvalidItemNameException`), así que lleva el del pago: es lo que
+  permite reconocerlo en el tablero sin abrir la conexión.
+
+Nada de lo que pase acá aborta la operación de la que cuelga: para cuando se llega, el pago ya está
+escrito y los tractores ya avanzaron, así que lo que falle se informa como advertencia.
+
+El país sale del puerto por una tabla que vive en
+[`src/services/monday/columns.ts`](src/services/monday/columns.ts): el Catálogo guarda la ciudad
+(`Chennai`) y el Despachante pide el país (`India`), y ninguna de las dos columnas guarda la
+relación.
 
 ---
 
@@ -485,6 +547,7 @@ src/
     flujos.ts                 Las etapas 2 y 3 descriptas como datos
     meses.ts                  Meses del filtro (12 atrás y 12 adelante)
     contenedores.ts           Armado de contenedores y reporte para el proveedor
+    puertos.ts                Puerto de carga → país de origen, y el texto del origen
     chips.ts                  Color de cada etiqueta
     format.ts                 Números y fechas
   services/monday/            Todo lo que habla con monday
@@ -494,10 +557,12 @@ src/
     parse.ts                  Lectura de column_values
     inventario.ts             Tractores listos para pagar y tractores VISTA
     contenedores.ts           Combinaciones del tablero de Contenedores
+    catalogo.ts               Puerto de carga de cada modelo
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
     crearPedidoVista.ts       Pedido a la vista: item, subitems y estados
     avanzarPago.ts            Etapas 2 y 3: comprobante, estados, fechas y aviso
+    despachante.ts            Alta del despacho en el Despachante de aduana
   styles/                     base · layout · components · pago
 ```
 

@@ -6,6 +6,7 @@ import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
 import { reporteContenedores } from '@/lib/contenedores'
 import { fechaCorta, hoyISO, importe } from '@/lib/format'
+import { puertosDeTractores } from '@/lib/puertos'
 import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
 import { crearPedidoVista, nombreDelPedidoVista } from '@/services/monday/crearPedidoVista'
 import { tractoresParaDespachoVista } from '@/services/monday/inventario'
@@ -41,9 +42,11 @@ export function DespachoVista() {
       const r = await crearPedidoVista({
         tractores: elegidos,
         montoPendiente: total,
+        totalContenedores: contenedores.resumen.totalContenedores,
         reporteContenedores: reporteContenedores(
           contenedores.resumen,
           nombreDelPedidoVista(hoyISO()),
+          puertosDeTractores(elegidos),
         ),
       })
       setResultado(r)
@@ -92,7 +95,8 @@ export function DespachoVista() {
             </span>
             <span className="final-det">
               Se creó <b>{nombreDelPedidoVista(hoyISO())}</b> en Pagos del Inventario, con el detalle
-              de los contenedores. Los tractores quedaron en <b>Pendiente de Pago</b>.
+              de los contenedores, y el despacho en <b>Despachante de aduana</b>, al que ya se le
+              avisó. Los tractores quedaron en <b>Pendiente de Pago</b>.
             </span>
 
             <div className="final-datos">
@@ -106,8 +110,8 @@ export function DespachoVista() {
                 {resultado.subitemIds.length === 1 ? '' : 'es'}
               </span>
               <span className="chip chip--ambar">
-                <i className="fa-solid fa-envelope" aria-hidden="true" /> Envío por mail:
-                próximamente
+                <i className="fa-solid fa-envelope" aria-hidden="true" /> Aviso al despachante
+                enviado
               </span>
             </div>
 
@@ -204,8 +208,10 @@ export function DespachoVista() {
               <span>
                 Al registrar el pedido se crea{' '}
                 <b>{nombreDelPedidoVista(hoyISO())}</b> en <b>Pagos del Inventario</b>, con un
-                subitem por tractor y el detalle de los contenedores. Los {elegidos.length} tractor
-                {elegidos.length === 1 ? '' : 'es'} pasan a <b>Pendiente de Pago</b> en el Inventario.
+                subitem por tractor y el detalle de los contenedores, y el despacho en{' '}
+                <b>Despachante de aduana</b>, al que se le manda la información. Los{' '}
+                {elegidos.length} tractor{elegidos.length === 1 ? '' : 'es'} pasan a{' '}
+                <b>Pendiente de Pago</b> en el Inventario.
               </span>
             </div>
           )}

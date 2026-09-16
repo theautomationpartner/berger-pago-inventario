@@ -9,6 +9,7 @@
  * filtro manda y qué etiqueta vuelve a comprobar.
  */
 import type { MesAnio, Tractor } from '@/types'
+import { puertosDeCatalogo } from './catalogo'
 import {
   COL_INV,
   FECHA_CONFIRMADA,
@@ -74,6 +75,8 @@ function aTractor(item: ItemCrudo): Tractor {
     modelo: espejo(c[COL_INV.modelo]),
     estadoRodado: texto(c[COL_INV.estadoRodado]),
     catalogoId: (c[COL_INV.catalogo] as ColumnaConexion | undefined)?.linked_item_ids?.[0] ?? null,
+    // Se completa después, con una consulta al Catálogo para todos los tractores de una vez.
+    puertos: [],
     confirmacionFecha: texto(c[COL_INV.confirmacionFecha]),
   }
 }
@@ -113,7 +116,30 @@ async function traerTodos(operacion: NombreOperacion, filtro: Record<string, unk
     cursor = siguiente.next_items_page.cursor
   }
 
-  return items.map(aTractor).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  const tractores = items.map(aTractor).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  return conPuertos(tractores)
+}
+
+/**
+ * Le pega a cada tractor el puerto de carga de su modelo.
+ *
+ * El puerto vive en el Catálogo, no en el tractor, así que hace falta una consulta más. Va una
+ * sola para toda la lista, y si falla la lista se devuelve igual sin puertos: el puerto hace falta
+ * para el reporte del despachante, no para elegir y pagar tractores, y quedarse sin pantalla por
+ * un dato que se completa al final sería peor que mostrarla incompleta.
+ */
+async function conPuertos(tractores: Tractor[]): Promise<Tractor[]> {
+  const ids = tractores.map((t) => t.catalogoId).filter((id): id is string => Boolean(id))
+  if (ids.length === 0) return tractores
+  try {
+    const puertos = await puertosDeCatalogo(ids)
+    return tractores.map((t) => ({
+      ...t,
+      puertos: (t.catalogoId && puertos.get(t.catalogoId)) || [],
+    }))
+  } catch {
+    return tractores
+  }
 }
 
 /**
