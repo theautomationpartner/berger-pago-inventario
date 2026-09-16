@@ -40,6 +40,7 @@ export function DespachoVista() {
     try {
       const r = await crearPedidoVista({
         tractores: elegidos,
+        montoPendiente: total,
         reporteContenedores: reporteContenedores(
           contenedores.resumen,
           nombreDelPedidoVista(hoyISO()),

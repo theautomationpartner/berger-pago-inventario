@@ -131,8 +131,18 @@ export const COL_PAGO = {
   /** Operación Pendiente: es la columna que dice quién tiene que actuar a continuación. */
   operacionPend: 'color_mm71e2wc',
 
-  /** Fecha del pedido a la vista. */
+  /** Modalidad con la que se despachó: ANTICIPADO o VISTA. */
+  tipoPago: 'color_mm78170z',
+  /** Fecha de emisión del pedido a la vista. */
   fechaPagoVista: 'date_mm77cwrs',
+  /** Lo que queda por cobrar de un pedido a la vista. */
+  montoPendienteVista: 'numeric_mm78d1ng',
+  /**
+   * Aviso al despachante. La app lo deja en "Enviar" como ÚLTIMO paso, recién cuando el item
+   * quedó completo: el mail sale de ahí, y mandarlo antes sería avisar sobre un despacho a medio
+   * cargar.
+   */
+  emailDespacho: 'color_mm78m8pn',
   /** Reporte de los contenedores que armó la app. Es lo que después va al mail del proveedor. */
   contenedores: 'long_text_mm77ydg9',
 
@@ -144,6 +154,12 @@ export const COL_PAGO = {
   /** Disparadores de los avisos por mail al proveedor; los manda la automatización del tablero. */
   estadoEmail1: 'color_mm71tfkp',
   estadoEmail2: 'color_mm71bk6h',
+} as const
+
+/** Etiquetas de "Tipo de Pago" (`color_mm78170z`): con qué modalidad se despachó. */
+export const TIPO_PAGO = {
+  ANTICIPADO: 'ANTICIPADO',
+  VISTA: 'VISTA',
 } as const
 
 /** Etiquetas de "Estado Pago" del tablero de Pagos (`color_mm71p4rf`). */

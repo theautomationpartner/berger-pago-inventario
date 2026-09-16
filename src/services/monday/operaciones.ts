@@ -73,6 +73,9 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_PAGO.estadoEmail2,
     COL_PAGO.fechaPagoVista,
     COL_PAGO.contenedores,
+    COL_PAGO.tipoPago,
+    COL_PAGO.montoPendienteVista,
+    COL_PAGO.emailDespacho,
   ]),
   [TABLEROS.pagosSubitems]: new Set([
     COL_PAGO_SUB.valorNeto,

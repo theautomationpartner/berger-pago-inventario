@@ -16,9 +16,11 @@ import {
   COL_INV,
   COL_PAGO,
   COL_PAGO_SUB,
+  EMAIL_ENVIAR,
   INV_ESTADO,
   PAGO_OPERACION,
   TABLEROS,
+  TIPO_PAGO,
 } from './columns'
 import { mondayApi } from './sdk'
 
@@ -29,12 +31,15 @@ export const nombreDelPedidoVista = (fecha: string): string => `PAGO VISTA - ${f
 
 interface Entrada {
   tractores: Tractor[]
+  /** Lo que queda por cobrar: la suma de los valores netos de lo que se despacha. */
+  montoPendiente: number
   /** Reporte de contenedores que queda guardado para el mail al proveedor. */
   reporteContenedores: string
 }
 
 export async function crearPedidoVista({
   tractores,
+  montoPendiente,
   reporteContenedores,
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
@@ -45,7 +50,9 @@ export async function crearPedidoVista({
   const creado = await mondayApi<{ create_item: { id: string } }>('crearPago', {
     nombre: nombreDelPedidoVista(fecha),
     valores: JSON.stringify({
+      [COL_PAGO.tipoPago]: { label: TIPO_PAGO.VISTA },
       [COL_PAGO.fechaPagoVista]: { date: fecha },
+      [COL_PAGO.montoPendienteVista]: aTextoMonday(montoPendiente),
       [COL_PAGO.operacionPend]: { label: PAGO_OPERACION.PENDIENTE_PAGO },
       [COL_PAGO.contenedores]: { text: reporteContenedores },
     }),
@@ -91,6 +98,18 @@ export async function crearPedidoVista({
         `No se pudo pasar ${t.nombre} a "${INV_ESTADO.PENDIENTE_PAGO}": ${motivo(e)}`,
       )
     }
+  }
+
+  /* 4. Aviso al despachante, con el pedido ya completo. Igual que en el anticipado: es lo último,
+     porque de esa columna sale el mail. */
+  try {
+    await mondayApi('actualizarColumnas', {
+      tablero: TABLEROS.pagos,
+      item: pagoId,
+      valores: JSON.stringify({ [COL_PAGO.emailDespacho]: { label: EMAIL_ENVIAR } }),
+    })
+  } catch (e) {
+    advertencias.push(`No se pudo avisar al despachante: ${motivo(e)}`)
   }
 
   return { pagoId, subitemIds, tractoresActualizados, advertencias }

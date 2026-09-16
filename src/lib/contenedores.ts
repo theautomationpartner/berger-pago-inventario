@@ -23,11 +23,20 @@ import { fechaCorta } from './format'
  * de monday, y se puede probar sola.
  */
 
-/** Cuántos contenedores físicos ocupa una etiqueta: "20 H + 40 H" son dos. */
-export function contenedoresDelTipo(tipo: string): number {
-  if (!tipo || tipo === CONTENEDOR_CUALQUIERA) return 1
-  return tipo.split('+').filter((p) => p.trim()).length || 1
+/**
+ * Los contenedores FÍSICOS que compone una etiqueta: "20 H + 40 H" es un 20 H más un 40 H.
+ *
+ * Partirla importa para el despachante, que necesita saber cuántos contenedores de cada medida
+ * pedir, no cuántas combinaciones armó la app.
+ */
+export function tiposDeContenedor(tipo: string): string[] {
+  if (!tipo || tipo === CONTENEDOR_CUALQUIERA) return [tipo || 'Contenedor']
+  const partes = tipo.split('+').map((x) => x.trim()).filter(Boolean)
+  return partes.length > 0 ? partes : [tipo]
 }
+
+/** Cuántos contenedores físicos ocupa una etiqueta. */
+export const contenedoresDelTipo = (tipo: string): number => tiposDeContenedor(tipo).length
 
 /**
  * ¿Sirve esta opción para un tractor con este rodado?
@@ -147,6 +156,22 @@ export function armarContenedores(
   }
 }
 
+/**
+ * Cuántos contenedores de cada medida salen en total.
+ *
+ * Cuenta contenedores FÍSICOS, no combinaciones: dos grupos que viajan en un "20 H + 40 H" son
+ * dos 20 H y dos 40 H.
+ */
+export function desgloseDeContenedores(resumen: ResumenContenedores): string {
+  const cuenta = new Map<string, number>()
+  for (const armado of resumen.armados) {
+    for (const tipo of tiposDeContenedor(armado.opcion.tipo)) {
+      cuenta.set(tipo, (cuenta.get(tipo) ?? 0) + 1)
+    }
+  }
+  return [...cuenta.entries()].map(([tipo, n]) => `${n} x ${tipo}`).join(', ')
+}
+
 /** Cómo se nombra un contenedor armado en la pantalla y en el reporte. */
 export function rotuloContenedor(armado: ContenedorArmado, desde: number): string {
   const { contenedores, tipo } = armado.opcion
@@ -162,25 +187,29 @@ const lineaTractor = (t: Tractor): string =>
     .join(' · ')
 
 /**
- * Reporte de texto que queda guardado en el pago, en la columna "Contenedores Armados por APP".
+ * Reporte que queda guardado en el pago, en la columna "Contenedores Armados por APP".
  *
- * Se escribe pensando en que después se copia a un mail para el proveedor: cada contenedor con lo
- * que lleva, qué lugares quedaron libres y qué tractores quedaron sin ubicar. Sin colores ni
- * formato, porque tiene que leerse igual en una celda de monday y en un correo.
+ * Tiene dos destinatarios y por eso dos secciones, en ese orden:
+ *
+ * - **Berger** necesita el detalle para decidir: qué lleva cada contenedor, dónde sobró lugar y qué
+ *   tractores quedaron sin ubicar.
+ * - **El despachante** necesita lo mínimo para operar: cuántos contenedores de cada medida, cuántos
+ *   tractores, origen y destino. Nada más, porque de acá sale el mail que se le manda.
+ *
+ * Va en texto plano, sin colores ni formato: tiene que leerse igual en una celda de monday y en un
+ * correo.
  */
 export function reporteContenedores(resumen: ResumenContenedores, titulo: string): string {
-  const lineas: string[] = [titulo, '']
+  const tractores = resumen.armados.reduce((n, a) => n + a.tractores.length, 0) + resumen.sinContenedor.length
+  const desglose = desgloseDeContenedores(resumen)
+
+  const lineas: string[] = [titulo, '', 'Informacion para Berger:', '']
 
   if (resumen.armados.length === 0) {
     lineas.push('No se armó ningún contenedor.')
   } else {
-    const porTipo = resumen.armados.reduce<Record<string, number>>((m, a) => {
-      m[a.opcion.tipo] = (m[a.opcion.tipo] ?? 0) + 1
-      return m
-    }, {})
     lineas.push(
-      `TOTAL: ${resumen.totalContenedores} contenedor${resumen.totalContenedores === 1 ? '' : 'es'}` +
-        ` · ${Object.entries(porTipo).map(([t, n]) => `${n} × ${t}`).join(' · ')}`,
+      `TOTAL: ${resumen.totalContenedores} contenedor${resumen.totalContenedores === 1 ? '' : 'es'} · ${desglose}`,
     )
     if (resumen.totalLibres > 0) {
       lineas.push(
@@ -191,12 +220,14 @@ export function reporteContenedores(resumen: ResumenContenedores, titulo: string
 
     let numero = 1
     for (const armado of resumen.armados) {
-      const { opcion, tractores, libres } = armado
+      const { opcion, tractores: dentro, libres } = armado
       lineas.push(
-        `${rotuloContenedor(armado, numero)} · ${opcion.ruedas} · ${tractores.length} de ${opcion.capacidad}` +
-          (libres > 0 ? ` (queda${libres === 1 ? '' : 'n'} ${libres} lugar${libres === 1 ? '' : 'es'} libre${libres === 1 ? '' : 's'})` : ''),
+        `${rotuloContenedor(armado, numero)} · ${opcion.ruedas} · ${dentro.length} de ${opcion.capacidad}` +
+          (libres > 0
+            ? ` (queda${libres === 1 ? '' : 'n'} ${libres} lugar${libres === 1 ? '' : 'es'} libre${libres === 1 ? '' : 's'})`
+            : ''),
       )
-      for (const t of tractores) lineas.push(`   - ${lineaTractor(t)}`)
+      for (const t of dentro) lineas.push(`   - ${lineaTractor(t)}`)
       if (armado.sugerencias.length > 0) {
         lineas.push('   Para completarlo se podría sumar:')
         for (const t of armado.sugerencias) lineas.push(`   + ${lineaTractor(t)}`)
@@ -211,7 +242,20 @@ export function reporteContenedores(resumen: ResumenContenedores, titulo: string
     for (const { tractor, motivo } of resumen.sinContenedor) {
       lineas.push(`   - ${lineaTractor(tractor)} — ${motivo}`)
     }
+    lineas.push('')
   }
+
+  lineas.push(
+    '',
+    'Informacion para Despachante:',
+    '',
+    `* Cantidad de contenedores: ${desglose || '—'}`,
+    `* Cantidad de tractores: ${tractores}`,
+    // Origen y destino todavía no se cargan en ningún lado: van igual, para que el despachante vea
+    // el formato completo y se note que faltan, en vez de que el dato desaparezca sin más.
+    '* Origen: (a definir)',
+    '* Destino: (a definir)',
+  )
 
   return lineas.join('\n').trim()
 }

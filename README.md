@@ -77,6 +77,10 @@ Tablero de **Pagos del Inventario** (`18430295445`):
 | Comprobante adjunto | `file_mm71eqv5` transferencia | `file_mm71s567` transf. c/número | `file_mm713dbc` comprobante del banco |
 | Aviso por mail | — | `color_mm71tfkp` = `Enviar` | `color_mm71bk6h` = `Enviar` |
 
+Además, todo pago lleva su **Tipo de Pago** (`color_mm78170z`) —`ANTICIPADO` o `VISTA`— y, una vez
+que el item quedó completo, el **aviso al despachante** (`color_mm78m8pn`) pasa a `Enviar`: de esa
+columna sale el mail con la información del despacho, así que se toca al final y nunca antes.
+
 Y en paralelo, cada tractor del pago avanza en **Inventario** (`color_mm6v6532`):
 `Listo para Pagar` → `Transf Cargada` → `Transf Aprobada` → `Pagado`.
 
@@ -106,8 +110,9 @@ editable— y fecha de emisión.
 
 Al apretar *Cargar Pago* se crea el item en **Pagos del Inventario**, llamado
 `PAGO ANTICIPADO - <fecha de emisión>`, con las columnas de la tabla de arriba, el monto
-(`numeric_mm714xb2`), la fecha de emisión (`date_mm71jrsz`) y el reporte de contenedores
-(`long_text_mm77ydg9`); y sus **subitems** (`18430295515`), uno por tractor:
+(`numeric_mm714xb2`), la fecha de emisión (`date_mm71jrsz`), el tipo de pago (`color_mm78170z` =
+`ANTICIPADO`) y el reporte de contenedores (`long_text_mm77ydg9`); y sus **subitems**
+(`18430295515`), uno por tractor:
 
 | Dato | Columna del subitem | Origen en Inventario |
 |------|---------------------|----------------------|
@@ -150,12 +155,18 @@ Al registrar el pedido se crea en **Pagos del Inventario** un item llamado
 
 | Dato | Columna |
 |------|---------|
-| Fecha del pedido | `date_mm77cwrs` |
+| Tipo de Pago = `VISTA` | `color_mm78170z` |
+| Fecha de emisión del pedido | `date_mm77cwrs` |
+| Monto pendiente (total del valor neto) | `numeric_mm78d1ng` |
 | Operación = `Pendiente de Pago` | `color_mm71e2wc` |
 | Reporte de contenedores | `long_text_mm77ydg9` |
 | Un subitem por tractor, conectado a su item del Inventario | `18430295515` |
 
 Y cada tractor pasa a **Pendiente de Pago** (`color_mm6v6532`) en el Inventario.
+
+El monto va a **Monto Pendiente VISTA** y no a la columna del monto transferido: en la vista todavía
+no se pagó nada, y es justamente lo que queda por cobrar contra el BL. Cerrado el item, el aviso al
+despachante (`color_mm78m8pn`) pasa a `Enviar`, igual que en anticipado.
 
 > **Pendiente:** el envío del pedido por mail al proveedor todavía no está implementado. El reporte
 > de contenedores ya queda guardado, que es lo que ese mail va a llevar.
@@ -205,7 +216,17 @@ tablero, no hay fila para ese rodado, falta el dato de rodado, o el tractor no e
 catálogo.
 
 Lo mismo, en texto, queda guardado en el pago en **Contenedores Armados por APP**
-(`long_text_mm77ydg9`): es lo que después va al mail del proveedor.
+(`long_text_mm77ydg9`). Ese texto tiene **dos destinatarios y por eso dos secciones**:
+
+- **`Informacion para Berger:`** — el detalle para decidir: el total, qué lleva cada contenedor,
+  dónde sobró lugar, con qué se podría completar y qué tractores quedaron sin ubicar y por qué.
+- **`Informacion para Despachante:`** — lo mínimo para operar, en cuatro líneas: cantidad de
+  contenedores **por medida física** (`2 x 40 H, 1 x 20 H`, no "una combinación 20 H + 40 H"),
+  cantidad de tractores, origen y destino.
+
+> **Pendiente:** origen y destino todavía no se cargan en ningún lado, así que salen como
+> `(a definir)`. Van igual, para que se vea el formato completo y se note que faltan, en vez de que
+> el dato desaparezca sin dejar rastro.
 
 La cuenta está aparte de la pantalla y de monday, en
 [`src/lib/contenedores.ts`](src/lib/contenedores.ts), y se prueba sola.
