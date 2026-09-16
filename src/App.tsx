@@ -6,15 +6,22 @@ import {
 } from '@/components/ui/PantallaSinAcceso'
 import { clienteVistaPrevia } from '@/features/acceso/clienteVistaPrevia'
 import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
+import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
+import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
 import { Migas, type Miga } from '@/features/inicio/Migas'
 import { PanelOpciones } from '@/features/inicio/PanelOpciones'
 import { DespachoVista } from '@/features/vista/DespachoVista'
 import { useAccesoMonday } from '@/hooks/useAccesoMonday'
-import { MODALIDADES_DESPACHO, OPERACIONES_PRINCIPALES } from '@/lib/navegacion'
+import {
+  MODALIDADES_DESPACHO,
+  OPERACIONES_ADUANA,
+  OPERACIONES_PRINCIPALES,
+  principalesDeModulos,
+} from '@/lib/navegacion'
 import { clienteIngreso } from '@/services/acceso/cliente'
 import { mondayHabilitado } from '@/services/monday/sdk'
-import type { ModalidadDespacho, OperacionPrincipal } from '@/types'
+import type { ModalidadDespacho, OperacionAduana, OperacionPrincipal } from '@/types'
 
 const TITULO = 'Operaciones de Inventario'
 const SUBTITULO = 'Tractores · BERGER S.A.'
@@ -51,7 +58,12 @@ export function App() {
   if (import.meta.env.DEV && !VISTA_PREVIA_INGRESO) {
     return (
       <AppAdentro
-        sesion={{ perfil: { id: 'desarrollo', nombre: 'Desarrollo local' }, salir: () => {}, recuperacionRestantes: null }}
+        sesion={{
+          perfil: { id: 'desarrollo', nombre: 'Desarrollo local' },
+          modulos: ['despacho', 'aduana'],
+          salir: () => {},
+          recuperacionRestantes: null,
+        }}
       />
     )
   }
@@ -66,13 +78,20 @@ export function App() {
 /**
  * La app propiamente dicha, una vez adentro.
  *
- * La navegación tiene tres niveles —operación principal, modalidad y etapa— y cada uno se elige en
- * su propia pantalla. El estado de cada nivel se descarta al volver al anterior: la modalidad se
+ * La navegación tiene tres niveles —operación principal, operación y etapa— y cada uno se elige en
+ * su propia pantalla. El estado de cada nivel se descarta al volver al anterior: la operación se
  * desmonta entera, y con ella cualquier selección a medio hacer.
+ *
+ * Qué operaciones principales existen depende de los módulos que el servidor le dio a este perfil:
+ * la gente de BERGER ve DESPACHO, el despachante de aduana ve sólo DESPACHANTE DE ADUANA, y
+ * Administración ve las dos.
  */
 function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
   const [principal, setPrincipal] = useState<OperacionPrincipal | null>(null)
   const [modalidad, setModalidad] = useState<ModalidadDespacho | null>(null)
+  const [operacionAduana, setOperacionAduana] = useState<OperacionAduana | null>(null)
+
+  const principales = principalesDeModulos(sesion.modulos)
 
   const barra = (
     <BarraMarca
@@ -107,14 +126,22 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
   const irAlInicio = () => {
     setPrincipal(null)
     setModalidad(null)
+    setOperacionAduana(null)
+  }
+
+  const volverAlPrincipal = () => {
+    setModalidad(null)
+    setOperacionAduana(null)
   }
 
   const defPrincipal = OPERACIONES_PRINCIPALES.find((o) => o.id === principal)
-  const defModalidad = MODALIDADES_DESPACHO.find((m) => m.id === modalidad)
+  const defSegundo =
+    MODALIDADES_DESPACHO.find((m) => m.id === modalidad) ??
+    OPERACIONES_ADUANA.find((o) => o.id === operacionAduana)
 
   const migas: Miga[] = [{ rotulo: 'Operaciones', onIr: irAlInicio }]
-  if (defPrincipal) migas.push({ rotulo: defPrincipal.corto, onIr: () => setModalidad(null) })
-  if (defModalidad) migas.push({ rotulo: defModalidad.corto })
+  if (defPrincipal) migas.push({ rotulo: defPrincipal.corto, onIr: volverAlPrincipal })
+  if (defSegundo) migas.push({ rotulo: defSegundo.corto })
 
   return (
     <div className="app">
@@ -141,7 +168,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
         <PanelOpciones
           titulo="¿Qué operación vas a hacer?"
           detalle="Elegí el tipo de operación sobre el inventario de tractores."
-          opciones={OPERACIONES_PRINCIPALES}
+          opciones={principales}
           onElegir={setPrincipal}
         />
       )}
@@ -157,6 +184,18 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
 
       {principal === 'despacho' && modalidad === 'anticipado' && <DespachoAnticipado />}
       {principal === 'despacho' && modalidad === 'vista' && <DespachoVista />}
+
+      {principal === 'aduana' && operacionAduana === null && (
+        <PanelOpciones
+          titulo="Despachante de aduana"
+          detalle="Seguimiento de las OP que ya salieron del circuito de despacho."
+          opciones={OPERACIONES_ADUANA}
+          onElegir={setOperacionAduana}
+        />
+      )}
+
+      {principal === 'aduana' && operacionAduana === 'actualizar' && <ActualizarDespachos />}
+      {principal === 'aduana' && operacionAduana === 'dashboard' && <DashboardDespachos />}
     </div>
   )
 }

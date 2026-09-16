@@ -40,6 +40,7 @@ import {
   verificarTotp,
 } from './_seguridad/cripto'
 import { emailDeUsuario, type Perfil } from './_seguridad/listaBlanca'
+import { modulosDelPerfil, type Modulo } from './_seguridad/modulos'
 import { ipDe, registrar } from './_seguridad/registro'
 import { emitirSesion, verificarSesionApp } from './_seguridad/sesionApp'
 
@@ -128,19 +129,45 @@ export default async function handler(req: Request): Promise<Response> {
       cuentaId: sesionMonday.accountId,
       ip,
     }
-    const nuevaSesion = (mfa: boolean) => emitirSesion({ uid: usuarioId, pid: perfil.id, app: appId, mfa })
+
+    /* 2b. Qué módulos le corresponden. Es el único momento en que se comprueba el equipo de
+       monday: de ahí en adelante viaja firmado en la sesión del día. Sin ningún módulo no hay
+       nada que mostrarle, así que es un rechazo más —igual de genérico que los otros—. */
+    const modulos = await modulosDelPerfil(perfil, usuarioId)
+    if (modulos.length === 0) {
+      await registrar('Acceso denegado', {
+        ...base,
+        detalle: 'Sin módulos: el equipo de la Lista Blanca no coincide con el de monday.',
+      })
+      return sinAcceso()
+    }
+
+    const nuevaSesion = (mfa: boolean) =>
+      emitirSesion({ uid: usuarioId, pid: perfil.id, app: appId, mfa, mods: modulos })
 
     /* 3. ¿Ya entró hoy? */
     const tokenPrevio = req.headers.get('x-sesion-app')
     const previa = await verificarSesionApp(tokenPrevio, usuarioId, appId)
     if (previa && sesionAlcanza(previa, perfil)) {
-      return json(200, { estado: 'listo', perfil: publico(perfil), sesion: tokenPrevio })
+      /* La sesión de hoy puede haberse emitido antes de un cambio de equipo. Se conserva —es la
+         que prueba el autenticador— pero los módulos que valen son los de ahora. */
+      return json(200, {
+        estado: 'listo',
+        perfil: publico(perfil),
+        sesion: tokenPrevio,
+        modulos: previa.mods.filter((mod) => modulos.includes(mod)),
+      })
     }
 
     /* 4. Autenticador desactivado por el admin: entra sin código, y queda registrado. */
     if (perfil.autenticadorDesactivado) {
       await registrar('Ingreso sin autenticador', { ...base, detalle: 'Autenticador desactivado en la Lista Blanca.' })
-      return json(200, { estado: 'listo', perfil: publico(perfil), sesion: await nuevaSesion(false) })
+      return json(200, {
+        estado: 'listo',
+        perfil: publico(perfil),
+        sesion: await nuevaSesion(false),
+        modulos,
+      })
     }
 
     // El autenticador es del USUARIO de monday, no de la fila: la cuenta que comparten los
@@ -165,10 +192,10 @@ export default async function handler(req: Request): Promise<Response> {
         return await iniciar(perfil, usuarioId, autenticador)
 
       case 'confirmar':
-        return await confirmar(perfil, usuarioId, autenticador, pedido, base, nuevaSesion)
+        return await confirmar(perfil, usuarioId, autenticador, pedido, base, nuevaSesion, modulos)
 
       case 'verificar':
-        return await verificar(perfil, usuarioId, autenticador, pedido, base, nuevaSesion)
+        return await verificar(perfil, usuarioId, autenticador, pedido, base, nuevaSesion, modulos)
 
       default:
         return json(400, { estado: 'error' })
@@ -242,6 +269,7 @@ async function confirmar(
   pedido: Pedido,
   base: Base,
   nuevaSesion: EmitirSesion,
+  modulos: Modulo[],
 ): Promise<Response> {
   if (autenticador?.secretoCifrado) return json(409, { estado: 'verificar', perfil: publico(perfil) })
 
@@ -301,6 +329,7 @@ async function confirmar(
     perfil: publico(perfil),
     sesion: await nuevaSesion(true),
     codigosRecuperacion: codigos,
+    modulos,
   })
 }
 
@@ -315,6 +344,7 @@ async function verificar(
   pedido: Pedido,
   base: Base,
   nuevaSesion: EmitirSesion,
+  modulos: Modulo[],
 ): Promise<Response> {
   if (!autenticador?.secretoCifrado) return json(409, { estado: 'configurar', perfil: publico(perfil) })
 
@@ -344,6 +374,7 @@ async function verificar(
       perfil: publico(perfil),
       sesion: await nuevaSesion(true),
       recuperacionRestantes: restantes.length,
+      modulos,
     })
   }
 
@@ -364,7 +395,12 @@ async function verificar(
     intentos: [],
   })
   await registrar('Ingreso OK', base)
-  return json(200, { estado: 'listo', perfil: publico(perfil), sesion: await nuevaSesion(true) })
+  return json(200, {
+    estado: 'listo',
+    perfil: publico(perfil),
+    sesion: await nuevaSesion(true),
+    modulos,
+  })
 }
 
 /**

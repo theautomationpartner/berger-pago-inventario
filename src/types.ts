@@ -16,7 +16,10 @@
  * El primer nivel hoy tiene una sola opción, pero existe desde ya: es donde se van a sumar los
  * próximos tipos de operación sin tener que rearmar la pantalla de entrada.
  */
-export type OperacionPrincipal = 'despacho'
+export type OperacionPrincipal = 'despacho' | 'aduana'
+
+/** Operaciones dentro de "Despachante de Aduana". */
+export type OperacionAduana = 'actualizar' | 'dashboard'
 
 /** Las dos formas de despachar: con el circuito de pago previo, o a la vista (contra VL). */
 export type ModalidadDespacho = 'anticipado' | 'vista'
@@ -258,6 +261,65 @@ export type Etapa = 'seleccion' | 'transferencia' | 'listo'
  * le manda y se ve qué se le manda, antes de confirmar.
  */
 export type EtapaAvance = 'seleccion' | 'archivo' | 'despachante' | 'listo'
+
+/**
+ * Una OP del tablero del Despachante de aduana.
+ *
+ * Es el mismo item que crea el circuito de despacho, visto del otro lado: lo que a BERGER le
+ * importa es qué tractores lleva; al despachante, dónde está la carga.
+ */
+export interface DespachoOP {
+  id: string
+  /** Nombre del item: viene del pago que lo originó. */
+  nombre: string
+  /** ID legible que numera monday ("DESPACHO-003"). */
+  idDespacho: string
+  nroOp: string
+  estadoCarga: string
+  viaTransporte: string
+  nroDocTransporte: string
+  contenedorRef: string
+  /** ETA en ISO (`AAAA-MM-DD`), o `''`. */
+  eta: string
+  buque: string
+  observaciones: string
+  paisOrigen: string
+  proveedor: string
+  cantidadContenedores: number | null
+  /** Nombre del despachante asignado, o `''`. */
+  despachante: string
+  /** Última vez que se tocó el item, como lo devuelve monday. */
+  ultimaActualizacion: string
+}
+
+/** Los campos que el despachante puede editar de una OP. */
+export interface EdicionDespacho {
+  nroOp: string
+  viaTransporte: string
+  nroDocTransporte: string
+  contenedorRef: string
+  eta: string
+  buque: string
+  estadoCarga: string
+  observaciones: string
+}
+
+/** Un campo que cambió, con los dos valores. Es lo que se muestra en el resumen. */
+export interface CambioDespacho {
+  campo: keyof EdicionDespacho
+  rotulo: string
+  antes: string
+  despues: string
+}
+
+/** Resultado de guardar las ediciones de un lote de OP. */
+export interface ResultadoActualizacion {
+  actualizadas: string[]
+  advertencias: string[]
+}
+
+/** Etapa del asistente de "Actualizar Despacho OP". */
+export type EtapaAduana = 'seleccion' | 'edicion' | 'resumen' | 'listo'
 
 /** Etapa del asistente del despacho a la VISTA. */
 export type EtapaVista = 'seleccion' | 'despachante' | 'listo'

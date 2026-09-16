@@ -16,17 +16,26 @@ muestra dónde está parado el usuario y permite volver a cualquier nivel anteri
 de monday el "atrás" del navegador no sirve).
 
 ```
-Operaciones   →  Modalidad           →  Etapa
-────────────────────────────────────────────────────────────
-DESPACHO  →  PAGO ANTICIPADO        →  1. Cargar Transferencia
-                                       2. Aprobar Transferencia
-                                       3. Confirmar Pago - SWIFT
-          →  PAGO VISTA (Contra BL) →  paso único
+Operaciones              →  Operación                →  Paso
+────────────────────────────────────────────────────────────────────────
+DESPACHO                 →  PAGO ANTICIPADO          →  1. Cargar Transferencia
+                                                        2. Aprobar Transferencia
+                                                        3. Confirmar Pago - SWIFT
+                         →  PAGO VISTA (Contra BL)   →  1. Selección · 2. Despachante
+
+DESPACHANTE DE ADUANA    →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
+                                                        2. Novedades
+                                                        3. Resumen
+                         →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
 
-El primer panel —**Operaciones**— hoy tiene sólo DESPACHO, y existe igual a propósito: es donde se
-suman los próximos tipos de operación sin cambiar la pantalla de entrada. Las opciones de los dos
-paneles están descriptas como datos en [`src/lib/navegacion.ts`](src/lib/navegacion.ts).
+**Cada persona ve sólo lo suyo.** Las dos operaciones principales pertenecen a módulos distintos, y
+el primer panel muestra únicamente los que el servidor le habilitó a ese perfil: la gente que
+despacha ve DESPACHO, el despachante de aduana ve DESPACHANTE DE ADUANA, y Administración ve las
+dos. El detalle está en [Quién ve qué](#quién-ve-qué).
+
+Las opciones de los paneles están descriptas como datos en
+[`src/lib/navegacion.ts`](src/lib/navegacion.ts).
 
 ### Qué tractores se pueden despachar
 
@@ -320,6 +329,91 @@ relación.
 
 ---
 
+## DESPACHANTE DE ADUANA
+
+El otro lado del mismo circuito. Cuando una OP sale del despacho queda en el tablero
+👮**Despachante de aduana** (`18430575903`), y de ahí en adelante quien la mueve es el despachante:
+no toca tractores ni pagos, sólo informa dónde está la carga.
+
+### ACTUALIZAR DESPACHO OP
+
+Tres pasos, y cada uno existe por un motivo distinto.
+
+**Paso 1 · Selección.** Todas las OP del tablero, con dos formas de acotarlas que se combinan:
+
+- **Estado de carga** (`status`), como etiquetas del color del estado y con su **X** para quitarlas,
+  igual que el filtro de meses del otro módulo. Ninguna elegida es "todas". Cada una dice cuántas
+  OP tiene.
+- **Búsqueda** por nombre del item (`PAGOINV-019`), N° de OP del despachante (`text_mm78qbvc`), ID
+  del despacho (`DESPACHO-003`), buque, documento de transporte o contenedor de referencia. Son los
+  seis nombres con los que se habla de la misma carga según con quién se esté hablando.
+
+Cada fila muestra el nombre, el ID del despacho, el estado, el N° de OP —o **Sin N° de OP** en
+naranja, si todavía no se cargó—, el arribo, el país y los contenedores. Y se despliega: antes de
+marcar una OP se puede ver **cómo está hoy en monday**, campo por campo.
+
+**Paso 2 · Novedades.** Un formulario por OP, con los valores actuales ya cargados:
+
+| Campo | Columna |
+|-------|---------|
+| Estado de carga | `status` |
+| ETA | `date4` |
+| N° Op Despachante | `text_mm78qbvc` |
+| Vía de transporte | `dropdown_mm78f6fn` |
+| Buque | `text_mm77pw8d` |
+| Nro doc de transporte | `text_mm77wxd4` |
+| Contenedor de referencia | `text_mm772j1r` |
+| Observaciones de la carga | `long_text_mm78yvbx` |
+
+**Sólo viaja lo que se cambió.** Lo que no se toca no se manda, así que dos personas trabajando el
+mismo día no se pisan los datos que cargó la otra, aunque tengan la OP abierta al mismo tiempo. Cada
+campo modificado muestra al lado qué decía antes: el error más caro acá es sobreescribir un dato
+bueno por haber tipeado en la fila equivocada.
+
+Una OP seleccionada **sin ningún cambio** bloquea el paso, y se avisa con su nombre y un botón para
+sacarla de la selección. Guardarla igual escribiría una actualización vacía y la dejaría "tocada"
+sin novedades, que es peor que no haberla abierto.
+
+**Paso 3 · Resumen.** Campo por campo, `antes → después`, antes de escribir nada. No es un trámite:
+acá se editan varias OP de una vez, y una fila equivocada se nota mucho más leyendo
+"ETA: 12/10 → 12/11" que releyendo siete formularios.
+
+Al guardar, cada OP se escribe por separado: si la quinta falla, las cuatro anteriores ya quedaron
+bien y no hay nada que deshacer. Lo que falle se informa con nombre y apellido.
+
+### DASHBOARD DE DESPACHOS
+
+Está armado alrededor de dos preguntas, que son las que se hacen todos los días:
+
+**¿En qué estado está cada carga?** Una tarjeta por estado, en el orden del circuito —Nueva OP →
+Pendiente de Embarque → En Tránsito → Próxima a Arribar → Nacionalizado— y con el mismo color que
+esa etiqueta tiene en el resto de la app.
+
+**¿Qué hay que mirar hoy?** La segunda fila de tarjetas:
+
+| Tarjeta | Qué cuenta |
+|---------|------------|
+| Con ETA vencida | OP abiertas cuya fecha de arribo ya pasó |
+| Llegan esta semana | arribo dentro de 7 días |
+| Sin ETA cargada | OP en curso sin fecha de arribo |
+| Sin N° de OP | falta el número del despachante |
+| Sin novedades 7+ días | nadie las tocó en una semana (`pulse_updated_mm784qds`) |
+| Contenedores en curso | contenedores en OP todavía no nacionalizadas |
+
+Los tres cortes del medio no son estadística: son **trabajo pendiente del propio despachante**, y
+son los que hacen que el dashboard sirva para algo más que mirar. Abajo, las mismas OP listadas
+—próximos arribos, vencidas, dormidas, sin ETA— y el reparto por país de origen.
+
+Todo se calcula sobre las OP que ya están en pantalla, sin una consulta aparte: el número de arriba
+y la lista de abajo salen del mismo dato, así que no pueden contradecirse. Las cuentas están en
+[`src/lib/despachos.ts`](src/lib/despachos.ts) y se prueban solas.
+
+> **Sugerencias para más adelante:** promedio de días entre estados (cuánto tarda de verdad una
+> carga en salir), OP por despachante asignado, arribos por semana en las próximas cuatro, y
+> contenedores por país. Las cuatro salen de este mismo tablero, sin cargar un dato nuevo.
+
+---
+
 ## Correr en local
 
 ```bash
@@ -368,6 +462,7 @@ logueado tiene que tener una fila con:
 | 🤚ID Usuarios `text_mm72j4e6` | igual al ID de usuario de monday de quien entra |
 | 🤚Estado Usuario `status` | **Activo** |
 | 🤚ID APP Habilitadas `dropdown_mm72bgr3` | incluye el id de esta app (`SEGURIDAD_APP_ID`) |
+| 🤚Team `dropdown_mm72dj2g` | decide **qué módulos** ve (ver [Quién ve qué](#quién-ve-qué)) |
 
 La Lista Blanca se vuelve a leer **en cada pedido de datos**, no sólo al entrar: pasar a alguien a
 Inactivo o quitarle la app le corta el acceso en el acto, aunque tenga la sesión del día abierta.
@@ -380,6 +475,33 @@ primera habilitada.
 **Mensaje único.** Cualquier rechazo —no está en la lista, inactivo, sin la app, otra cuenta— se
 muestra igual: *"No tenés acceso a esta aplicación. Contactá al administrador."* Nunca revela si el
 usuario existe ni qué hay adentro. El motivo real queda en el Registro de Accesos.
+
+### Quién ve qué
+
+La Lista Blanca ya no decide sólo **si** entrás: decide **a qué**. La app tiene dos módulos y dos
+poblaciones que no se cruzan.
+
+| Quién | Condiciones | Módulos |
+|-------|-------------|---------|
+| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | Despacho + Aduana |
+| Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | sólo Aduana |
+| Fila sin equipo cargado | — | Despacho |
+
+Para el despachante son las **tres condiciones juntas**, como las pidió BERGER. Cada una la
+administra alguien distinto —la fila la carga BERGER, el equipo lo maneja monday—, así que exigir
+las tres significa que nadie habilita a un externo por su cuenta. Si falta cualquiera, no entra: no
+es que vea menos, es que no tiene ningún módulo y el rechazo es el mismo cartel genérico de siempre.
+
+**El control está en el servidor, no en la pantalla.** Cada operación del catálogo declara su
+módulo, y `/api/monday` comprueba en cada pedido que el perfil lo tenga. Un despachante que pida
+los pagos del inventario se choca con eso aunque su pantalla no ofrezca el botón: esconder un botón
+no impide pedir el dato.
+
+**Cuándo vale cada cambio.** Los módulos se calculan al ingresar —es el único momento en que se
+consulta el equipo de monday— y viajan firmados dentro de la sesión del día. En cada pedido se
+vuelven a filtrar contra la Lista Blanca en vivo: cambiarle el tipo o el equipo **en el tablero**
+corta el módulo en el acto; sacar a alguien del **equipo de monday** recién se nota en su próximo
+ingreso, que como mucho es al día siguiente.
 
 ### Autenticador (TOTP)
 
@@ -453,9 +575,13 @@ cliente: `change_multiple_column_values` con variables libres escribe en cualqui
 cuenta aunque la mutation esté fija. Por eso cada operación las valida:
 
 - Los **ids de tablero de lectura los pone el servidor**; el que mande el cliente se descarta.
-- En las **escrituras**, el tablero tiene que ser el de Inventario o el de Pagos, y **cada columna
-  tocada tiene que estar en la lista de escribibles de ese tablero**. La app puede mover el Estado
-  Pago de un tractor; no puede tocarle el precio de venta.
+- En las **escrituras**, el tablero tiene que ser uno de los del circuito y **cada columna tocada
+  tiene que estar en la lista de escribibles de ese tablero**. La app puede mover el Estado Pago de
+  un tractor; no puede tocarle el precio de venta.
+- El despachante tiene su **propia lista**, más chica: las ocho columnas que carga él. Al crear un
+  despacho la app completa la conexión al pago, el proveedor y el importador, y ninguna de esas se
+  puede cambiar después desde el módulo de Aduana.
+- Cada operación pertenece a un **módulo**, y el perfil tiene que tenerlo habilitado.
 - Los **archivos** sólo entran en las tres columnas de comprobante del circuito, con un tope de
   20 MB.
 - Ids, tamaños de página e índices de estado se validan de forma y de rango.
@@ -535,6 +661,7 @@ api/                          Funciones serverless del deploy (Vercel, runtime e
     porton.ts                 Las tres comprobaciones de cada pedido de datos
     acceso.ts                 Reglas de la Lista Blanca y de la sesión
     listaBlanca.ts            Lectura de la Lista Blanca
+    modulos.ts                Qué módulos ve cada perfil (Lista Blanca + equipo)
     autenticador.ts           Estado del TOTP y códigos de recuperación
     sesionApp.ts              Sesión del día firmada
     registro.ts               Registro de Accesos
@@ -555,6 +682,13 @@ src/
       Paso1Seleccion.tsx        Selección con filtro de meses
       FlujoAvancePago.tsx       Etapas 2 y 3 (mismo flujo, distinta configuración)
       DetallePago.tsx           Ficha de un pago con sus tractores
+    aduana/
+      ActualizarDespachos.tsx   Actualizar Despacho OP (tres pasos)
+      DashboardDespachos.tsx    Dashboard de Despachos
+      EditorOP.tsx              Formulario de una OP
+      FichaOP.tsx               Los datos actuales de una OP
+      EtiquetasOP.tsx           ID, estado, N° de OP, ETA, país
+      useDespachos.ts           Carga de las OP del tablero
     despachante/
       PasoDespachante.tsx       Elegir despachante y ver qué se le manda
       useDespachantes.ts        La gente del equipo Despachantes
@@ -576,6 +710,7 @@ src/
     meses.ts                  Meses del filtro (12 atrás y 12 adelante)
     contenedores.ts           Armado de contenedores y reporte para el proveedor
     puertos.ts                Puerto de carga → país de origen, y el texto del origen
+    despachos.ts              Cambios de una OP, filtros y cuentas del dashboard
     chips.ts                  Color de cada etiqueta
     format.ts                 Números y fechas
   services/monday/            Todo lo que habla con monday
@@ -587,12 +722,13 @@ src/
     contenedores.ts           Combinaciones del tablero de Contenedores
     catalogo.ts               Puerto de carga de cada modelo
     despachantes.ts           El equipo Despachantes de monday
+    despachos.ts              Lectura y actualización de las OP de aduana
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
     crearPedidoVista.ts       Pedido a la vista: item, subitems y estados
     avanzarPago.ts            Etapas 2 y 3: comprobante, estados, fechas y aviso
     despachante.ts            Alta del despacho en el Despachante de aduana
-  styles/                     base · layout · components · pago
+  styles/                     base · layout · components · pago · aduana · ingreso
 ```
 
 ### Celular

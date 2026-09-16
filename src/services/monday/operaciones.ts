@@ -29,6 +29,18 @@ import {
   TEAM_DESPACHANTES,
 } from './columns'
 
+/**
+ * Los módulos de la app: dos poblaciones distintas, con permisos distintos.
+ *
+ * `despacho` es el circuito de BERGER —elegir tractores, pagar, despachar—. `aduana` es lo que
+ * hace el despachante externo: actualizar el estado de las OP que ya existen.
+ *
+ * Cada operación declara el suyo y el servidor comprueba, en cada pedido, que el perfil lo tenga
+ * habilitado. Es lo que impide que un despachante pida los pagos del inventario aunque la pantalla
+ * no se los muestre.
+ */
+export type ModuloApp = 'despacho' | 'aduana'
+
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
   | 'contenedores'
@@ -44,6 +56,9 @@ export type NombreOperacion =
   | 'crearItemDeDespachante'
   | 'crearSubitemDeDespachante'
   | 'actualizarColumnas'
+  | 'despachosDeAduana'
+  | 'despachosPaginaSiguiente'
+  | 'actualizarDespacho'
 
 export type Variables = Record<string, unknown>
 
@@ -51,6 +66,8 @@ export type Variables = Record<string, unknown>
 export class OperacionInvalida extends Error {}
 
 interface Operacion {
+  /** A qué módulo pertenece. Sin él, cualquier perfil podría pedir cualquier cosa del catálogo. */
+  modulo: ModuloApp
   query: string
   /**
    * Comprueba y normaliza las variables. Puede devolver otras: cuando un valor lo decide el
@@ -106,6 +123,25 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_DESPACHANTE_SUB.inventario,
   ]),
 }
+
+/**
+ * Las ÚNICAS columnas que el despachante puede escribir.
+ *
+ * Es una lista aparte de la que se usa al crear el despacho a propósito: al crearlo, la app
+ * completa la conexión al pago, el proveedor y el importador, y ninguna de esas tiene por qué
+ * poder cambiarse después desde afuera. Acá está sólo lo que el despachante carga a medida que la
+ * mercadería avanza.
+ */
+const COLUMNAS_DEL_DESPACHANTE = new Set<string>([
+  COL_DESPACHANTE.nroOp,
+  COL_DESPACHANTE.viaTransporte,
+  COL_DESPACHANTE.nroDocTransporte,
+  COL_DESPACHANTE.contenedorRef,
+  COL_DESPACHANTE.eta,
+  COL_DESPACHANTE.buque,
+  COL_DESPACHANTE.estadoCarga,
+  COL_DESPACHANTE.observaciones,
+])
 
 /** Columnas de archivo que se pueden completar, y en qué etapa. */
 export const COLUMNAS_ARCHIVO = new Set<string>([
@@ -167,6 +203,33 @@ function valoresDeColumnas(valor: unknown, tablero: string): string {
   return JSON.stringify(objeto)
 }
 
+/**
+ * Valida lo que escribe el despachante: sólo sus columnas, y sólo en su tablero.
+ *
+ * Es la misma idea que `valoresDeColumnas`, con una lista distinta. Sin esto, el módulo de aduana
+ * —que usan externos— podría escribir la conexión al pago o el importador del despacho.
+ */
+function valoresDelDespachante(valor: unknown): string {
+  let objeto: unknown
+  try {
+    objeto = JSON.parse(String(valor ?? ''))
+  } catch {
+    throw new OperacionInvalida('"column_values" no es JSON válido.')
+  }
+  if (!objeto || typeof objeto !== 'object' || Array.isArray(objeto)) {
+    throw new OperacionInvalida('"column_values" tiene que ser un objeto.')
+  }
+
+  const claves = Object.keys(objeto as Record<string, unknown>)
+  if (claves.length === 0) throw new OperacionInvalida('"column_values" está vacío.')
+  for (const clave of claves) {
+    if (!COLUMNAS_DEL_DESPACHANTE.has(clave)) {
+      throw new OperacionInvalida(`La columna "${clave}" no la puede editar el despachante.`)
+    }
+  }
+  return JSON.stringify(objeto)
+}
+
 /** Nombre del item o subitem. Se acota el largo para no reenviar cualquier cosa. */
 function nombre(valor: unknown): string {
   const texto = String(valor ?? '').trim()
@@ -218,6 +281,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * con cada tractor que marca, sin un viaje a monday por cada clic.
    */
   contenedores: {
+    modulo: 'despacho',
     query: `
       query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
         boards(ids: [$tablero]) {
@@ -241,6 +305,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * con sesión podría listar los integrantes —con su mail— de cualquier equipo de la cuenta.
    */
   despachantes: {
+    modulo: 'despacho',
     query: `
       query ($equipo: [ID!]) {
         teams(ids: $equipo) {
@@ -260,6 +325,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * está fija en el texto: es la única del Catálogo que la app mira.
    */
   puertosDeCatalogo: {
+    modulo: 'despacho',
     query: `
       query ($ids: [ID!]!) {
         items(ids: $ids) {
@@ -285,6 +351,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * mostrar igual.
    */
   inventarioPorEstadoPago: {
+    modulo: 'despacho',
     query: `
       query ($tablero: ID!, $columnas: [String!], $estado: CompareValue!, $limite: Int!) {
         boards(ids: [$tablero]) {
@@ -316,6 +383,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * lista vacía sin dar error.
    */
   inventarioPorFormaDePago: {
+    modulo: 'despacho',
     query: `
       query ($tablero: ID!, $columnas: [String!], $forma: CompareValue!, $limite: Int!) {
         boards(ids: [$tablero]) {
@@ -344,6 +412,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * grabado en el cursor de la primera página—, así que la paginación tiene su propia consulta.
    */
   inventarioPaginaSiguiente: {
+    modulo: 'despacho',
     query: `
       query ($cursor: String!, $columnas: [String!], $limite: Int!) {
         next_items_page(cursor: $cursor, limit: $limite) {
@@ -361,6 +430,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
 
   /** Pagos pendientes de una operación, con sus subitems. */
   pagosPendientes: {
+    modulo: 'despacho',
     query: `
       query ($tablero: ID!, $operacion: CompareValue!, $cols: [String!], $colsSub: [String!], $limite: Int!) {
         boards(ids: [$tablero]) {
@@ -402,6 +472,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * otro tablero vuelven vacías, así que no hay nada que sacar por acá.
    */
   datosDeTractores: {
+    modulo: 'despacho',
     query: `
       query ($ids: [ID!]!) {
         items(ids: $ids) {
@@ -423,6 +494,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
 
   /** Item del pago. Sólo en el tablero de Pagos del Inventario. */
   crearPago: {
+    modulo: 'despacho',
     query: `
       mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
         create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
@@ -437,6 +509,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
 
   /** Un subitem por tractor, colgando del item de pago. */
   crearSubitemDePago: {
+    modulo: 'despacho',
     query: `
       mutation ($padre: ID!, $nombre: String!, $valores: JSON!) {
         create_subitem(parent_item_id: $padre, item_name: $nombre, column_values: $valores) { id }
@@ -451,6 +524,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
 
   /** Item del despacho en el tablero del Despachante de aduana. */
   crearItemDeDespachante: {
+    modulo: 'despacho',
     query: `
       mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
         create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
@@ -465,6 +539,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
 
   /** Un subitem por tractor, colgando del item del despacho. */
   crearSubitemDeDespachante: {
+    modulo: 'despacho',
     query: `
       mutation ($padre: ID!, $nombre: String!, $valores: JSON!) {
         create_subitem(parent_item_id: $padre, item_name: $nombre, column_values: $valores) { id }
@@ -485,6 +560,7 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    * estar en la lista de escribibles DE ESE tablero.
    */
   actualizarColumnas: {
+    modulo: 'despacho',
     query: `
       mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
         change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
@@ -501,6 +577,74 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
         valores: valoresDeColumnas(v.valores, tablero),
       }
     },
+  },
+
+  /* ------------------------------------------------------------------ *
+   * Módulo de aduana: lo que usa el despachante
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Las OP del tablero del Despachante de aduana.
+   *
+   * Vienen TODAS y el filtro por estado lo hace la pantalla: son pocas —una por despacho— y así
+   * cambiar de estado o buscar por número es instantáneo, sin un viaje a monday por cada tecla.
+   */
+  despachosDeAduana: {
+    modulo: 'aduana',
+    query: `
+      query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(limit: $limite) {
+            cursor
+            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.despachante,
+      columnas: idsDeColumnas(v.columnas),
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /** Páginas siguientes de las OP. Mismo motivo que en el Inventario: el cursor va solo. */
+  despachosPaginaSiguiente: {
+    modulo: 'aduana',
+    query: `
+      query ($cursor: String!, $columnas: [String!], $limite: Int!) {
+        next_items_page(cursor: $cursor, limit: $limite) {
+          cursor
+          items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+        }
+      }
+    `,
+    validar: (v) => {
+      const cursor = String(v.cursor ?? '')
+      if (!cursor || cursor.length > 4096) throw new OperacionInvalida('Cursor inválido.')
+      return { cursor, columnas: idsDeColumnas(v.columnas), limite: entero(v.limite, 'limite', 1, 500) }
+    },
+  },
+
+  /**
+   * La actualización que hace el despachante sobre una OP.
+   *
+   * Tiene su propia operación y no reusa `actualizarColumnas` por dos motivos, y los dos son de
+   * permisos: el tablero lo fija el servidor —no puede escribir en ningún otro— y las columnas
+   * salen de la lista del despachante, que es más chica que la que usa la app al crear el despacho.
+   */
+  actualizarDespacho: {
+    modulo: 'aduana',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.despachante,
+      item: idMonday(v.item, 'item'),
+      valores: valoresDelDespachante(v.valores),
+    }),
   },
 }
 

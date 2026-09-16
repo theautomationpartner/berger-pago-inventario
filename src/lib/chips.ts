@@ -75,6 +75,49 @@ export function tonoOperacionPend(operacion: string): Tono {
 }
 
 /**
+ * Estado de carga de una OP en el Despachante de aduana.
+ *
+ * Sigue el mismo criterio que el resto: el color avanza con la carga, de lo recién empezado a lo
+ * cerrado. Así el dashboard se lee sin leer: una pared de verde es un mes tranquilo, una de ámbar
+ * es un mes con todo por salir.
+ */
+export function tonoEstadoCarga(estado: string): Tono {
+  switch (estado) {
+    case 'Nacionalizado':
+      return 'chip--verde'
+    case 'Próxima a Arribar':
+      return 'chip--teal'
+    case 'En Transito':
+      return 'chip--azul'
+    case 'Pendiente de Embarque':
+      return 'chip--ambar'
+    case 'Nueva OP':
+      return 'chip--violeta'
+    /* Una OP sin estado no es un caso más: alguien la vació a mano en el tablero, y sin estado no
+       entra en ningún filtro ni en ningún widget. */
+    case '':
+      return 'chip--rojo'
+    default:
+      return 'chip--indigo'
+  }
+}
+
+/**
+ * Cercanía de la fecha de arribo.
+ *
+ * Es la otra lectura de un tablero de despachos: no importa sólo en qué estado está cada OP, sino
+ * cuál llega primero. Vencida va en rojo porque es lo único que está mal —la fecha pasó y la OP
+ * sigue abierta—; lo que llega esta semana en naranja, y lo lejano en azul.
+ */
+export function tonoEta(dias: number | null): Tono {
+  if (dias == null) return 'chip--violeta'
+  if (dias < 0) return 'chip--rojo'
+  if (dias <= 7) return 'chip--naranja'
+  if (dias <= 21) return 'chip--ambar'
+  return 'chip--azul'
+}
+
+/**
  * Estado Rodado del tractor.
  *
  * "Sin Rodado" va en naranja y no en rojo: no es un error del dato, es una condición del tractor

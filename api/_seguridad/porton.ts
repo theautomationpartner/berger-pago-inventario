@@ -15,6 +15,7 @@
 import { MalConfigurado, NoAutorizado, verificarSesion } from '../_guard'
 import { AccesoDenegado, exigirSesionApp, SesionRequerida } from './acceso'
 import { ErrorDeConfiguracion } from './cripto'
+import type { Modulo } from './modulos'
 import { ipDe, registrar } from './registro'
 
 /**
@@ -30,8 +31,19 @@ const error = (status: number, message: string, codigo?: string): Response =>
 /** Mensaje único para cualquier rechazo de acceso: no dice por qué. */
 const SIN_ACCESO = 'No tenés acceso a esta aplicación. Contactá al administrador.'
 
-/** Devuelve `null` si el pedido puede seguir, o la respuesta de rechazo. */
-export async function porton(req: Request): Promise<Response | null> {
+/** Lo que el portón deja pasar: quién es y qué módulos tiene habilitados hoy. */
+export interface Paso {
+  rechazo?: undefined
+  modulos: Modulo[]
+}
+
+/** Rechazo: el pedido no sigue y esta es la respuesta que se devuelve tal cual. */
+export interface Rechazo {
+  rechazo: Response
+}
+
+/** Deja pasar con los módulos del perfil, o devuelve la respuesta de rechazo. */
+export async function porton(req: Request): Promise<Paso | Rechazo> {
   const ip = ipDe(req)
 
   let sesionMonday
@@ -40,7 +52,7 @@ export async function porton(req: Request): Promise<Response | null> {
   } catch (e) {
     if (e instanceof MalConfigurado) {
       console.error('[porton] configuración:', e.message)
-      return error(500, 'No se pudo verificar el acceso.')
+      return { rechazo: error(500, 'No se pudo verificar el acceso.') }
     }
     const rechazo = e instanceof NoAutorizado ? e : null
     await registrar('Acceso denegado', {
@@ -49,18 +61,18 @@ export async function porton(req: Request): Promise<Response | null> {
       ip,
       detalle: `Proxy de datos: ${rechazo?.message ?? 'token de sesión de monday inválido.'}`,
     })
-    return error(401, SIN_ACCESO, 'SIN_ACCESO')
+    return { rechazo: error(401, SIN_ACCESO, 'SIN_ACCESO') }
   }
 
   try {
-    await exigirSesionApp(req, sesionMonday, ip)
-    return null
+    const { modulos } = await exigirSesionApp(req, sesionMonday, ip)
+    return { modulos }
   } catch (e) {
     if (e instanceof SesionRequerida) {
-      return error(403, 'Tu sesión venció. Volvé a ingresar el código.', 'SESION_REQUERIDA')
+      return { rechazo: error(403, 'Tu sesión venció. Volvé a ingresar el código.', 'SESION_REQUERIDA') }
     }
-    if (e instanceof AccesoDenegado) return error(403, SIN_ACCESO, 'SIN_ACCESO')
+    if (e instanceof AccesoDenegado) return { rechazo: error(403, SIN_ACCESO, 'SIN_ACCESO') }
     console.error('[porton]', e instanceof ErrorDeConfiguracion ? e.message : e)
-    return error(500, 'No se pudo verificar el acceso.')
+    return { rechazo: error(500, 'No se pudo verificar el acceso.') }
   }
 }

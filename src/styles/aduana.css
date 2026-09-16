@@ -1,0 +1,318 @@
+/* ==================================================================== *
+ * Módulo de Aduana: actualizar OP y dashboard de despachos
+ *
+ * Mismo lenguaje visual que el resto de la app —recuadros claros sobre blanco, etiquetas de
+ * color— con dos piezas propias: la fila de OP, que tiene que mostrar muchas etiquetas sin
+ * romperse en un celular, y las tarjetas del dashboard.
+ * ==================================================================== */
+
+/* ===== Filtros de la selección de OP ===== */
+.filtros-fila {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.campo--busqueda {
+  flex: 1 1 260px;
+}
+.filtros-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+/* Una etiqueta que además se puede apretar. Hereda el color del estado que representa: el filtro
+   y la fila filtrada se ven del mismo color, que es lo que hace obvio qué se está mirando. */
+.chip--boton {
+  cursor: pointer;
+  border-style: solid;
+  gap: 6px;
+}
+.chip--boton:hover {
+  filter: brightness(0.97);
+}
+.chip--activo {
+  box-shadow: 0 0 0 2px rgba(16, 24, 40, 0.16);
+  font-weight: 800;
+}
+
+/* ===== Fila de una OP ===== */
+.opfila {
+  border-bottom: 1px solid #f0f1f5;
+  background: #fff;
+}
+.opfila:last-child {
+  border-bottom: none;
+}
+.opfila--sel {
+  background: #f2f8ff;
+}
+.opfila-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+}
+.opfila-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.trow-check--sel {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+.opfila-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opfila-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.opfila-ver {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.opfila-cuerpo {
+  padding: 0 14px 12px;
+}
+
+/* ===== Editor de una OP ===== */
+.op-editores {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.op-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.op-editor-nom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.op-editor-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+/* Una OP todavía sin novedades: el borde ámbar la distingue sin necesidad de contar tarjetas,
+   porque es la que impide continuar. */
+.op-editor--pendiente {
+  border-color: #fdd2b5;
+  box-shadow: 0 0 0 1px #fdd2b5 inset;
+}
+.op-editor-cuerpo {
+  padding: 12px 14px 14px;
+}
+.datos--form {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.textarea {
+  height: auto;
+  min-height: 78px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.campo-ayuda--cambio {
+  color: var(--primary-blue);
+  font-weight: 600;
+}
+.op-editor-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.aviso-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ===== Resumen de cambios ===== */
+.cambios {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cambio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--text-mid);
+}
+.cambio i {
+  color: var(--text-gray);
+  font-size: 11px;
+}
+.cambio-campo {
+  font-weight: 700;
+  color: var(--text-dark);
+  min-width: 150px;
+}
+/* Lo que se va: tachado y en tinta apagada. Lo que queda: verde, que en toda la app significa
+   "esto es lo que vale ahora". */
+.cambio-antes {
+  text-decoration: line-through;
+  color: var(--text-gray);
+}
+.cambio-despues {
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+/* ===== Dashboard ===== */
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+  gap: 10px;
+}
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: var(--radio);
+  min-width: 0;
+}
+.tarjeta-ic {
+  font-size: 13px;
+  opacity: 0.85;
+}
+.tarjeta-val {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.tarjeta-rot {
+  font-size: 12px;
+  font-weight: 700;
+}
+.tarjeta-det {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* Los mismos colores que las etiquetas, para que un estado se vea igual en la tarjeta y en la
+   fila. Se derivan del nombre del tono, así que agregar un tono nuevo es agregarlo en los dos
+   lados o no agregarlo en ninguno. */
+.tarjeta--verde {
+  background: #eef9f2;
+  border-color: #bfe6cf;
+  color: var(--green-dark);
+}
+.tarjeta--azul {
+  background: #eef5ff;
+  border-color: #bcd6f5;
+  color: #1256a8;
+}
+.tarjeta--ambar {
+  background: #fff8e6;
+  border-color: #ffe08a;
+  color: #8a5a00;
+}
+.tarjeta--rojo {
+  background: #fdecec;
+  border-color: #f6c6c8;
+  color: var(--berger-red-dark);
+}
+.tarjeta--violeta {
+  background: #f6f0fd;
+  border-color: #ddc8f5;
+  color: #6b21a8;
+}
+.tarjeta--teal {
+  background: #e8f8f7;
+  border-color: #b3e5e1;
+  color: #0f766e;
+}
+.tarjeta--indigo {
+  background: #eef0fe;
+  border-color: #c7cdfa;
+  color: #3730a3;
+}
+.tarjeta--magenta {
+  background: #fdeef6;
+  border-color: #f5c2dd;
+  color: #9d174d;
+}
+.tarjeta--lima {
+  background: #f3fbe6;
+  border-color: #d3ecae;
+  color: #4d7c0f;
+}
+.tarjeta--naranja {
+  background: #fff3eb;
+  border-color: #fdd2b5;
+  color: #c2410c;
+}
+
+.paises {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 14px;
+}
+.tablas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* En el panel angosto de monday y en el celular, las listas van una debajo de la otra y la fila
+   de la OP deja de pelear por el ancho: el botón de ver datos pasa abajo. */
+@container (max-width: 560px) {
+  .tablas {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .tablas {
+    grid-template-columns: 1fr;
+  }
+  .opfila-ver {
+    margin-left: 0;
+  }
+  .cambio-campo {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .tarjeta-val {
+    font-size: 22px;
+  }
+}

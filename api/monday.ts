@@ -42,9 +42,9 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return error(405, 'Método no permitido.')
 
   // Portón: sesión de monday, sesión del día y Lista Blanca, ANTES de leer el cuerpo o de tocar el
-  // token de la API.
-  const rechazo = await porton(req)
-  if (rechazo) return rechazo
+  // token de la API. Devuelve además los módulos habilitados de quien pregunta.
+  const paso = await porton(req)
+  if (paso.rechazo) return paso.rechazo
 
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')
@@ -62,6 +62,12 @@ export default async function handler(req: Request): Promise<Response> {
   let variables: Record<string, unknown>
   try {
     const operacion = resolverOperacion(pedido.operacion)
+    /* Y acá está el segundo candado, el que separa a las dos poblaciones: la operación existe,
+       pero tiene que pertenecer a un módulo que este perfil tenga habilitado. Un despachante que
+       pida los pagos del inventario se choca con esto, aunque su pantalla no ofrezca el botón. */
+    if (!paso.modulos.includes(operacion.modulo)) {
+      return error(403, 'No tenés acceso a esta aplicación. Contactá al administrador.')
+    }
     query = operacion.query
     variables = operacion.validar((pedido.variables ?? {}) as Record<string, unknown>)
   } catch (e: unknown) {

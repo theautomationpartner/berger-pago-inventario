@@ -10,6 +10,7 @@
 import type { SesionMonday } from '../_guard'
 import { configSeguridad, ETIQUETA } from './config'
 import { habilitadoParaApp, leerPerfil, perfilesDeUsuario, type Perfil } from './listaBlanca'
+import { modulosSegunLaLista, type Modulo } from './modulos'
 import { registrar } from './registro'
 import { verificarSesionApp, type SesionApp } from './sesionApp'
 
@@ -73,7 +74,7 @@ export async function exigirSesionApp(
   req: Request,
   sesionMonday: SesionMonday,
   ip: string,
-): Promise<Perfil> {
+): Promise<{ perfil: Perfil; modulos: Modulo[] }> {
   const { appId } = configSeguridad()
   const usuarioId = String(sesionMonday.userId)
 
@@ -94,5 +95,23 @@ export async function exigirSesionApp(
   }
 
   if (!sesionAlcanza(sesion, perfil)) throw new SesionRequerida('El perfil ahora exige el autenticador.')
-  return perfil
+
+  /* Los módulos vigentes son los que la sesión trae Y la Lista Blanca sigue habilitando. La sesión
+     ya comprobó el equipo de monday al ingresar; la lista se relee en vivo, así que cambiarle el
+     tipo o el equipo a alguien le corta el módulo en el acto, sin esperar a mañana. */
+  const deLaLista = modulosSegunLaLista(perfil)
+  const modulos = sesion.mods.filter((mod) => deLaLista.includes(mod))
+  if (modulos.length === 0) {
+    await registrar('Acceso denegado', {
+      usuarioId,
+      perfil: perfil.nombre,
+      email: perfil.email,
+      cuentaId: sesionMonday.accountId,
+      ip,
+      detalle: 'La sesión ya no tiene ningún módulo habilitado.',
+    })
+    throw new AccesoDenegado('Sin módulos habilitados.')
+  }
+
+  return { perfil, modulos }
 }

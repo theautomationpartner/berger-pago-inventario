@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { ModuloApp } from '@/services/monday/operaciones'
 import type {
   ClienteIngreso,
   PedidoIngreso,
@@ -25,9 +26,9 @@ export type PasoIngreso =
       secreto: string
       puedeImportar: boolean
     }
-  | { tipo: 'codigos'; perfil: PerfilIngreso; codigos: string[] }
+  | { tipo: 'codigos'; perfil: PerfilIngreso; codigos: string[]; modulos: ModuloApp[] }
   | { tipo: 'verificar'; perfil: PerfilIngreso }
-  | { tipo: 'listo'; perfil: PerfilIngreso }
+  | { tipo: 'listo'; perfil: PerfilIngreso; modulos: ModuloApp[] }
 
 const MENSAJE_BLOQUEADO = 'Demasiados intentos. Esperá 15 minutos y volvé a probar.'
 const MENSAJE_ERROR = 'No se pudo verificar el código. Probá de nuevo en unos minutos.'
@@ -95,8 +96,13 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
           // Recién configurado: antes de entrar, los códigos de recuperación. Se muestran UNA vez.
           setPaso(
             r.codigosRecuperacion?.length
-              ? { tipo: 'codigos', perfil: r.perfil, codigos: r.codigosRecuperacion }
-              : { tipo: 'listo', perfil: r.perfil },
+              ? {
+                  tipo: 'codigos',
+                  perfil: r.perfil,
+                  codigos: r.codigosRecuperacion,
+                  modulos: r.modulos ?? [],
+                }
+              : { tipo: 'listo', perfil: r.perfil, modulos: r.modulos ?? [] },
           )
           return
         case 'codigo_incorrecto':
@@ -172,7 +178,11 @@ export function useIngreso(cliente: ClienteIngreso, usuarioId: string | null) {
 
     /** Después de guardar los códigos de recuperación. */
     entrar: () =>
-      setPaso((actual) => (actual.tipo === 'codigos' ? { tipo: 'listo', perfil: actual.perfil } : actual)),
+      setPaso((actual) =>
+        actual.tipo === 'codigos'
+          ? { tipo: 'listo', perfil: actual.perfil, modulos: actual.modulos }
+          : actual,
+      ),
 
     /**
      * Cierra la sesión del día en este navegador y vuelve al principio. Con perfiles compartidos

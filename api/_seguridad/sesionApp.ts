@@ -16,6 +16,7 @@
  */
 import { aBase64Url, claveDerivada, desdeBase64Url, hmacSha256, igualesSeguro } from './cripto'
 import { ZONA_HORARIA } from './config'
+import { esModulo, type Modulo } from './modulos'
 
 export interface SesionApp {
   v: 1
@@ -28,6 +29,15 @@ export interface SesionApp {
   dia: string
   /** Si el perfil pasó por el autenticador. `false` sólo cuando el admin lo tiene desactivado. */
   mfa: boolean
+  /**
+   * Módulos habilitados al ingresar, ya con el equipo de monday comprobado.
+   *
+   * Viajan en la sesión porque comprobar el equipo cuesta una consulta a monday, y hacerla en cada
+   * pedido de datos sería pagarla cien veces por día. Lo que la Lista Blanca puede quitar —el tipo
+   * de usuario, el equipo de la fila— se vuelve a mirar en cada pedido; sacar a alguien del equipo
+   * de monday, en cambio, recién se nota en su próximo ingreso.
+   */
+  mods: Modulo[]
   /** Momento de emisión, en segundos. */
   iat: number
 }
@@ -88,5 +98,8 @@ export async function verificarSesionApp(
   if (sesion.dia !== hoyArgentina()) return null
   if (sesion.uid !== usuarioId) return null
   if (sesion.app !== appId) return null
+  // Una sesión emitida antes de que existieran los módulos no tiene ninguno: se trata como la de
+  // alguien sin acceso, y el ingreso vuelve a emitirla completa.
+  sesion.mods = Array.isArray(sesion.mods) ? sesion.mods.filter(esModulo) : []
   return sesion
 }

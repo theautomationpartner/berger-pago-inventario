@@ -1,3 +1,4 @@
+import type { ModuloApp } from '@/services/monday/operaciones'
 import type { ReactNode } from 'react'
 import { PantallaSinAcceso } from '@/components/ui/PantallaSinAcceso'
 import type { ClienteIngreso, PerfilIngreso } from '@/services/acceso/cliente'
@@ -9,6 +10,8 @@ import { VerificarCodigo } from './VerificarCodigo'
 
 export interface SesionIngreso {
   perfil: PerfilIngreso
+  /** Módulos de la app que este perfil tiene habilitados, según el servidor. */
+  modulos: ModuloApp[]
   salir: () => void
   /** Si entró con un código de recuperación, cuántos le quedan. `null` si no. */
   recuperacionRestantes: number | null
@@ -85,6 +88,7 @@ export function Ingreso({ cliente, usuarioId, children }: Props) {
         <>
           {children({
             perfil: paso.perfil,
+            modulos: paso.modulos,
             salir: ingreso.salir,
             recuperacionRestantes: ingreso.recuperacionRestantes,
           })}

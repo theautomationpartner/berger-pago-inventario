@@ -1,19 +1,61 @@
-import type { ModalidadDespacho, OpcionPanel, OperacionPrincipal } from '@/types'
+import type { ModuloApp } from '@/services/monday/operaciones'
+import type {
+  ModalidadDespacho,
+  OpcionPanel,
+  OperacionAduana,
+  OperacionPrincipal,
+} from '@/types'
 
 /**
  * Operaciones principales: el primer panel de la app.
  *
- * Hoy es una sola, y el panel existe igual a propósito. Es el lugar donde se van a sumar los
- * próximos tipos de operación: si la app arrancara directo en Despacho, el día que llegue la
- * segunda habría que cambiar la pantalla de entrada que todos ya aprendieron.
+ * Cada una pertenece a un módulo, y cada persona ve sólo las de los módulos que tiene habilitados:
+ * la gente de BERGER despacha, el despachante de aduana actualiza las OP. Esconderlas es sólo
+ * comodidad —el permiso lo aplica el servidor en cada pedido—, pero ofrecerle a alguien una
+ * pantalla que va a rebotar es peor que no ofrecérsela.
  */
-export const OPERACIONES_PRINCIPALES: OpcionPanel<OperacionPrincipal>[] = [
+export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modulo: ModuloApp })[] = [
   {
     id: 'despacho',
+    modulo: 'despacho',
     titulo: 'DESPACHO',
     corto: 'Despacho',
     detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
     icono: 'fa-solid fa-truck-ramp-box',
+  },
+  {
+    id: 'aduana',
+    modulo: 'aduana',
+    titulo: 'DESPACHANTE DE ADUANA',
+    corto: 'Despachante de aduana',
+    detalle:
+      'Seguimiento de las OP ya despachadas: estado de la carga, arribos y datos del transporte.',
+    icono: 'fa-solid fa-passport',
+  },
+]
+
+/** Las operaciones principales que puede ver este perfil. */
+export const principalesDeModulos = (
+  modulos: ModuloApp[],
+): OpcionPanel<OperacionPrincipal>[] =>
+  OPERACIONES_PRINCIPALES.filter((o) => modulos.includes(o.modulo))
+
+/** Operaciones dentro de DESPACHANTE DE ADUANA: el segundo panel del módulo de aduana. */
+export const OPERACIONES_ADUANA: OpcionPanel<OperacionAduana>[] = [
+  {
+    id: 'actualizar',
+    titulo: 'ACTUALIZAR DESPACHO OP',
+    corto: 'Actualizar OP',
+    detalle:
+      'Cargar las novedades de una o varias OP: estado de la carga, ETA, buque y documentación.',
+    icono: 'fa-solid fa-pen-to-square',
+  },
+  {
+    id: 'dashboard',
+    titulo: 'DASHBOARD DE DESPACHOS',
+    corto: 'Dashboard',
+    detalle: 'Cuántas OP hay en cada estado, qué arriba primero y qué quedó sin cargar.',
+    icono: 'fa-solid fa-chart-simple',
   },
 ]
 

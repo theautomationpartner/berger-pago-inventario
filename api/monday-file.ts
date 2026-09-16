@@ -37,8 +37,14 @@ const error = (status: number, message: string): Response =>
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return error(405, 'Método no permitido.')
 
-  const rechazo = await porton(req)
-  if (rechazo) return rechazo
+  const paso = await porton(req)
+  if (paso.rechazo) return paso.rechazo
+
+  /* Los comprobantes son del circuito de pago, así que esto es del módulo de despacho. Un
+     despachante de aduana no sube archivos: su módulo no incluye ninguna columna de archivo. */
+  if (!paso.modulos.includes('despacho')) {
+    return error(403, 'No tenés acceso a esta aplicación. Contactá al administrador.')
+  }
 
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')

@@ -5,6 +5,7 @@
  * lógica —Lista Blanca, perfiles, autenticador, límites— vive en el servidor, que es el único
  * lugar donde no se puede saltear.
  */
+import type { ModuloApp } from '@/services/monday/operaciones'
 import { sesionDelDia } from './sesionDelDia'
 
 export interface PerfilIngreso {
@@ -31,6 +32,11 @@ export type RespuestaIngreso =
       sesion: string
       codigosRecuperacion?: string[]
       recuperacionRestantes?: number
+      /**
+       * Módulos habilitados. Los decide el servidor: acá sólo sirven para no dibujar pantallas que
+       * el servidor después va a rechazar. Esconder un módulo no es lo que lo protege.
+       */
+      modulos?: ModuloApp[]
     }
   | { estado: 'codigo_incorrecto'; intentosRestantes?: number }
   | { estado: 'clave_invalida' }

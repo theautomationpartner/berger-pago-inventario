@@ -106,7 +106,52 @@ export const COL_DESPACHANTE = {
   paisOrigen: 'dropdown_mm776ha7',
   proveedor: 'dropdown_mm77czh3',
   importador: 'color_mm77sys5',
+
+  /* Lo que carga el DESPACHANTE, ya con la OP en la calle. La app no lo escribe al crear el
+     despacho: lo completa él desde el módulo de Aduana, a medida que la carga avanza. */
+  nroOp: 'text_mm78qbvc',
+  viaTransporte: 'dropdown_mm78f6fn',
+  nroDocTransporte: 'text_mm77wxd4',
+  contenedorRef: 'text_mm772j1r',
+  eta: 'date4',
+  buque: 'text_mm77pw8d',
+  estadoCarga: 'status',
+  observaciones: 'long_text_mm78yvbx',
+
+  /** ID legible del despacho ("DESPACHO-003"). Sólo lectura: lo numera monday. */
+  idDespacho: 'pulse_id_mm78a7v4',
+  /** Cuándo se tocó por última vez. Sirve para ver qué OP quedaron sin novedades. */
+  ultimaActualizacion: 'pulse_updated_mm784qds',
 } as const
+
+/**
+ * Etiquetas de "Estado de carga" (`status`), EN EL ORDEN DEL CIRCUITO.
+ *
+ * El orden no es el del tablero: es el que sigue la carga de verdad, desde que se crea la OP hasta
+ * que se nacionaliza. Es el que se usa en los filtros y en el dashboard, porque una fila de estados
+ * ordenada por cómo avanza la mercadería se lee sin pensar.
+ */
+export const ESTADO_CARGA = [
+  'Nueva OP',
+  'Pendiente de Embarque',
+  'En Transito',
+  'Próxima a Arribar',
+  'Nacionalizado',
+] as const
+
+export type EstadoCarga = (typeof ESTADO_CARGA)[number]
+
+/** Etiquetas de "Via de transporte" (`dropdown_mm78f6fn`). */
+export const VIA_TRANSPORTE = [
+  'Vía Marítima',
+  'Vía Aérea',
+  'Vía Terrestre',
+  'Vía Currier',
+] as const
+
+/** URL del tablero del Despachante de aduana, para los enlaces "ver en monday". */
+export const URL_TABLERO_DESPACHANTE =
+  'https://maquinariasagricolas.monday.com/boards/18430575903'
 
 /** 👮 Subelementos del Despachante (18431188087) — los mismos datos que el subitem del pago. */
 export const COL_DESPACHANTE_SUB = {

@@ -62,6 +62,8 @@ export const COL_LISTA_BLANCA = {
   usuarioId: 'text_mm72j4e6',
   email: 'email_mm72cz3e',
   appsIds: 'dropdown_mm72bgr3',
+  /** Equipo al que pertenece: decide qué módulos de la app ve. */
+  team: 'dropdown_mm72dj2g',
   tipoUsuario: 'color_mm728j0d',
   desactivarAutenticador: 'color_mm779m2m',
 } as const
@@ -76,11 +78,36 @@ export const COL_LISTA_BLANCA = {
 export const ETIQUETA = {
   ACTIVO: 'Activo',
   ADMIN: 'ADMIN',
+  /** Tipo de los externos. Un despachante de aduana es siempre INVITADO. */
+  INVITADO: 'INVITADO',
   /**
    * La ÚNICA etiqueta que apaga el autenticador. Cualquier otro valor —"NO Desactivar", vacío, o
    * una etiqueta que alguien agregue mañana— lo deja encendido: ante la duda, se pide el código.
    */
   AUTENTICADOR_DESACTIVADO: 'Desactivar',
+} as const
+
+/**
+ * Equipos, como se escriben en la columna "Team" de la Lista Blanca.
+ *
+ * Son los nombres tal cual figuran en el dropdown. Si alguien renombra una etiqueta en monday,
+ * acá hay que renombrarla también: es el precio de que el permiso se administre desde el tablero.
+ */
+export const TEAM = {
+  ADMINISTRACION: 'Administracion',
+  DESPACHANTES: 'Despachantes',
+} as const
+
+/**
+ * Los mismos equipos, en monday.
+ *
+ * La fila de la Lista Blanca dice a qué equipo pertenece; estos ids sirven para COMPROBARLO contra
+ * monday. Que las dos cosas tengan que coincidir es lo que evita que un solo tablero mal cargado
+ * habilite a un externo.
+ */
+export const TEAM_MONDAY = {
+  ADMINISTRACION: '1504155',
+  DESPACHANTES: '1504184',
 } as const
 
 /** 🔐 Seguridad · Autenticador — una fila por perfil. */
