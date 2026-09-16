@@ -98,6 +98,8 @@ export const PAIS_POR_PUERTO: Record<string, string> = {
 export const COL_DESPACHANTE = {
   /** Conexión al item de Pagos del Inventario que originó el despacho. */
   pago: 'board_relation_mm7815ae',
+  /** A quién se le asigna el despacho. Admite una sola persona. */
+  despachante: 'person',
   /** Cuántos contenedores se generaron en ese pago. */
   cantidadContenedores: 'numeric_mm77sq5g',
   /** País de origen, deducido del puerto del Catálogo. Admite más de uno. */
@@ -114,6 +116,14 @@ export const COL_DESPACHANTE_SUB = {
   /** Conexión al item del tractor en el Inventario. */
   inventario: 'board_relation_mm78fqs9',
 } as const
+
+/**
+ * Equipo "Despachantes" de la cuenta (`/teams/1504184`).
+ *
+ * Quién puede recibir un despacho se decide en monday, agregando o sacando gente de ese equipo, y
+ * no en el código: así el día que entre un despachante nuevo no hay que tocar ni desplegar nada.
+ */
+export const TEAM_DESPACHANTES = '1504184'
 
 /** Valores fijos del despacho: hoy la app despacha un solo proveedor y un solo importador. */
 export const PROVEEDOR_DESPACHO = 'Same Deutz Fahr SPA'

@@ -1,16 +1,19 @@
 import { useState } from 'react'
+import { Stepper } from '@/components/ui/Stepper'
+import { PasoDespachante } from '@/features/despachante/PasoDespachante'
+import { useDespachantes } from '@/features/despachante/useDespachantes'
 import { ListaTractores } from '@/features/tractores/ListaTractores'
 import { ResumenContenedores } from '@/features/tractores/ResumenContenedores'
 import { ResumenSeleccion } from '@/features/tractores/ResumenSeleccion'
 import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
-import { reporteContenedores } from '@/lib/contenedores'
+import { reporteContenedores, seccionDespachante } from '@/lib/contenedores'
 import { fechaCorta, hoyISO, importe } from '@/lib/format'
 import { puertosDeTractores } from '@/lib/puertos'
 import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
 import { crearPedidoVista, nombreDelPedidoVista } from '@/services/monday/crearPedidoVista'
 import { tractoresParaDespachoVista } from '@/services/monday/inventario'
-import type { ResultadoCarga } from '@/types'
+import type { EtapaVista, ResultadoCarga } from '@/types'
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
@@ -18,8 +21,12 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  * Despacho a la VISTA (contra BL): un único paso.
  *
  * Se eligen del Inventario los tractores con Forma de Pago en VISTA —y con la Fecha de Producción
- * confirmada— y se registra el pedido, que se hace SIN pago previo: cada tractor queda en
- * "Pendiente de Pago" y el pedido también.
+ * confirmada—, se elige el despachante y se registra el pedido, que se hace SIN pago previo: cada
+ * tractor queda en "Pendiente de Pago" y el pedido también.
+ *
+ * Son dos pasos y no uno solo porque el segundo cierra el despacho: de ahí sale el mail y el item
+ * del Despachante de aduana, y eso merece una pantalla donde se vea a quién se le manda y qué se
+ * le manda antes de apretar.
  *
  * A diferencia del ANTICIPADO, acá se muestra el Estado Pago de cada tractor. En el anticipado
  * todos los de la lista están, por definición, en "Listo para Pagar"; en la vista no hay un estado
@@ -31,9 +38,21 @@ export function DespachoVista() {
     useSeleccionTractores(tractores)
   const contenedores = useContenedores(elegidos, tractores)
 
+  const [etapa, setEtapa] = useState<EtapaVista>('seleccion')
+  const [despachanteId, setDespachanteId] = useState<string | null>(null)
+  const equipo = useDespachantes()
+
   const [enviando, setEnviando] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoCarga | null>(null)
+
+  /* El reporte se arma con la selección de arriba y se usa para las dos cosas: lo que se ve en el
+     paso del despachante y lo que se guarda en el pago. Es el MISMO texto, calculado una vez. */
+  const reporte = reporteContenedores(
+    contenedores.resumen,
+    nombreDelPedidoVista(hoyISO()),
+    puertosDeTractores(elegidos),
+  )
 
   const registrar = async () => {
     setEnviando(true)
@@ -43,13 +62,11 @@ export function DespachoVista() {
         tractores: elegidos,
         montoPendiente: total,
         totalContenedores: contenedores.resumen.totalContenedores,
-        reporteContenedores: reporteContenedores(
-          contenedores.resumen,
-          nombreDelPedidoVista(hoyISO()),
-          puertosDeTractores(elegidos),
-        ),
+        despachanteId,
+        reporteContenedores: reporte,
       })
       setResultado(r)
+      setEtapa('listo')
     } catch (e) {
       setErrorEnvio(mensaje(e))
     } finally {
@@ -61,6 +78,8 @@ export function DespachoVista() {
     limpiar()
     setResultado(null)
     setErrorEnvio(null)
+    setDespachanteId(null)
+    setEtapa('seleccion')
     void recargar()
   }
 
@@ -69,6 +88,8 @@ export function DespachoVista() {
     return (
       <div className="scroll">
         <div className="view">
+          <Stepper variante="vista" actual="listo" />
+
           {conProblemas && (
             <div className="aviso aviso--alerta">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
@@ -139,6 +160,47 @@ export function DespachoVista() {
     <>
       <div className="scroll">
         <div className="view">
+          <Stepper
+            variante="vista"
+            actual={etapa}
+            onIr={enviando ? undefined : (e) => setEtapa(e as EtapaVista)}
+          />
+
+          {etapa === 'despachante' && (
+            <>
+              {errorEnvio && (
+                <div className="aviso aviso--error">
+                  <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
+                  <span>No se pudo registrar el pedido: {errorEnvio}</span>
+                </div>
+              )}
+
+              <PasoDespachante
+                despachantes={equipo.despachantes}
+                cargando={equipo.cargando}
+                error={equipo.error}
+                onReintentar={() => void equipo.recargar()}
+                elegidoId={despachanteId}
+                onElegir={setDespachanteId}
+                informacion={seccionDespachante(reporte)}
+                numeroPaso={2}
+              />
+
+              <div className="aviso aviso--info" style={{ marginTop: 16, marginBottom: 0 }}>
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                <span>
+                  Al registrar, se crea <b>{nombreDelPedidoVista(hoyISO())}</b> en{' '}
+                  <b>Pagos del Inventario</b> con un subitem por tractor, el despacho en{' '}
+                  <b>Despachante de aduana</b> a nombre del elegido —al que se le manda esta
+                  información— y los {elegidos.length} tractor{elegidos.length === 1 ? '' : 'es'}{' '}
+                  pasan a <b>Pendiente de Pago</b>.
+                </span>
+              </div>
+            </>
+          )}
+
+          {etapa === 'seleccion' && (
+          <>
           <div className="sec-head">
             <span className="sec-num">
               <i className="fa-solid fa-paper-plane" aria-hidden="true" />
@@ -206,14 +268,14 @@ export function DespachoVista() {
             <div className="aviso aviso--info" style={{ marginBottom: 0 }}>
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
               <span>
-                Al registrar el pedido se crea{' '}
-                <b>{nombreDelPedidoVista(hoyISO())}</b> en <b>Pagos del Inventario</b>, con un
-                subitem por tractor y el detalle de los contenedores, y el despacho en{' '}
-                <b>Despachante de aduana</b>, al que se le manda la información. Los{' '}
-                {elegidos.length} tractor{elegidos.length === 1 ? '' : 'es'} pasan a{' '}
-                <b>Pendiente de Pago</b> en el Inventario.
+                En el paso siguiente elegís el despachante y ves la información que se le manda.
+                Después de registrar, los {elegidos.length} tractor
+                {elegidos.length === 1 ? '' : 'es'} pasan a <b>Pendiente de Pago</b> en el
+                Inventario.
               </span>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
@@ -238,22 +300,48 @@ export function DespachoVista() {
             <span className="pie-total-lbl">Total valor neto</span>
             <span className="pie-total-val">{importe(total)}</span>
           </span>
-          <button
-            type="button"
-            className="btn btn--marca"
-            disabled={elegidos.length === 0 || enviando}
-            onClick={() => void registrar()}
-          >
-            {enviando ? (
-              <>
-                <span className="spin" aria-hidden="true" /> Registrando en monday…
-              </>
-            ) : (
-              <>
-                <i className="fa-solid fa-paper-plane" aria-hidden="true" /> Registrar pedido
-              </>
-            )}
-          </button>
+
+          {etapa === 'despachante' && (
+            <button
+              type="button"
+              className="btn btn--texto"
+              disabled={enviando}
+              onClick={() => setEtapa('seleccion')}
+            >
+              <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Volver
+            </button>
+          )}
+
+          {etapa === 'seleccion' ? (
+            <button
+              type="button"
+              className="btn btn--primario"
+              disabled={elegidos.length === 0}
+              onClick={() => {
+                setErrorEnvio(null)
+                setEtapa('despachante')
+              }}
+            >
+              Continuar <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--marca"
+              disabled={elegidos.length === 0 || enviando || !despachanteId}
+              onClick={() => void registrar()}
+            >
+              {enviando ? (
+                <>
+                  <span className="spin" aria-hidden="true" /> Registrando en monday…
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-paper-plane" aria-hidden="true" /> Registrar pedido
+                </>
+              )}
+            </button>
+          )}
         </div>
       </footer>
     </>

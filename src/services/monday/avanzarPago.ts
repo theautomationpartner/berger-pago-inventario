@@ -35,9 +35,16 @@ interface Entrada {
   pago: Pago
   archivo: File
   flujo: FlujoAvance
+  /** Sólo lo usa la etapa que cierra el despacho: a quién se le asigna y se le avisa. */
+  despachanteId?: string | null
 }
 
-export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<ResultadoAvance> {
+export async function avanzarPago({
+  pago,
+  archivo,
+  flujo,
+  despachanteId = null,
+}: Entrada): Promise<ResultadoAvance> {
   // 1. Comprobante.
   await subirArchivoAColumna(pago.id, flujo.columnaArchivo, archivo)
 
@@ -81,10 +88,10 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
 
   /* 4. El despacho, sólo en la etapa que lo cierra. En ANTICIPADO es ésta: hasta que el pago no
      está confirmado, la transferencia todavía puede caerse y no hay despacho que informar. */
-  let despachanteId: string | null = null
+  let itemDespachante: string | null = null
   if (flujo.cierraDespacho) {
     try {
-      despachanteId = await crearDespacho(pago, advertencias)
+      itemDespachante = await crearDespacho(pago, despachanteId, advertencias)
     } catch (e) {
       advertencias.push(`No se pudo crear el despacho en el Despachante de aduana: ${motivo(e)}`)
     }
@@ -106,7 +113,7 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
     advertencias.push(`No se pudo disparar el aviso por mail: ${motivo(e)}`)
   }
 
-  return { pagoId: pago.id, tractoresActualizados, advertencias, despachanteId }
+  return { pagoId: pago.id, tractoresActualizados, advertencias, itemDespachanteId: itemDespachante }
 }
 
 /**
@@ -120,7 +127,11 @@ export async function avanzarPago({ pago, archivo, flujo }: Entrada): Promise<Re
  *   del que ya se reportó.
  * - **De qué país sale**: del puerto del Catálogo de cada tractor del pago.
  */
-async function crearDespacho(pago: Pago, advertencias: string[]): Promise<string> {
+async function crearDespacho(
+  pago: Pago,
+  despachanteId: string | null,
+  advertencias: string[],
+): Promise<string> {
   const cantidadContenedores = cantidadDeContenedoresDelReporte(pago.reporteContenedores)
   if (cantidadContenedores == null) {
     advertencias.push(
@@ -151,6 +162,7 @@ async function crearDespacho(pago: Pago, advertencias: string[]): Promise<string
     nombre: pago.nombre,
     cantidadContenedores,
     paises,
+    despachanteId,
     tractores: pago.tractores.map((t) => ({
       nombre: t.nombre,
       valorNeto: t.valorNeto,
@@ -160,5 +172,5 @@ async function crearDespacho(pago: Pago, advertencias: string[]): Promise<string
     })),
   })
   advertencias.push(...despacho.advertencias)
-  return despacho.despachanteId
+  return despacho.itemId
 }

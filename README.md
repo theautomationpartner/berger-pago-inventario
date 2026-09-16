@@ -65,6 +65,9 @@ pagos que dejó la anterior.
 | 2 | **Aprobar Transferencia** | Pagos en `Pend de Aprobar Transf` | `APROBADO` · `Pend de Confirmar Transf` |
 | 3 | **Confirmar Pago - SWIFT** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
 
+Las etapas 1 y 2 son de dos pasos; la 3 tiene **tres**, porque es la que cierra el despacho: pago →
+comprobante → **despachante**.
+
 ### El circuito, columna por columna
 
 Tablero de **Pagos del Inventario** (`18430295445`):
@@ -146,9 +149,13 @@ como datos en [`src/lib/flujos.ts`](src/lib/flujos.ts).
 
 ## PAGO VISTA (Contra BL)
 
-El pedido se hace **sin pago previo**. Es un único paso: se eligen del Inventario los tractores con
-`Forma de Pago` (`dropdown_mm6v2sa0`) en **VISTA** y la fecha de producción confirmada, con el
-mismo detalle que en anticipado y el total del valor neto.
+El pedido se hace **sin pago previo**, en dos pasos.
+
+**Paso 1 · Selección.** Se eligen del Inventario los tractores con `Forma de Pago`
+(`dropdown_mm6v2sa0`) en **VISTA** y la fecha de producción confirmada, con el mismo detalle que en
+anticipado y el total del valor neto.
+
+**Paso 2 · Despachante.** A quién se le manda el despacho y qué se le manda.
 
 A diferencia de anticipado, cada fila muestra además el **Estado Pago** del tractor: en la vista no
 hay un estado que filtre la lista, así que ver en cuál está cada uno es parte de decidir si se pide.
@@ -261,11 +268,29 @@ atrás.
 | Modalidad | Cuándo se crea |
 |-----------|----------------|
 | PAGO ANTICIPADO | En la etapa 3, al confirmar el SWIFT |
-| PAGO VISTA | Al registrar el pedido, que es su única operación |
+| PAGO VISTA | Al registrar el pedido |
+
+### Elegir el despachante
+
+Antes de confirmar, las dos modalidades tienen un paso —el **3** en la etapa 3 de anticipado, el
+**2** en vista— donde se elige a quién se le manda y se ve **exactamente el texto** que va a
+recibir: la sección `Informacion para Despachante:` del reporte, ni un resumen aparte ni una
+versión parecida. Mantener dos redacciones terminaría, el día que se separen, en aprobar en
+pantalla algo distinto de lo que sale.
+
+Los candidatos salen del equipo **Despachantes** de monday
+([`/teams/1504184`](https://maquinariasagricolas.monday.com/teams/1504184)), no de una lista en el
+código: sumar un despachante es agregarlo al equipo, sin tocar ni desplegar nada. Los usuarios
+desactivados se dejan afuera —asignarle un despacho a alguien que ya no entra a monday es mandarlo
+a un buzón que nadie abre—. Elegir es obligatorio: sin despachante el botón de confirmar no se
+habilita.
+
+El elegido queda en la columna de persona (`person`) del item, que admite **una sola**.
 
 | Dato | Columna | De dónde sale |
 |------|---------|----------------|
 | Conexión al pago | `board_relation_mm7815ae` | el item de Pagos del Inventario |
+| Despachante asignado | `person` | el elegido en el paso anterior |
 | Cantidad de contenedores | `numeric_mm77sq5g` | del reporte ya guardado en el pago |
 | País de origen | `dropdown_mm776ha7` | del puerto del Catálogo de cada tractor |
 | Proveedor = `Same Deutz Fahr SPA` | `dropdown_mm77czh3` | fijo |
@@ -530,8 +555,11 @@ src/
       Paso1Seleccion.tsx        Selección con filtro de meses
       FlujoAvancePago.tsx       Etapas 2 y 3 (mismo flujo, distinta configuración)
       DetallePago.tsx           Ficha de un pago con sus tractores
+    despachante/
+      PasoDespachante.tsx       Elegir despachante y ver qué se le manda
+      useDespachantes.ts        La gente del equipo Despachantes
     vista/
-      DespachoVista.tsx         Despacho a la VISTA (paso único)
+      DespachoVista.tsx         Despacho a la VISTA (dos pasos)
     tractores/                Lo que comparten las dos modalidades
       ListaTractores.tsx        Lista seleccionable
       ResumenContenedores.tsx   Cuántos contenedores salen y qué lleva cada uno
@@ -558,6 +586,7 @@ src/
     inventario.ts             Tractores listos para pagar y tractores VISTA
     contenedores.ts           Combinaciones del tablero de Contenedores
     catalogo.ts               Puerto de carga de cada modelo
+    despachantes.ts           El equipo Despachantes de monday
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
     crearPedidoVista.ts       Pedido a la vista: item, subitems y estados

@@ -38,11 +38,14 @@ interface Entrada {
   cantidadContenedores: number | null
   /** Países de los puertos de carga. Puede haber más de uno si el despacho mezcla orígenes. */
   paises: string[]
+  /** Id de monday del despachante al que se le asigna. `null` deja el item sin asignar. */
+  despachanteId: string | null
   tractores: TractorDeDespacho[]
 }
 
 export interface ResultadoDespachante {
-  despachanteId: string
+  /** Item creado en el Despachante de aduana. No confundir con el id del despachante persona. */
+  itemId: string
   subitemIds: string[]
   advertencias: string[]
 }
@@ -52,6 +55,7 @@ export async function crearDespachoDeAduana({
   nombre,
   cantidadContenedores,
   paises,
+  despachanteId,
   tractores,
 }: Entrada): Promise<ResultadoDespachante> {
   const advertencias: string[] = []
@@ -69,12 +73,18 @@ export async function crearDespachoDeAduana({
   // Un dropdown con una etiqueta que no existe hace fallar la escritura ENTERA, así que si no hay
   // países la columna ni se manda: el resto del despacho se carga igual.
   if (paises.length > 0) valores[COL_DESPACHANTE.paisOrigen] = { labels: paises }
+  // La columna admite una sola persona, que es justamente lo que se eligió en el paso anterior.
+  if (despachanteId) {
+    valores[COL_DESPACHANTE.despachante] = {
+      personsAndTeams: [{ id: Number(despachanteId), kind: 'person' }],
+    }
+  }
 
   const creado = await mondayApi<{ create_item: { id: string } }>('crearItemDeDespachante', {
     nombre,
     valores: JSON.stringify(valores),
   })
-  const despachanteId = creado.create_item.id
+  const itemId = creado.create_item.id
 
   const subitemIds: string[] = []
   for (const t of tractores) {
@@ -89,7 +99,7 @@ export async function crearDespachoDeAduana({
 
     try {
       const sub = await mondayApi<{ create_subitem: { id: string } }>('crearSubitemDeDespachante', {
-        padre: despachanteId,
+        padre: itemId,
         nombre: t.nombre,
         valores: JSON.stringify(valoresSub),
       })
@@ -101,5 +111,5 @@ export async function crearDespachoDeAduana({
     }
   }
 
-  return { despachanteId, subitemIds, advertencias }
+  return { itemId, subitemIds, advertencias }
 }

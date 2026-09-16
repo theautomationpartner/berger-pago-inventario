@@ -37,6 +37,8 @@ interface Entrada {
   montoPendiente: number
   /** Contenedores que armó la app para este pedido: es lo que se le declara al despachante. */
   totalContenedores: number
+  /** Despachante elegido: recibe el mail y queda asignado al item del Despachante de aduana. */
+  despachanteId: string | null
   /** Reporte de contenedores que queda guardado para el mail al proveedor. */
   reporteContenedores: string
 }
@@ -45,6 +47,7 @@ export async function crearPedidoVista({
   tractores,
   montoPendiente,
   totalContenedores,
+  despachanteId,
   reporteContenedores,
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
@@ -113,6 +116,7 @@ export async function crearPedidoVista({
       nombre: nombreDelPedidoVista(fecha),
       cantidadContenedores: totalContenedores,
       paises: paisesDePuertos(puertosDeTractores(tractores)),
+      despachanteId,
       tractores: tractores.map((t) => ({
         nombre: t.nombre,
         valorNeto: t.valorNeto,

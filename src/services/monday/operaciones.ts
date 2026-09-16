@@ -26,11 +26,13 @@ import {
   COL_PAGO,
   COL_PAGO_SUB,
   TABLEROS,
+  TEAM_DESPACHANTES,
 } from './columns'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
   | 'contenedores'
+  | 'despachantes'
   | 'puertosDeCatalogo'
   | 'inventarioPorEstadoPago'
   | 'inventarioPorFormaDePago'
@@ -91,6 +93,7 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
   ]),
   [TABLEROS.despachante]: new Set([
     COL_DESPACHANTE.pago,
+    COL_DESPACHANTE.despachante,
     COL_DESPACHANTE.cantidadContenedores,
     COL_DESPACHANTE.paisOrigen,
     COL_DESPACHANTE.proveedor,
@@ -229,6 +232,25 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       columnas: idsDeColumnas(v.columnas),
       limite: entero(v.limite, 'limite', 1, 500),
     }),
+  },
+
+  /**
+   * La gente del equipo "Despachantes": a quién se le puede asignar un despacho.
+   *
+   * El id del equipo lo pone el SERVIDOR y no viene en las variables: con un id libre, cualquiera
+   * con sesión podría listar los integrantes —con su mail— de cualquier equipo de la cuenta.
+   */
+  despachantes: {
+    query: `
+      query ($equipo: [ID!]) {
+        teams(ids: $equipo) {
+          id
+          name
+          users(kind: all) { id name email photo_thumb_small enabled }
+        }
+      }
+    `,
+    validar: () => ({ equipo: [TEAM_DESPACHANTES] }),
   },
 
   /**

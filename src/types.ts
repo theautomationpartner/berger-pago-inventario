@@ -220,7 +220,22 @@ export interface ResultadoAvance {
   tractoresActualizados: number
   advertencias: string[]
   /** Item creado en el Despachante de aduana, cuando la etapa cierra el despacho. */
-  despachanteId?: string | null
+  itemDespachanteId?: string | null
+}
+
+/**
+ * Un despachante: alguien del equipo "Despachantes" de monday.
+ *
+ * Es quien recibe el mail con la información del despacho y a quien queda asignado el item del
+ * Despachante de aduana.
+ */
+export interface Despachante {
+  /** Id de usuario de monday: es lo que se escribe en la columna de persona. */
+  id: string
+  nombre: string
+  email: string
+  /** Foto de perfil, o `''` si no tiene. */
+  foto: string
 }
 
 /** Un tractor, como se lo carga en el tablero del Despachante de aduana. */
@@ -236,8 +251,16 @@ export interface TractorDeDespacho {
 /** Etapa del asistente de la operación 1. */
 export type Etapa = 'seleccion' | 'transferencia' | 'listo'
 
-/** Etapa del asistente de las operaciones 2 y 3. */
-export type EtapaAvance = 'seleccion' | 'archivo' | 'listo'
+/**
+ * Etapa del asistente de las operaciones 2 y 3.
+ *
+ * `despachante` sólo existe en la operación que CIERRA el despacho (la 3): ahí se elige a quién se
+ * le manda y se ve qué se le manda, antes de confirmar.
+ */
+export type EtapaAvance = 'seleccion' | 'archivo' | 'despachante' | 'listo'
+
+/** Etapa del asistente del despacho a la VISTA. */
+export type EtapaVista = 'seleccion' | 'despachante' | 'listo'
 
 /**
  * Configuración de una operación que avanza un pago ya existente (las número 2 y 3).

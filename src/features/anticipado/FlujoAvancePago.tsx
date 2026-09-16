@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
 import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
+import { PasoDespachante } from '@/features/despachante/PasoDespachante'
+import { useDespachantes } from '@/features/despachante/useDespachantes'
+import { seccionDespachante } from '@/lib/contenedores'
 import { fechaCorta, importe } from '@/lib/format'
 import { avanzarPago } from '@/services/monday/avanzarPago'
 import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
@@ -34,6 +37,11 @@ export function FlujoAvancePago({ flujo }: Props) {
   const [elegidoId, setElegidoId] = useState<string | null>(null)
   const [etapa, setEtapa] = useState<EtapaAvance>('seleccion')
   const [archivo, setArchivo] = useState<File | null>(null)
+  const [despachanteId, setDespachanteId] = useState<string | null>(null)
+
+  /* El equipo se lee sólo en la operación que cierra el despacho: es la única que elige a quién
+     se le manda. */
+  const equipo = useDespachantes(Boolean(flujo.cierraDespacho))
 
   const [enviando, setEnviando] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
@@ -66,6 +74,7 @@ export function FlujoAvancePago({ flujo }: Props) {
   const reiniciar = () => {
     setElegidoId(null)
     setArchivo(null)
+    setDespachanteId(null)
     setResultado(null)
     setPagoRegistrado(null)
     setErrorEnvio(null)
@@ -78,7 +87,7 @@ export function FlujoAvancePago({ flujo }: Props) {
     setEnviando(true)
     setErrorEnvio(null)
     try {
-      const r = await avanzarPago({ pago: elegido, archivo, flujo })
+      const r = await avanzarPago({ pago: elegido, archivo, flujo, despachanteId })
       setPagoRegistrado(elegido)
       setResultado(r)
       setEtapa('listo')
@@ -94,7 +103,7 @@ export function FlujoAvancePago({ flujo }: Props) {
       <div className="scroll">
         <div className="view">
           <Stepper
-            variante="avance"
+            variante={flujo.cierraDespacho ? 'avanceDespacho' : 'avance'}
             actual={etapa}
             onIr={etapa === 'listo' || enviando ? undefined : (e) => setEtapa(e as EtapaAvance)}
           />
@@ -236,6 +245,38 @@ export function FlujoAvancePago({ flujo }: Props) {
             </>
           )}
 
+          {etapa === 'despachante' && elegido && (
+            <>
+              {errorEnvio && (
+                <div className="aviso aviso--error">
+                  <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
+                  <span>No se pudo completar la operación: {errorEnvio}</span>
+                </div>
+              )}
+
+              <PasoDespachante
+                despachantes={equipo.despachantes}
+                cargando={equipo.cargando}
+                error={equipo.error}
+                onReintentar={() => void equipo.recargar()}
+                elegidoId={despachanteId}
+                onElegir={setDespachanteId}
+                informacion={seccionDespachante(elegido.reporteContenedores)}
+                numeroPaso={3}
+              />
+
+              <div className="aviso aviso--info" style={{ marginTop: 16, marginBottom: 0 }}>
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                <span>
+                  Al confirmar, el pago pasa a <b>{flujo.nuevoEstadoPago}</b>, sus{' '}
+                  {elegido.tractores.length} tractor{elegido.tractores.length === 1 ? '' : 'es'}{' '}
+                  pasan a <b>{flujo.nuevoEstadoInventario}</b>, se crea el despacho en{' '}
+                  <b>Despachante de aduana</b> a nombre del elegido y se le manda esta información.
+                </span>
+              </div>
+            </>
+          )}
+
           {etapa === 'listo' && resultado && pagoRegistrado && (
             <>
               {resultado.advertencias.length > 0 && (
@@ -280,6 +321,12 @@ export function FlujoAvancePago({ flujo }: Props) {
                     <i className="fa-solid fa-envelope" aria-hidden="true" /> Aviso al proveedor en
                     cola
                   </span>
+                  {resultado.itemDespachanteId && (
+                    <span className="chip chip--violeta">
+                      <i className="fa-solid fa-user-tie" aria-hidden="true" /> Despacho #
+                      {resultado.itemDespachanteId} asignado
+                    </span>
+                  )}
                 </div>
 
                 <div className="final-acciones">
@@ -322,25 +369,27 @@ export function FlujoAvancePago({ flujo }: Props) {
                 <span className="pie-total-val">{importe(elegido.monto)}</span>
               </span>
             )}
-            {etapa === 'archivo' && (
+            {etapa !== 'seleccion' && (
               <button
                 type="button"
                 className="btn btn--texto"
                 disabled={enviando}
-                onClick={() => setEtapa('seleccion')}
+                onClick={() => setEtapa(etapa === 'despachante' ? 'archivo' : 'seleccion')}
               >
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Volver
               </button>
             )}
 
-            {etapa === 'seleccion' ? (
+            {/* En la operación que cierra el despacho, el comprobante ya no confirma: lleva al
+                paso donde se elige el despachante. En la otra, confirma como siempre. */}
+            {etapa === 'seleccion' || (etapa === 'archivo' && flujo.cierraDespacho) ? (
               <button
                 type="button"
                 className="btn btn--primario"
-                disabled={!elegido}
+                disabled={etapa === 'seleccion' ? !elegido : !archivo}
                 onClick={() => {
                   setErrorEnvio(null)
-                  setEtapa('archivo')
+                  setEtapa(etapa === 'seleccion' ? 'archivo' : 'despachante')
                 }}
               >
                 Continuar <i className="fa-solid fa-arrow-right" aria-hidden="true" />
@@ -349,7 +398,7 @@ export function FlujoAvancePago({ flujo }: Props) {
               <button
                 type="button"
                 className="btn btn--marca"
-                disabled={!archivo || enviando}
+                disabled={!archivo || enviando || (Boolean(flujo.cierraDespacho) && !despachanteId)}
                 onClick={() => void impactar()}
               >
                 {enviando ? (

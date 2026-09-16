@@ -6,12 +6,15 @@ interface Paso {
 }
 
 /**
- * Las tres etapas de cada operación.
+ * Los pasos de cada operación.
  *
- * La operación 1 crea un pago; las 2 y 3 avanzan uno que ya existe. Son los mismos tres tiempos
+ * La operación 1 crea un pago; las 2 y 3 avanzan uno que ya existe. Son los mismos tiempos
  * —elegir, adjuntar, confirmar— con distinto sustantivo, así que comparten componente.
+ *
+ * Las dos operaciones que CIERRAN un despacho tienen un paso más: elegir al despachante y ver qué
+ * se le va a mandar. No está en las otras porque ahí no hay nada que mandar todavía.
  */
-const PASOS: Record<'carga' | 'avance', Paso[]> = {
+const PASOS: Record<'carga' | 'avance' | 'avanceDespacho' | 'vista', Paso[]> = {
   carga: [
     { id: 'seleccion', nombre: 'Selección de tractores', corto: 'Tractores' },
     { id: 'transferencia', nombre: 'Transferencia', corto: 'Transferencia' },
@@ -22,11 +25,22 @@ const PASOS: Record<'carga' | 'avance', Paso[]> = {
     { id: 'archivo', nombre: 'Comprobante', corto: 'Comprobante' },
     { id: 'listo', nombre: 'Registrado', corto: 'Listo' },
   ],
+  avanceDespacho: [
+    { id: 'seleccion', nombre: 'Selección del pago', corto: 'Pago' },
+    { id: 'archivo', nombre: 'Comprobante', corto: 'Comprobante' },
+    { id: 'despachante', nombre: 'Despachante', corto: 'Despachante' },
+    { id: 'listo', nombre: 'Registrado', corto: 'Listo' },
+  ],
+  vista: [
+    { id: 'seleccion', nombre: 'Selección de tractores', corto: 'Tractores' },
+    { id: 'despachante', nombre: 'Despachante', corto: 'Despachante' },
+    { id: 'listo', nombre: 'Registrado', corto: 'Listo' },
+  ],
 }
 
 interface Props {
   actual: string
-  variante?: 'carga' | 'avance'
+  variante?: 'carga' | 'avance' | 'avanceDespacho' | 'vista'
   /** Volver atrás sólo se permite a etapas ya recorridas; `undefined` deja el stepper de lectura. */
   onIr?: (etapa: string) => void
 }

@@ -181,6 +181,10 @@ export function rotuloContenedor(armado: ContenedorArmado, desde: number): strin
   return `Contenedores ${desde} a ${desde + contenedores - 1} · ${etiqueta}`
 }
 
+/** Los dos encabezados del reporte. Se comparten con quien después lo vuelve a leer. */
+const TITULO_BERGER = 'Informacion para Berger:'
+export const TITULO_DESPACHANTE = 'Informacion para Despachante:'
+
 /** Un tractor, como se lo nombra en el reporte: nombre, número interno y modelo. */
 const lineaTractor = (t: Tractor): string =>
   [t.nombre, t.numInterno && `N° ${t.numInterno}`, t.modelo, t.estadoRodado, fechaCorta(t.fechaProd)]
@@ -208,7 +212,7 @@ export function reporteContenedores(
   const tractores = resumen.armados.reduce((n, a) => n + a.tractores.length, 0) + resumen.sinContenedor.length
   const desglose = desgloseDeContenedores(resumen)
 
-  const lineas: string[] = [titulo, '', 'Informacion para Berger:', '']
+  const lineas: string[] = [titulo, '', TITULO_BERGER, '']
 
   if (resumen.armados.length === 0) {
     lineas.push('No se armó ningún contenedor.')
@@ -252,7 +256,7 @@ export function reporteContenedores(
 
   lineas.push(
     '',
-    'Informacion para Despachante:',
+    TITULO_DESPACHANTE,
     '',
     // El total va solo y en su propia línea, sin el desglose al lado: es el número que se copia al
     // tablero del Despachante, y es lo que la operación 3 vuelve a leer de acá.
@@ -263,6 +267,22 @@ export function reporteContenedores(
   )
 
   return lineas.join('\n').trim()
+}
+
+/**
+ * La parte del reporte que se le manda al despachante.
+ *
+ * Es lo que se muestra en el paso donde se lo elige: antes de confirmar hay que poder leer
+ * exactamente lo que va a salir, no una versión parecida armada aparte.
+ *
+ * Si el reporte no tiene esa sección —un pago viejo, cargado antes de que existiera— devuelve `''`
+ * y la pantalla lo dice, en vez de mostrar el reporte entero, que incluye el detalle interno de
+ * Berger.
+ */
+export function seccionDespachante(reporte: string): string {
+  const desde = (reporte ?? '').indexOf(TITULO_DESPACHANTE)
+  if (desde < 0) return ''
+  return reporte.slice(desde + TITULO_DESPACHANTE.length).trim()
 }
 
 /** La línea del total, tal cual la escribe `reporteContenedores`. */
