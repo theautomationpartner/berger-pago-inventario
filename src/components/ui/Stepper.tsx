@@ -14,7 +14,10 @@ interface Paso {
  * Las dos operaciones que CIERRAN un despacho tienen un paso más: elegir al despachante y ver qué
  * se le va a mandar. No está en las otras porque ahí no hay nada que mandar todavía.
  */
-const PASOS: Record<'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana', Paso[]> = {
+const PASOS: Record<
+  'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana' | 'planificar' | 'envio',
+  Paso[]
+> = {
   carga: [
     { id: 'seleccion', nombre: 'Selección de tractores', corto: 'Tractores' },
     { id: 'transferencia', nombre: 'Transferencia', corto: 'Transferencia' },
@@ -42,11 +45,21 @@ const PASOS: Record<'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana', 
     { id: 'resumen', nombre: 'Resumen', corto: 'Resumen' },
     { id: 'listo', nombre: 'Actualizado', corto: 'Listo' },
   ],
+  planificar: [
+    { id: 'seleccion', nombre: 'Selección de drafts', corto: 'Drafts' },
+    { id: 'periodos', nombre: 'Períodos', corto: 'Períodos' },
+    { id: 'listo', nombre: 'Planificado', corto: 'Listo' },
+  ],
+  envio: [
+    { id: 'seleccion', nombre: 'Selección de drafts', corto: 'Drafts' },
+    { id: 'confirmacion', nombre: 'Confirmación', corto: 'Confirmar' },
+    { id: 'listo', nombre: 'Enviado', corto: 'Listo' },
+  ],
 }
 
 interface Props {
   actual: string
-  variante?: 'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana'
+  variante?: 'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana' | 'planificar' | 'envio'
   /** Volver atrás sólo se permite a etapas ya recorridas; `undefined` deja el stepper de lectura. */
   onIr?: (etapa: string) => void
 }

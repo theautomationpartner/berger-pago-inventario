@@ -18,6 +18,11 @@ de monday el "atrás" del navegador no sirve).
 ```
 Operaciones              →  Operación                →  Paso
 ────────────────────────────────────────────────────────────────────────
+PLANIFICACIÓN DE DRAFTS  →  PLANIFICAR PERÍODO       →  1. Selección de drafts
+                                                        2. Períodos
+                         →  ENVIAR PLANIFICACIÓN     →  1. Selección · 2. Confirmación
+                         →  DASHBOARD DE DRAFTS      →  pantalla única
+
 DESPACHO                 →  PAGO ANTICIPADO          →  1. Cargar Transferencia
                                                         2. Aprobar Transferencia
                                                         3. Confirmar Pago - SWIFT
@@ -28,6 +33,9 @@ DESPACHANTE DE ADUANA    →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
                                                         3. Resumen
                          →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
+
+Las tres operaciones principales siguen el recorrido real de un tractor, y en ese orden:
+**se planifica** con el proveedor, **se despacha y se paga**, y **se nacionaliza**.
 
 **Cada persona ve sólo lo suyo.** Las dos operaciones principales pertenecen a módulos distintos, y
 el primer panel muestra únicamente los que el servidor le habilitó a ese perfil: la gente que
@@ -60,6 +68,109 @@ etiquetas de color, de la misma forma
 Ninguna etiqueta de la app va en gris. Los estados siguen el avance del circuito (ámbar → azul →
 verde) y los atributos del tractor llevan cada uno su color fijo; el criterio vive en
 [`src/lib/chips.ts`](src/lib/chips.ts).
+
+---
+
+## PLANIFICACIÓN DE DRAFTS
+
+Lo que pasa **antes** de que el tractor exista. Un *draft* es el pedido al proveedor: llega como
+PDF, una automatización lo lee y carga el item en 🧾**Drafts** (`18428667614`) con un subitem por
+producto. A partir de ahí, BERGER decide **para cuándo** le pide al proveedor que lo fabrique, y se
+lo comunica.
+
+### El circuito
+
+| Estado `color_mm6zdmzr` | Qué significa | Quién lo mueve |
+|---|---|---|
+| `Pend de Planificar` | el PDF ya se leyó, falta decidir el período | **Planificar Período** |
+| `Periodo Prod Planificada` | tiene período sugerido, falta mandarlo | **Enviar Planificación** |
+| `Pend de Confirmar` | se mandó, se espera la respuesta del proveedor | el proveedor |
+| `Confirmado en ORDEN de Confirmacion` | el proveedor confirmó | otro circuito |
+| `Cancelado` | no se fabrica | — |
+
+### Lo que se ve de cada draft
+
+Todo lo que trajo el PDF, como etiquetas de color: fecha del draft (`date4`), N° de orden de pedido
+(`text_mm6sv3rq`), condición de entrega (`dropdown_mm6tve05`), transporte (`dropdown_mm6tk49e`),
+forma de pago (`dropdown_mm6t6geg`) y divisa (`color_mm6nbfey`). Más dos importes: el **costo de
+transporte** y el **Total del draft** (`numeric_mm6n2m2y`), siempre con su divisa al lado.
+
+**Cuál de los dos costos de transporte** depende de la condición de entrega: si dice FOB va
+`numeric_mm6scnmk`, si dice FCA va `numeric_mm72rv29`. Se busca la palabra **dentro** del texto y
+no se compara la etiqueta entera, porque el tablero también tiene "FOB PUERTO EN INDIA" y
+"FCA LAUINGEN": comparando entera, esos dos —que son la mayoría— se quedarían sin costo. El rótulo
+dice cuál se está mostrando, así que nunca hay que adivinar.
+
+Cada draft se despliega y muestra sus **productos**: nombre, tipo de rodado (`dropdown_mm70988f`),
+cantidad, precio unitario, el costo de transporte del producto —FOB `numeric_mm6schww` o FCA
+`numeric_mm72y3dz`, con el mismo criterio—, valor neto y subtotal.
+
+> **Dos ids del pedido original no coincidían con el tablero** y se usaron los que corresponden:
+> `numeric_mm77ygs7` no es el costo FCA sino el *Total del draft sin transporte*, y el costo FCA
+> total es `numeric_mm72rv29`. A nivel producto, el costo FCA es `numeric_mm72y3dz`.
+
+### PLANIFICAR PERÍODO DE PRODUCCIÓN
+
+**Paso 1 · Selección.** Los drafts en `Pend de Planificar` **que todavía no tienen período**. Uno
+que ya lo tiene no aparece: volver a asignárselo sería pisar una planificación hecha. Se busca por
+número de draft, que es el nombre del item, y también por ID de monday o N° de orden de pedido.
+
+**Paso 2 · Períodos.** Un período por draft, de la lista de la columna
+`dropdown_mm70awrf` (Enero 2026 → Diciembre 2035). Como lo más común es que varios vayan al mismo
+mes, hay un selector que **los asigna todos de una vez** y después se corrigen los que difieran.
+
+Un draft seleccionado **sin período** frena la carga y se ofrece quitarlo con un clic: guardarlo
+igual lo dejaría en `Periodo Prod Planificada` sin nada que planificar, que es justo lo que la
+operación siguiente no sabría mandar.
+
+Al confirmar, cada draft recibe su período **y** pasa a `Periodo Prod Planificada` en la misma
+escritura: son dos lecturas del mismo hecho, y separarlas abre una ventana en la que el draft
+figura planificado sin período.
+
+### ENVIAR PLANIFICACIÓN
+
+**Paso 1 · Selección.** Los drafts en `Periodo Prod Planificada` **y con período cargado**. Los dos
+requisitos, no uno: si alguien le borró el período en el tablero, no hay nada que sugerir.
+
+**Paso 2 · Confirmación.** Antes de crear nada se ve, **agrupado por período**, exactamente qué se
+le va a decir al proveedor: cuántos drafts y cuántas unidades van a cada mes, y cuáles. Se avisa
+que sale un **mail a DEUTZ con los PDF y los períodos sugeridos**. Este paso existe porque de acá
+sale un mail a un tercero, y es lo último que se puede revisar sin tener que salir a pedir
+disculpas.
+
+Al confirmar se crea en 📬**Confirmación y Planificación** (`18428677294`) un item:
+
+| Dato | Columna |
+|------|---------|
+| Nombre `Planificación DD/MM/AAAA` | `name` |
+| Tipo = `🤚PLANIFICACION` | `color_mm737v3t` |
+| Fecha de emisión | `date4` |
+| Drafts seleccionados | `board_relation_mm70ss7g` |
+| Estado de envío = `Enviar` | `color_mm73xw6w` |
+
+El estado de envío va **último**, cuando el item ya quedó completo con sus drafts conectados: de esa
+columna sale el mail, y dispararlo antes sería mandar una planificación a medio armar. Si esa
+última escritura falla, el item ya está bien creado y se avisa para mandarlo desde el tablero.
+
+### DASHBOARD DE DRAFTS
+
+Responde tres preguntas, en este orden:
+
+1. **¿Cómo viene el circuito?** Una tarjeta por estado, del color que ese estado tiene en el resto
+   de la app.
+2. **¿Qué tengo que hacer yo?** Cuántos esperan período, cuántos están listos para enviar, cuántas
+   unidades hay sin planificar, y —aparte, en rojo— los que quedaron **trabados porque el PDF no se
+   leyó bien**: ésos no son trabajo del planificador, pero no aparecen en ninguna lista hasta que se
+   resuelvan, así que el dashboard es el único lugar donde se enteraría.
+3. **¿Qué le estamos pidiendo al proveedor?** El reparto por **período sugerido** —la carga de
+   fábrica que BERGER está proponiendo: diez drafts amontonados en un mismo mes es la señal de que
+   hay que repartirlos antes de mandar la planificación—, por forma de pago y por condición de
+   entrega, cada uno con drafts, unidades e importe.
+
+Los importes se muestran **por divisa** y nunca sumados entre sí: sumar euros con dólares daría un
+número que no existe. Si un corte mezcla divisas, se informa la cantidad y se calla el importe.
+
+Las cuentas están en [`src/lib/drafts.ts`](src/lib/drafts.ts) y se prueban solas.
 
 ---
 
@@ -483,15 +594,15 @@ poblaciones que no se cruzan.
 
 | Quién | Condiciones | Qué ve |
 |-------|-------------|--------|
-| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Despacho, Actualizar Despacho OP y el Dashboard |
+| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Planificación de Drafts, Despacho, Actualizar Despacho OP y los dashboards |
 | Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | **sólo** Actualizar Despacho OP |
 | Fila sin equipo cargado | — | Despacho |
 
 Administración ve todo lo que la app tenga, hoy y cuando se sumen operaciones nuevas: es el equipo
 dueño de la operación. El único restringido es el despachante, que es externo.
 
-Por eso son **tres** módulos y no dos: `despacho`, `aduana` (cargar novedades) y `aduanaDashboard`
-(la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
+Por eso son **cuatro** módulos: `drafts`, `despacho`, `aduana` (cargar novedades) y
+`aduanaDashboard` (la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
 a cargar sus OP, no a mirar el estado de toda la operación de BERGER— y, como se alimenta de la
 misma consulta que él sí usa, separarlo por módulo es lo único que los distingue del lado del
 servidor.
@@ -698,6 +809,12 @@ src/
       Paso1Seleccion.tsx        Selección con filtro de meses
       FlujoAvancePago.tsx       Etapas 2 y 3 (mismo flujo, distinta configuración)
       DetallePago.tsx           Ficha de un pago con sus tractores
+    drafts/
+      PlanificarPeriodo.tsx     Planificar período de producción (dos pasos)
+      EnviarPlanificacion.tsx   Enviar planificación al proveedor (dos pasos)
+      DashboardDrafts.tsx       Dashboard de Drafts
+      ListaDrafts.tsx           Lista, etiquetas, importes y productos de un draft
+      useDrafts.ts              Carga de drafts por estado
     aduana/
       ActualizarDespachos.tsx   Actualizar Despacho OP (tres pasos)
       DashboardDespachos.tsx    Dashboard de Despachos
@@ -727,6 +844,8 @@ src/
     contenedores.ts           Armado de contenedores y reporte para el proveedor
     puertos.ts                Puerto de carga → país de origen, y el texto del origen
     despachos.ts              Cambios de una OP, filtros y cuentas del dashboard
+    drafts.ts                 FOB/FCA, filtros y cuentas del dashboard de drafts
+    periodos.ts               Los 120 períodos de producción de la columna
     chips.ts                  Color de cada etiqueta
     format.ts                 Números y fechas
   services/monday/            Todo lo que habla con monday
@@ -739,6 +858,8 @@ src/
     catalogo.ts               Puerto de carga de cada modelo
     despachantes.ts           El equipo Despachantes de monday
     despachos.ts              Lectura y actualización de las OP de aduana
+    drafts.ts                 Lectura de drafts y asignación del período
+    planificacion.ts          El item de planificación que se manda al proveedor
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
     crearPedidoVista.ts       Pedido a la vista: item, subitems y estados

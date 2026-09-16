@@ -16,10 +16,13 @@
  * El primer nivel hoy tiene una sola opción, pero existe desde ya: es donde se van a sumar los
  * próximos tipos de operación sin tener que rearmar la pantalla de entrada.
  */
-export type OperacionPrincipal = 'despacho' | 'aduana'
+export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts'
 
 /** Operaciones dentro de "Despachante de Aduana". */
 export type OperacionAduana = 'actualizar' | 'dashboard'
+
+/** Operaciones dentro de "Planificación de Drafts". */
+export type OperacionDrafts = 'planificar' | 'enviar' | 'dashboard'
 
 /** Las dos formas de despachar: con el circuito de pago previo, o a la vista (contra VL). */
 export type ModalidadDespacho = 'anticipado' | 'vista'
@@ -317,6 +320,69 @@ export interface ResultadoActualizacion {
   actualizadas: string[]
   advertencias: string[]
 }
+
+/** Un producto dentro de un draft: lo que el proveedor va a fabricar. */
+export interface ProductoDraft {
+  id: string
+  nombre: string
+  rodado: string
+  cantidad: number | null
+  precioUnitario: number | null
+  /** Costo de transporte del producto, ya elegido según la condición de entrega del draft. */
+  costoTransporte: number | null
+  valorNeto: number | null
+  /** Subtotal del producto, con transporte. */
+  subtotal: number | null
+}
+
+/** Un draft: el pedido al proveedor, antes de que el tractor exista en el Inventario. */
+export interface Draft {
+  id: string
+  /** Nombre del item: es el número de draft. */
+  nombre: string
+  /** ID legible que numera monday ("DRAFT-014"). */
+  idDraft: string
+  estado: string
+  lectura: string
+  /** Período de producción sugerido, o `''` si todavía no tiene. */
+  periodo: string
+  /** Fecha del draft en ISO (`AAAA-MM-DD`), o `''`. */
+  fecha: string
+  ordenPedido: string
+  condicionEntrega: string
+  transporte: string
+  formaPago: string
+  divisa: string
+  /**
+   * Costo del transporte que corresponde a la condición de entrega: el FOB si dice FOB, el FCA si
+   * dice FCA. Es uno u otro, nunca los dos.
+   */
+  costoTransporte: number | null
+  /** Cómo se llama ese costo, para poder rotularlo. */
+  rotuloTransporte: string
+  total: number | null
+  productos: ProductoDraft[]
+}
+
+/** Resultado de asignar períodos a un lote de drafts. */
+export interface ResultadoPlanificacion {
+  planificados: string[]
+  advertencias: string[]
+}
+
+/** Resultado de crear una planificación para mandarle al proveedor. */
+export interface ResultadoEnvio {
+  planificacionId: string
+  nombre: string
+  drafts: number
+  advertencias: string[]
+}
+
+/** Etapa del asistente de "Planificar Período de Producción". */
+export type EtapaPlanificacion = 'seleccion' | 'periodos' | 'listo'
+
+/** Etapa del asistente de "Enviar Planificación". */
+export type EtapaEnvio = 'seleccion' | 'confirmacion' | 'listo'
 
 /** Etapa del asistente de "Actualizar Despacho OP". */
 export type EtapaAduana = 'seleccion' | 'edicion' | 'resumen' | 'listo'

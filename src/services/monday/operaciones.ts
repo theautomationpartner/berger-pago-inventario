@@ -22,9 +22,11 @@ import {
   COL_CATALOGO,
   COL_DESPACHANTE,
   COL_DESPACHANTE_SUB,
+  COL_DRAFT,
   COL_INV,
   COL_PAGO,
   COL_PAGO_SUB,
+  COL_PLANIF,
   TABLEROS,
   TEAM_DESPACHANTES,
 } from './columns'
@@ -34,7 +36,9 @@ import {
  *
  * `despacho` es el circuito de BERGER —elegir tractores, pagar, despachar—. `aduana` es lo que
  * hace el despachante externo: actualizar el estado de las OP que ya existen. `aduanaDashboard` es
- * la lectura de conjunto de ese mismo tablero, que es de BERGER y no del externo.
+ * la lectura de conjunto de ese mismo tablero, que es de BERGER y no del externo. `drafts` es lo
+ * que pasa ANTES de que el tractor exista: planificar el período de producción de cada draft y
+ * mandarle la planificación al proveedor.
  *
  * El dashboard es un módulo aparte y no una pantalla más de `aduana` justamente porque el
  * despachante NO lo ve: entra a cargar sus novedades, no a mirar el estado de toda la operación.
@@ -45,7 +49,7 @@ import {
  * habilitado. Es lo que impide que un despachante pida los pagos del inventario aunque la pantalla
  * no se los muestre.
  */
-export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard'
+export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard' | 'drafts' | 'drafts'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
@@ -65,6 +69,11 @@ export type NombreOperacion =
   | 'despachosDeAduana'
   | 'despachosPaginaSiguiente'
   | 'actualizarDespacho'
+  | 'draftsPorEstado'
+  | 'draftsPaginaSiguiente'
+  | 'actualizarDraft'
+  | 'crearPlanificacion'
+  | 'actualizarPlanificacion'
 
 export type Variables = Record<string, unknown>
 
@@ -121,6 +130,16 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_DESPACHANTE.paisOrigen,
     COL_DESPACHANTE.proveedor,
     COL_DESPACHANTE.importador,
+  ]),
+  /* Del draft, la app toca DOS columnas y ninguna más: el período sugerido y el estado. Los
+     importes, la lectura del PDF y las conexiones las escribe la automatización que lee el
+     documento, y que la app pueda corregirlas a mano sería tapar un problema de lectura. */
+  [TABLEROS.drafts]: new Set([COL_DRAFT.periodo, COL_DRAFT.estado]),
+  [TABLEROS.planificacion]: new Set([
+    COL_PLANIF.tipo,
+    COL_PLANIF.fecha,
+    COL_PLANIF.drafts,
+    COL_PLANIF.estadoEnvio,
   ]),
   [TABLEROS.despachanteSubitems]: new Set([
     COL_DESPACHANTE_SUB.valorNeto,
@@ -650,6 +669,121 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       tablero: TABLEROS.despachante,
       item: idMonday(v.item, 'item'),
       valores: valoresDelDespachante(v.valores),
+    }),
+  },
+
+  /* ------------------------------------------------------------------ *
+   * Módulo de drafts: planificar el período y mandar la planificación
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Drafts filtrados por Estado, con sus productos.
+   *
+   * Los subitems vienen en la MISMA consulta y no de a uno: el detalle de un draft son sus
+   * productos —qué modelo, cuántos, a cuánto—, y sin eso no se puede decidir para qué período va.
+   * Pedirlos aparte serían veinte viajes a monday para dibujar una lista.
+   */
+  draftsPorEstado: {
+    modulo: 'drafts',
+    query: `
+      query ($tablero: ID!, $estado: CompareValue!, $columnas: [String!], $colsSub: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(
+            limit: $limite
+            query_params: {
+              rules: [{ column_id: "${COL_DRAFT.estado}", compare_value: $estado, operator: any_of }]
+            }
+          ) {
+            cursor
+            items {
+              id
+              name
+              column_values(ids: $columnas) { ${CAMPOS_COLUMNA} }
+              subitems { id name column_values(ids: $colsSub) { ${CAMPOS_COLUMNA} } }
+            }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.drafts,
+      estado: [entero(Array.isArray(v.estado) ? v.estado[0] : v.estado, 'estado', 0, 999)],
+      columnas: idsDeColumnas(v.columnas),
+      colsSub: idsDeColumnas(v.colsSub),
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /** Páginas siguientes de los drafts. El cursor ya lleva el filtro adentro. */
+  draftsPaginaSiguiente: {
+    modulo: 'drafts',
+    query: `
+      query ($cursor: String!, $columnas: [String!], $colsSub: [String!], $limite: Int!) {
+        next_items_page(cursor: $cursor, limit: $limite) {
+          cursor
+          items {
+            id
+            name
+            column_values(ids: $columnas) { ${CAMPOS_COLUMNA} }
+            subitems { id name column_values(ids: $colsSub) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => {
+      const cursor = String(v.cursor ?? '')
+      if (!cursor || cursor.length > 4096) throw new OperacionInvalida('Cursor inválido.')
+      return {
+        cursor,
+        columnas: idsDeColumnas(v.columnas),
+        colsSub: idsDeColumnas(v.colsSub),
+        limite: entero(v.limite, 'limite', 1, 500),
+      }
+    },
+  },
+
+  /** El período y el estado de UN draft. El tablero lo fija el servidor. */
+  actualizarDraft: {
+    modulo: 'drafts',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.drafts,
+      item: idMonday(v.item, 'item'),
+      valores: valoresDeColumnas(v.valores, TABLEROS.drafts),
+    }),
+  },
+
+  /** El item de la planificación que se le manda al proveedor. */
+  crearPlanificacion: {
+    modulo: 'drafts',
+    query: `
+      mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
+        create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.planificacion,
+      nombre: nombre(v.nombre),
+      valores: valoresDeColumnas(v.valores, TABLEROS.planificacion),
+    }),
+  },
+
+  /** El estado de envío de una planificación ya creada. */
+  actualizarPlanificacion: {
+    modulo: 'drafts',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.planificacion,
+      item: idMonday(v.item, 'item'),
+      valores: valoresDeColumnas(v.valores, TABLEROS.planificacion),
     }),
   },
 }

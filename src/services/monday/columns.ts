@@ -34,7 +34,116 @@ export const TABLEROS = {
   despachante: '18430575903',
   /** Subelementos del Despachante: un subitem por tractor despachado. */
   despachanteSubitems: '18431188087',
+  /** Drafts: un item por draft del proveedor, con un subitem por producto. */
+  drafts: '18428667614',
+  draftsSubitems: '18428672791',
+  /** Confirmación y Planificación de Fecha de Producción. */
+  planificacion: '18428677294',
 } as const
+
+/**
+ * 🧾 Drafts (18428667614) — el pedido al proveedor, antes de que exista el tractor.
+ *
+ * OJO con dos columnas que se prestan a confusión, porque los nombres no acompañan:
+ *
+ * - `numeric_mm77ygs7` NO es el costo de transporte FCA: es el **Total del draft sin transporte**.
+ *   El costo FCA es `numeric_mm72rv29`.
+ * - `numeric_mm6n2m2y` ("Total Draf") es el total CON transporte, que es el que se muestra.
+ */
+export const COL_DRAFT = {
+  /** Lectura del PDF por la automatización. Sólo se planifica lo que ya se leyó bien. */
+  lectura: 'color_mm6sr83w',
+  /** Estado del draft: es lo que la app avanza a "Periodo Prod Planificada". */
+  estado: 'color_mm6zdmzr',
+  /** Período de producción sugerido. Una sola etiqueta por draft. */
+  periodo: 'dropdown_mm70awrf',
+
+  nroDraft: 'text_mm6ve0h1',
+  fecha: 'date4',
+  ordenPedido: 'text_mm6sv3rq',
+  condicionEntrega: 'dropdown_mm6tve05',
+  transporte: 'dropdown_mm6tk49e',
+  formaPago: 'dropdown_mm6t6geg',
+  divisa: 'color_mm6nbfey',
+
+  /** Costo del transporte, según la condición de entrega sea FOB o FCA. */
+  transporteFob: 'numeric_mm6scnmk',
+  transporteFca: 'numeric_mm72rv29',
+  /** Total del draft, con transporte incluido. */
+  total: 'numeric_mm6n2m2y',
+
+  /** ID legible ("DRAFT-014"). Sólo lectura: lo numera monday. */
+  idDraft: 'pulse_id_mm6thwyf',
+  pdf: 'file_mm6nkfm1',
+} as const
+
+/** 🧾 Subelementos de Drafts (18428672791) — un subitem por producto del draft. */
+export const COL_DRAFT_SUB = {
+  rodado: 'dropdown_mm70988f',
+  cantidad: 'numeric_mm6nvzkt',
+  precioUnitario: 'numeric_mm6nqrbw',
+  costoFob: 'numeric_mm6schww',
+  costoFca: 'numeric_mm72y3dz',
+  valorNeto: 'numeric_mm6vzz57',
+  /** Subtotal del producto, con transporte. */
+  subtotal: 'numeric_mm6t6at7',
+} as const
+
+/** Etiqueta de "Lectura Draft" que habilita a planificar. */
+export const DRAFT_LEIDO = 'Leido'
+
+/** Etiquetas de "Estado Draf" (`color_mm6zdmzr`). */
+export const DRAFT_ESTADO = {
+  PEND_CONFIRMAR: 'Pend de Confirmar',
+  CONFIRMADO: 'Confirmado en ORDEN de Confirmacion',
+  CANCELADO: 'Cancelado',
+  PEND_PLANIFICAR: 'Pend de Planificar',
+  PLANIFICADA: 'Periodo Prod Planificada',
+} as const
+
+/**
+ * Índices de "Estado Draf", para pedirle menos filas a monday.
+ *
+ * Como en el resto de la app, el filtro definitivo se vuelve a aplicar en el cliente comparando la
+ * ETIQUETA: si mañana cambia el orden, se trae de más y se filtra bien.
+ */
+export const DRAFT_ESTADO_INDEX: Record<string, number> = {
+  [DRAFT_ESTADO.PEND_CONFIRMAR]: 0,
+  [DRAFT_ESTADO.CONFIRMADO]: 1,
+  [DRAFT_ESTADO.CANCELADO]: 2,
+  [DRAFT_ESTADO.PEND_PLANIFICAR]: 3,
+  [DRAFT_ESTADO.PLANIFICADA]: 4,
+}
+
+/** Los estados del draft en el orden del circuito, para el dashboard. */
+export const DRAFT_ESTADOS = [
+  DRAFT_ESTADO.PEND_PLANIFICAR,
+  DRAFT_ESTADO.PLANIFICADA,
+  DRAFT_ESTADO.PEND_CONFIRMAR,
+  DRAFT_ESTADO.CONFIRMADO,
+  DRAFT_ESTADO.CANCELADO,
+] as const
+
+/**
+ * 📬 Confirmación y Planificación (18428677294) — el envío a DEUTZ.
+ *
+ * La app sólo crea items de tipo PLANIFICACION; los de CONFIRMACION los genera otro circuito.
+ */
+export const COL_PLANIF = {
+  tipo: 'color_mm737v3t',
+  fecha: 'date4',
+  /** Drafts que se mandan en esa planificación. */
+  drafts: 'board_relation_mm70ss7g',
+  /** Disparador del mail a DEUTZ con los PDF y los períodos sugeridos. */
+  estadoEnvio: 'color_mm73xw6w',
+} as const
+
+/** Etiqueta de "Tipo" que le corresponde a lo que crea la app. */
+export const PLANIF_TIPO = '🤚PLANIFICACION'
+
+/** URL del tablero de planificación, para los enlaces "ver en monday". */
+export const URL_TABLERO_PLANIFICACION =
+  'https://maquinariasagricolas.monday.com/boards/18428677294'
 
 /** URL del tablero de pagos, para los enlaces "ver en monday". */
 export const URL_TABLERO_PAGOS = 'https://maquinariasagricolas.monday.com/boards/18430295445'

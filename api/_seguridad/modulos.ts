@@ -25,7 +25,7 @@ import type { Perfil } from './listaBlanca'
  */
 export type Modulo = ModuloApp
 
-export const MODULOS: Modulo[] = ['despacho', 'aduana', 'aduanaDashboard']
+export const MODULOS: Modulo[] = ['despacho', 'aduana', 'aduanaDashboard', 'drafts']
 
 /** Que el valor venga de afuera y sea uno de los módulos conocidos. */
 export const esModulo = (v: unknown): v is Modulo => MODULOS.includes(v as Modulo)

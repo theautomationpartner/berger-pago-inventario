@@ -3,6 +3,7 @@ import type {
   ModalidadDespacho,
   OpcionPanel,
   OperacionAduana,
+  OperacionDrafts,
   OperacionPrincipal,
 } from '@/types'
 
@@ -22,6 +23,16 @@ export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modul
     corto: 'Despacho',
     detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
     icono: 'fa-solid fa-truck-ramp-box',
+  },
+  {
+    id: 'drafts',
+    modulo: 'drafts',
+    titulo: 'PLANIFICACIÓN DE DRAFTS',
+    corto: 'Planificación de drafts',
+    detalle:
+      'Período de producción de cada draft y envío de la planificación al proveedor, antes de que ' +
+      'el tractor exista.',
+    icono: 'fa-solid fa-calendar-check',
   },
   {
     id: 'aduana',
@@ -62,6 +73,32 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
     titulo: 'DASHBOARD DE DESPACHOS',
     corto: 'Dashboard',
     detalle: 'Cuántas OP hay en cada estado, qué arriba primero y qué quedó sin cargar.',
+    icono: 'fa-solid fa-chart-simple',
+  },
+]
+
+/** Operaciones dentro de PLANIFICACIÓN DE DRAFTS: el segundo panel del módulo de drafts. */
+export const OPERACIONES_DRAFTS: OpcionPanel<OperacionDrafts>[] = [
+  {
+    id: 'planificar',
+    titulo: 'PLANIFICAR PERÍODO DE PRODUCCIÓN',
+    corto: 'Planificar período',
+    detalle:
+      'Asignarle a cada draft leído el período en el que se le pide al proveedor que lo fabrique.',
+    icono: 'fa-solid fa-calendar-plus',
+  },
+  {
+    id: 'enviar',
+    titulo: 'ENVIAR PLANIFICACIÓN',
+    corto: 'Enviar planificación',
+    detalle: 'Mandarle a DEUTZ los drafts ya planificados, con su período sugerido y sus PDF.',
+    icono: 'fa-solid fa-paper-plane',
+  },
+  {
+    id: 'dashboard',
+    titulo: 'DASHBOARD DE DRAFTS',
+    corto: 'Dashboard',
+    detalle: 'Cuántos drafts hay en cada estado, qué carga se sugirió y qué está esperando acción.',
     icono: 'fa-solid fa-chart-simple',
   },
 ]

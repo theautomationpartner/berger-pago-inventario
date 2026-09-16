@@ -9,6 +9,9 @@ import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
 import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
 import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
+import { DashboardDrafts } from '@/features/drafts/DashboardDrafts'
+import { EnviarPlanificacion } from '@/features/drafts/EnviarPlanificacion'
+import { PlanificarPeriodo } from '@/features/drafts/PlanificarPeriodo'
 import { Migas, type Miga } from '@/features/inicio/Migas'
 import { PanelOpciones } from '@/features/inicio/PanelOpciones'
 import { DespachoVista } from '@/features/vista/DespachoVista'
@@ -17,13 +20,19 @@ import {
   aduanaDeModulos,
   MODALIDADES_DESPACHO,
   OPERACIONES_ADUANA,
+  OPERACIONES_DRAFTS,
   OPERACIONES_PRINCIPALES,
   principalesDeModulos,
   puedeEnAduana,
 } from '@/lib/navegacion'
 import { clienteIngreso } from '@/services/acceso/cliente'
 import { mondayHabilitado } from '@/services/monday/sdk'
-import type { ModalidadDespacho, OperacionAduana, OperacionPrincipal } from '@/types'
+import type {
+  ModalidadDespacho,
+  OperacionAduana,
+  OperacionDrafts,
+  OperacionPrincipal,
+} from '@/types'
 
 const TITULO = 'Operaciones de Inventario'
 const SUBTITULO = 'Tractores · BERGER S.A.'
@@ -62,7 +71,7 @@ export function App() {
       <AppAdentro
         sesion={{
           perfil: { id: 'desarrollo', nombre: 'Desarrollo local' },
-          modulos: ['despacho', 'aduana', 'aduanaDashboard'],
+          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts'],
           salir: () => {},
           recuperacionRestantes: null,
         }}
@@ -92,6 +101,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
   const [principal, setPrincipal] = useState<OperacionPrincipal | null>(null)
   const [modalidad, setModalidad] = useState<ModalidadDespacho | null>(null)
   const [operacionAduana, setOperacionAduana] = useState<OperacionAduana | null>(null)
+  const [operacionDrafts, setOperacionDrafts] = useState<OperacionDrafts | null>(null)
 
   const principales = principalesDeModulos(sesion.modulos)
   const operacionesAduana = aduanaDeModulos(sesion.modulos)
@@ -130,17 +140,20 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
     setPrincipal(null)
     setModalidad(null)
     setOperacionAduana(null)
+    setOperacionDrafts(null)
   }
 
   const volverAlPrincipal = () => {
     setModalidad(null)
     setOperacionAduana(null)
+    setOperacionDrafts(null)
   }
 
   const defPrincipal = OPERACIONES_PRINCIPALES.find((o) => o.id === principal)
   const defSegundo =
     MODALIDADES_DESPACHO.find((m) => m.id === modalidad) ??
-    OPERACIONES_ADUANA.find((o) => o.id === operacionAduana)
+    OPERACIONES_ADUANA.find((o) => o.id === operacionAduana) ??
+    OPERACIONES_DRAFTS.find((o) => o.id === operacionDrafts)
 
   const migas: Miga[] = [{ rotulo: 'Operaciones', onIr: irAlInicio }]
   if (defPrincipal) migas.push({ rotulo: defPrincipal.corto, onIr: volverAlPrincipal })
@@ -187,6 +200,19 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
 
       {principal === 'despacho' && modalidad === 'anticipado' && <DespachoAnticipado />}
       {principal === 'despacho' && modalidad === 'vista' && <DespachoVista />}
+
+      {principal === 'drafts' && operacionDrafts === null && (
+        <PanelOpciones
+          titulo="Planificación de drafts"
+          detalle="Lo que pasa antes de que el tractor exista: qué se pide y para cuándo."
+          opciones={OPERACIONES_DRAFTS}
+          onElegir={setOperacionDrafts}
+        />
+      )}
+
+      {principal === 'drafts' && operacionDrafts === 'planificar' && <PlanificarPeriodo />}
+      {principal === 'drafts' && operacionDrafts === 'enviar' && <EnviarPlanificacion />}
+      {principal === 'drafts' && operacionDrafts === 'dashboard' && <DashboardDrafts />}
 
       {principal === 'aduana' && operacionAduana === null && (
         <PanelOpciones
