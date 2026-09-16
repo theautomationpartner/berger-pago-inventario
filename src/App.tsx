@@ -14,10 +14,12 @@ import { PanelOpciones } from '@/features/inicio/PanelOpciones'
 import { DespachoVista } from '@/features/vista/DespachoVista'
 import { useAccesoMonday } from '@/hooks/useAccesoMonday'
 import {
+  aduanaDeModulos,
   MODALIDADES_DESPACHO,
   OPERACIONES_ADUANA,
   OPERACIONES_PRINCIPALES,
   principalesDeModulos,
+  puedeEnAduana,
 } from '@/lib/navegacion'
 import { clienteIngreso } from '@/services/acceso/cliente'
 import { mondayHabilitado } from '@/services/monday/sdk'
@@ -60,7 +62,7 @@ export function App() {
       <AppAdentro
         sesion={{
           perfil: { id: 'desarrollo', nombre: 'Desarrollo local' },
-          modulos: ['despacho', 'aduana'],
+          modulos: ['despacho', 'aduana', 'aduanaDashboard'],
           salir: () => {},
           recuperacionRestantes: null,
         }}
@@ -92,6 +94,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
   const [operacionAduana, setOperacionAduana] = useState<OperacionAduana | null>(null)
 
   const principales = principalesDeModulos(sesion.modulos)
+  const operacionesAduana = aduanaDeModulos(sesion.modulos)
 
   const barra = (
     <BarraMarca
@@ -189,13 +192,17 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
         <PanelOpciones
           titulo="Despachante de aduana"
           detalle="Seguimiento de las OP que ya salieron del circuito de despacho."
-          opciones={OPERACIONES_ADUANA}
+          opciones={operacionesAduana}
           onElegir={setOperacionAduana}
         />
       )}
 
-      {principal === 'aduana' && operacionAduana === 'actualizar' && <ActualizarDespachos />}
-      {principal === 'aduana' && operacionAduana === 'dashboard' && <DashboardDespachos />}
+      {principal === 'aduana' &&
+        operacionAduana === 'actualizar' &&
+        puedeEnAduana(sesion.modulos, 'actualizar') && <ActualizarDespachos />}
+      {principal === 'aduana' &&
+        operacionAduana === 'dashboard' &&
+        puedeEnAduana(sesion.modulos, 'dashboard') && <DashboardDespachos />}
     </div>
   )
 }

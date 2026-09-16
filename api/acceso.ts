@@ -149,13 +149,22 @@ export default async function handler(req: Request): Promise<Response> {
     const tokenPrevio = req.headers.get('x-sesion-app')
     const previa = await verificarSesionApp(tokenPrevio, usuarioId, appId)
     if (previa && sesionAlcanza(previa, perfil)) {
-      /* La sesión de hoy puede haberse emitido antes de un cambio de equipo. Se conserva —es la
-         que prueba el autenticador— pero los módulos que valen son los de ahora. */
+      /* Se vuelve a emitir con los módulos de AHORA, conservando que ya pasó el autenticador.
+         Reusar el token tal cual dejaba sin nada a quien tenía abierta una sesión emitida antes de
+         que existieran los módulos: la pantalla de operaciones le quedaba vacía hasta el día
+         siguiente. Recalcularlos no afloja nada —el perfil se acaba de releer— y cualquier cambio
+         de equipo se aplica en el acto, sin obligar a pedir el código de nuevo. */
       return json(200, {
         estado: 'listo',
         perfil: publico(perfil),
-        sesion: tokenPrevio,
-        modulos: previa.mods.filter((mod) => modulos.includes(mod)),
+        sesion: await emitirSesion({
+          uid: usuarioId,
+          pid: perfil.id,
+          app: appId,
+          mfa: previa.mfa,
+          mods: modulos,
+        }),
+        modulos,
       })
     }
 

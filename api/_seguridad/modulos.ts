@@ -25,7 +25,7 @@ import type { Perfil } from './listaBlanca'
  */
 export type Modulo = ModuloApp
 
-export const MODULOS: Modulo[] = ['despacho', 'aduana']
+export const MODULOS: Modulo[] = ['despacho', 'aduana', 'aduanaDashboard']
 
 /** Que el valor venga de afuera y sea uno de los módulos conocidos. */
 export const esModulo = (v: unknown): v is Modulo => MODULOS.includes(v as Modulo)
@@ -50,13 +50,17 @@ const esAdministracion = (perfil: Perfil): boolean => perfil.teams.includes(TEAM
  * Es lo que se vuelve a comprobar en cada pedido de datos: es gratis —el perfil ya se leyó— y es
  * lo que hace que un cambio en el tablero valga en el acto.
  *
+ * El de Administración ve TODO lo que la app tenga: es el equipo dueño de la operación, y la regla
+ * de BERGER es que el único restringido sea el despachante externo, que entra nada más que a
+ * cargar las novedades de sus OP.
+ *
  * Una fila sin equipo cargado es la de siempre, la de quien venía usando la app antes de que
  * existieran los equipos: se queda con Despacho. Cambiar eso dejaría afuera a gente que hoy
  * trabaja, por un dato que nadie le pidió nunca.
  */
 export function modulosSegunLaLista(perfil: Perfil): Modulo[] {
   if (esDespachanteEnLaLista(perfil)) return ['aduana']
-  if (esAdministracion(perfil)) return ['despacho', 'aduana']
+  if (esAdministracion(perfil)) return [...MODULOS]
   return ['despacho']
 }
 
@@ -96,7 +100,7 @@ export async function modulosDelPerfil(perfil: Perfil, usuarioId: string): Promi
   if (enElEquipo) return deLaLista
 
   /* El equipo no confirma. Para un despachante eso es quedarse sin nada: su único módulo depende
-     de estar en el equipo. Para alguien de Administración, se le cae Aduana y conserva Despacho,
-     que es lo que la fila le habilita por sí sola. */
-  return deLaLista.filter((m) => m !== 'aduana')
+     de estar en el equipo. Para alguien de Administración, se le cae todo lo de Aduana y conserva
+     Despacho, que es lo que la fila le habilita por sí sola. */
+  return deLaLista.filter((m) => !m.startsWith('aduana'))
 }

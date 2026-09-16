@@ -101,17 +101,13 @@ export async function exigirSesionApp(
      tipo o el equipo a alguien le corta el módulo en el acto, sin esperar a mañana. */
   const deLaLista = modulosSegunLaLista(perfil)
   const modulos = sesion.mods.filter((mod) => deLaLista.includes(mod))
-  if (modulos.length === 0) {
-    await registrar('Acceso denegado', {
-      usuarioId,
-      perfil: perfil.nombre,
-      email: perfil.email,
-      cuentaId: sesionMonday.accountId,
-      ip,
-      detalle: 'La sesión ya no tiene ningún módulo habilitado.',
-    })
-    throw new AccesoDenegado('Sin módulos habilitados.')
-  }
+
+  /* Sin módulos en común no se rechaza: se pide renovar la sesión. Pasa en dos casos, y los dos se
+     arreglan volviendo a ingresar, no negando el acceso: una sesión emitida antes de que
+     existieran los módulos (no trae ninguno), y una persona que cambió de equipo con la sesión
+     abierta (trae los del equipo anterior). Si de verdad ya no tiene acceso, el ingreso se lo dirá
+     con el mismo cartel genérico de siempre. */
+  if (modulos.length === 0) throw new SesionRequerida('La sesión no tiene módulos vigentes.')
 
   return { perfil, modulos }
 }

@@ -481,11 +481,20 @@ usuario existe ni qué hay adentro. El motivo real queda en el Registro de Acces
 La Lista Blanca ya no decide sólo **si** entrás: decide **a qué**. La app tiene dos módulos y dos
 poblaciones que no se cruzan.
 
-| Quién | Condiciones | Módulos |
-|-------|-------------|---------|
-| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | Despacho + Aduana |
-| Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | sólo Aduana |
+| Quién | Condiciones | Qué ve |
+|-------|-------------|--------|
+| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Despacho, Actualizar Despacho OP y el Dashboard |
+| Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | **sólo** Actualizar Despacho OP |
 | Fila sin equipo cargado | — | Despacho |
+
+Administración ve todo lo que la app tenga, hoy y cuando se sumen operaciones nuevas: es el equipo
+dueño de la operación. El único restringido es el despachante, que es externo.
+
+Por eso son **tres** módulos y no dos: `despacho`, `aduana` (cargar novedades) y `aduanaDashboard`
+(la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
+a cargar sus OP, no a mirar el estado de toda la operación de BERGER— y, como se alimenta de la
+misma consulta que él sí usa, separarlo por módulo es lo único que los distingue del lado del
+servidor.
 
 Para el despachante son las **tres condiciones juntas**, como las pidió BERGER. Cada una la
 administra alguien distinto —la fila la carga BERGER, el equipo lo maneja monday—, así que exigir
@@ -502,6 +511,13 @@ consulta el equipo de monday— y viajan firmados dentro de la sesión del día.
 vuelven a filtrar contra la Lista Blanca en vivo: cambiarle el tipo o el equipo **en el tablero**
 corta el módulo en el acto; sacar a alguien del **equipo de monday** recién se nota en su próximo
 ingreso, que como mucho es al día siguiente.
+
+**Sesiones que quedan cortas.** Cada vez que alguien abre la app con una sesión del día ya válida,
+se le vuelve a emitir con los módulos de ese momento, conservando que ya pasó el autenticador. Sin
+eso, quien tuviera una sesión abierta emitida antes de que existieran los módulos —o antes de
+cambiar de equipo— se quedaba con la pantalla de operaciones **vacía** hasta el día siguiente. Y si
+un pedido de datos llega con una sesión sin módulos vigentes, se pide **renovar la sesión**, no se
+niega el acceso: negarlo mostraría "no tenés acceso" a alguien que sí lo tiene.
 
 ### Autenticador (TOTP)
 

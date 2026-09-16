@@ -33,13 +33,19 @@ import {
  * Los módulos de la app: dos poblaciones distintas, con permisos distintos.
  *
  * `despacho` es el circuito de BERGER —elegir tractores, pagar, despachar—. `aduana` es lo que
- * hace el despachante externo: actualizar el estado de las OP que ya existen.
+ * hace el despachante externo: actualizar el estado de las OP que ya existen. `aduanaDashboard` es
+ * la lectura de conjunto de ese mismo tablero, que es de BERGER y no del externo.
+ *
+ * El dashboard es un módulo aparte y no una pantalla más de `aduana` justamente porque el
+ * despachante NO lo ve: entra a cargar sus novedades, no a mirar el estado de toda la operación.
+ * Como se alimenta de la misma consulta que usa el despachante, separarlo por módulo es lo único
+ * que lo distingue del lado del servidor.
  *
  * Cada operación declara el suyo y el servidor comprueba, en cada pedido, que el perfil lo tenga
  * habilitado. Es lo que impide que un despachante pida los pagos del inventario aunque la pantalla
  * no se los muestre.
  */
-export type ModuloApp = 'despacho' | 'aduana'
+export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =

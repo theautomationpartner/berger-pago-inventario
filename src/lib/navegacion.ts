@@ -40,10 +40,16 @@ export const principalesDeModulos = (
 ): OpcionPanel<OperacionPrincipal>[] =>
   OPERACIONES_PRINCIPALES.filter((o) => modulos.includes(o.modulo))
 
-/** Operaciones dentro de DESPACHANTE DE ADUANA: el segundo panel del módulo de aduana. */
-export const OPERACIONES_ADUANA: OpcionPanel<OperacionAduana>[] = [
+/**
+ * Operaciones dentro de DESPACHANTE DE ADUANA: el segundo panel del módulo de aduana.
+ *
+ * El dashboard tiene su propio módulo: el despachante externo entra a cargar las novedades de sus
+ * OP, no a mirar el estado de toda la operación de BERGER. Administración ve las dos.
+ */
+export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: ModuloApp })[] = [
   {
     id: 'actualizar',
+    modulo: 'aduana',
     titulo: 'ACTUALIZAR DESPACHO OP',
     corto: 'Actualizar OP',
     detalle:
@@ -52,12 +58,21 @@ export const OPERACIONES_ADUANA: OpcionPanel<OperacionAduana>[] = [
   },
   {
     id: 'dashboard',
+    modulo: 'aduanaDashboard',
     titulo: 'DASHBOARD DE DESPACHOS',
     corto: 'Dashboard',
     detalle: 'Cuántas OP hay en cada estado, qué arriba primero y qué quedó sin cargar.',
     icono: 'fa-solid fa-chart-simple',
   },
 ]
+
+/** Las operaciones de aduana que puede ver este perfil. */
+export const aduanaDeModulos = (modulos: ModuloApp[]): OpcionPanel<OperacionAduana>[] =>
+  OPERACIONES_ADUANA.filter((o) => modulos.includes(o.modulo))
+
+/** ¿Tiene permitida ESTA operación de aduana? Es lo que evita dibujar una pantalla que va a rebotar. */
+export const puedeEnAduana = (modulos: ModuloApp[], id: OperacionAduana): boolean =>
+  aduanaDeModulos(modulos).some((o) => o.id === id)
 
 /** Modalidades de despacho: el segundo panel, dentro de DESPACHO. */
 export const MODALIDADES_DESPACHO: OpcionPanel<ModalidadDespacho>[] = [
