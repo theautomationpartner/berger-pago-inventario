@@ -23,7 +23,11 @@ PLANIFICACIÓN DE DRAFTS  →  PLANIFICAR PERÍODO       →  1. Selección de d
                          →  ENVIAR PLANIFICACIÓN     →  1. Selección · 2. Confirmación
                          →  DASHBOARD DE DRAFTS      →  pantalla única
 
-DESPACHO                 →  PAGO ANTICIPADO          →  1. Cargar Transferencia
+FECHAS DE PRODUCCIÓN     →  CONFIRMAR / PROPONER      →  1. Selección de tractores
+  INVENTARIO                                             2. Confirmar o proponer
+                         →  ENVIAR CONFIRMACIÓN      →  1. Confirmación · 2. Revisión
+
+PAGOS DESPACHO           →  PAGO ANTICIPADO          →  1. Cargar Transferencia
                                                         2. Aprobar Transferencia
                                                         3. Confirmar Pago - SWIFT
                          →  PAGO VISTA (Contra BL)   →  1. Selección · 2. Despachante
@@ -34,8 +38,9 @@ DESPACHANTE DE ADUANA    →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
                          →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
 
-Las tres operaciones principales siguen el recorrido real de un tractor, y en ese orden:
-**se planifica** con el proveedor, **se despacha y se paga**, y **se nacionaliza**.
+Las cuatro operaciones principales siguen el recorrido real de un tractor, y en ese orden: **se
+planifica** el pedido con el proveedor, **se acuerda la fecha** de producción, **se paga y se
+despacha**, y **se nacionaliza**.
 
 **Cada persona ve sólo lo suyo.** Las dos operaciones principales pertenecen a módulos distintos, y
 el primer panel muestra únicamente los que el servidor le habilitó a ese perfil: la gente que
@@ -171,6 +176,83 @@ Los importes se muestran **por divisa** y nunca sumados entre sí: sumar euros c
 número que no existe. Si un corte mezcla divisas, se informa la cantidad y se calla el importe.
 
 Las cuentas están en [`src/lib/drafts.ts`](src/lib/drafts.ts) y se prueban solas.
+
+---
+
+## FECHAS DE PRODUCCIÓN INVENTARIO
+
+Entre el draft y el despacho hay una negociación: el proveedor informa **cuándo** va a fabricar cada
+tractor, y BERGER acepta esa fecha o le propone otra. De ese ida y vuelta sale la única fecha que
+después habilita a despachar —los dos módulos de despacho sólo muestran tractores con la fecha
+confirmada—, así que es el módulo que abre la puerta a todo lo demás.
+
+Dos columnas del Inventario cuentan la historia:
+
+| Columna | Qué dice |
+|---|---|
+| 🤖Estado Confirmación Fecha Producción `color_mm6s8xp2` | `Fecha Pend Confirmar` (espera a BERGER) · `Fecha a Confirmar` (espera al proveedor) · `Fecha Confirmada` |
+| 🤖Estado Fecha Producción `color_mm6sc76v` | `Aceptada` · `Nueva Fecha Propuesta` |
+
+### CONFIRMAR / PROPONER FECHA PRODUCCIÓN
+
+**Paso 1 · Selección.** Los tractores en `Fecha Pend Confirmar` **que tienen fecha de producción
+cargada** (`date_mm6nymx`). Sin fecha no aparecen: no hay nada que aceptar ni contra qué comparar
+una propuesta. Cada fila lleva sus etiquetas —modelo, N° interno, Primary Status y su traducción,
+tipo de rodado y precio unitario FOB— y la **fecha bien grande a la derecha**, porque es lo que se
+está decidiendo, no un dato más.
+
+**Paso 2 · Confirmar o proponer.** Para cada tractor, dos tarjetas grandes y excluyentes:
+
+- **Confirmar fecha de producción** → `color_mm6s8xp2` = `Fecha Confirmada` y `color_mm6sc76v` =
+  `Aceptada`.
+- **Proponer otra fecha** → se escribe en 🤚Fecha Prod Propuesta (`date_mm6n11kn`), `color_mm6s8xp2`
+  pasa a `Fecha a Confirmar` y `color_mm6sc76v` a `Nueva Fecha Propuesta`.
+
+Son dos botones y no un desplegable a propósito: la diferencia entre aceptar la fecha del proveedor
+y devolverle otra **es** la decisión, y tiene que verse de un vistazo cuál quedó elegida. La elegida
+se pinta entera —verde para confirmar, ámbar para proponer— y la otra queda en blanco.
+
+Las tres columnas se escriben en **una sola** operación por tractor: son una sola decisión, y
+separarlas dejaría al tractor con un estado que no se corresponde con su fecha.
+
+> **Sin confirmación conectada no se puede decidir.** Un tractor sin nada en 🤖Confirmación de Fecha
+> de Producción (`board_relation_mm6z1cn9`) se marca en rojo y bloquea el guardado hasta sacarlo de
+> la selección, con el motivo completo: *no se detectó ninguna confirmación enviada por DEUTZ para
+> ese producto; revisá el tablero 📬Confirmación y Planificación y la casilla de correo*. Confirmar
+> sin eso sería dar por buena una fecha que no se sabe de dónde salió, y proponer sería responderle
+> a un mail que nadie recibió.
+
+### ENVIAR CONFIRMACIÓN
+
+Del otro lado del mismo tablero están las **CONFIRMACIONES** (`color_mm737v3t` = `🤖CONFIRMACION`):
+las que manda DEUTZ. Cada una trae conectados sus tractores del Inventario
+(`board_relation_mm6zhvba`).
+
+**Paso 1 · Selección.** Cada confirmación se lista con cuántas fechas se van a confirmar y cuántas a
+proponer, ya contadas.
+
+**Paso 2 · Revisión.** El detalle tractor por tractor, con **la fecha del proveedor y la propuesta,
+una al lado de la otra**, y qué le va a pasar a cada uno:
+
+- **Se confirma** el que no tiene fecha propuesta —y también el que tiene una propuesta **igual** a
+  la del proveedor: proponer la misma fecha es aceptarla, aunque el tablero la haya guardado como
+  propuesta—.
+- **Se propone** el que tiene una fecha propuesta distinta.
+
+Mandarla exige **tres cosas**, y ninguna la puede dar por cumplida la app sola:
+
+1. 🤖Estado Act Inventario (`color_mm6v8tv3`) en **Actualizado**.
+2. 🤖Creacion Google Sheet (`color_mm6zx241`) en **Creado**.
+3. Que alguien tilde que **revisó la planilla**.
+
+Recién ahí se deja 🤖Estado Propuesta (`color_mm6ss2d2`) en **Enviar**, que es lo que dispara el
+correo.
+
+**La planilla se ve dentro de la app.** El link de 🤖G Drive Link se convierte a la URL `/preview`
+de Google, que es la única que se puede incrustar: la de `/edit` la bloquea Google con
+`X-Frame-Options`. Si aun así el recuadro aparece vacío —pasa cuando Google pide iniciar sesión
+dentro del iframe— la pantalla lo dice y queda el botón para abrirla aparte. El tilde de revisado es
+obligatorio en los dos casos, porque de acá sale un correo con fechas que después se cumplen.
 
 ---
 
@@ -617,14 +699,14 @@ poblaciones que no se cruzan.
 
 | Quién | Condiciones | Qué ve |
 |-------|-------------|--------|
-| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Planificación de Drafts, Despacho, Actualizar Despacho OP y los dashboards |
+| Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Planificación de Drafts, Fechas de Producción, Pagos Despacho, Actualizar Despacho OP y los dashboards |
 | Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | **sólo** Actualizar Despacho OP |
 | Fila sin equipo cargado | — | Despacho |
 
 Administración ve todo lo que la app tenga, hoy y cuando se sumen operaciones nuevas: es el equipo
 dueño de la operación. El único restringido es el despachante, que es externo.
 
-Por eso son **cuatro** módulos: `drafts`, `despacho`, `aduana` (actualizar las OP) y
+Por eso son **cinco** módulos: `drafts`, `fechas`, `despacho`, `aduana` (actualizar las OP) y
 `aduanaDashboard` (la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
 a cargar sus OP, no a mirar el estado de toda la operación de BERGER— y, como se alimenta de la
 misma consulta que él sí usa, separarlo por módulo es lo único que los distingue del lado del
@@ -728,6 +810,8 @@ cuenta aunque la mutation esté fija. Por eso cada operación las valida:
 - En las **escrituras**, el tablero tiene que ser uno de los del circuito y **cada columna tocada
   tiene que estar en la lista de escribibles de ese tablero**. La app puede mover el Estado Pago de
   un tractor; no puede tocarle el precio de venta.
+- Dos módulos pueden compartir tablero y escribir cosas distintas: sobre el Inventario, el circuito
+  de pago mueve el Estado Pago y el de fechas mueve las fechas, y ninguno puede escribir lo del otro.
 - El despachante tiene su **propia lista**, más chica: las ocho columnas que carga él. Al crear un
   despacho la app completa la conexión al pago, el proveedor y el importador, y ninguna de esas se
   puede cambiar después desde el módulo de Aduana.
@@ -832,6 +916,11 @@ src/
       Paso1Seleccion.tsx        Selección con filtro de meses
       FlujoAvancePago.tsx       Etapas 2 y 3 (mismo flujo, distinta configuración)
       DetallePago.tsx           Ficha de un pago con sus tractores
+    fechas/
+      ConfirmarProponerFecha.tsx  Confirmar o proponer la fecha (dos pasos)
+      EnviarConfirmacion.tsx      Revisar y mandar una confirmación
+      EtiquetasTractorFecha.tsx   Modelo, N° interno, status, rodado y precio
+      useFechas.ts                Carga de tractores pendientes y confirmaciones
     drafts/
       PlanificarPeriodo.tsx     Planificar período de producción (dos pasos)
       EnviarPlanificacion.tsx   Enviar planificación al proveedor (dos pasos)
@@ -868,6 +957,7 @@ src/
     puertos.ts                Puerto de carga → país de origen, y el texto del origen
     despachos.ts              Cambios de una OP, filtros y cuentas del dashboard
     drafts.ts                 FOB/FCA, filtros y cuentas del dashboard de drafts
+    fechas.ts                 Qué se puede decidir y qué lleva una confirmación
     periodos.ts               Los 120 períodos de producción de la columna
     chips.ts                  Color de cada etiqueta
     format.ts                 Números y fechas
@@ -883,6 +973,8 @@ src/
     despachos.ts              Lectura y actualización de las OP de aduana
     drafts.ts                 Lectura de drafts y asignación del período
     planificacion.ts          El item de planificación que se manda al proveedor
+    fechas.ts                 Tractores pendientes y la decisión sobre su fecha
+    confirmaciones.ts         Las confirmaciones del proveedor y su envío
     pagos.ts                  Pagos pendientes con sus subitems
     crearPago.ts              Etapa 1: pago, subitems y estados
     crearPedidoVista.ts       Pedido a la vista: item, subitems y estados

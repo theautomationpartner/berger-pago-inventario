@@ -15,7 +15,15 @@ interface Paso {
  * se le va a mandar. No está en las otras porque ahí no hay nada que mandar todavía.
  */
 const PASOS: Record<
-  'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana' | 'planificar' | 'envio',
+  | 'carga'
+  | 'avance'
+  | 'avanceDespacho'
+  | 'vista'
+  | 'aduana'
+  | 'planificar'
+  | 'envio'
+  | 'fechas'
+  | 'confirmacion',
   Paso[]
 > = {
   carga: [
@@ -55,11 +63,30 @@ const PASOS: Record<
     { id: 'confirmacion', nombre: 'Confirmación', corto: 'Confirmar' },
     { id: 'listo', nombre: 'Enviado', corto: 'Listo' },
   ],
+  fechas: [
+    { id: 'seleccion', nombre: 'Selección de tractores', corto: 'Tractores' },
+    { id: 'decision', nombre: 'Confirmar o proponer', corto: 'Decisión' },
+    { id: 'listo', nombre: 'Guardado', corto: 'Listo' },
+  ],
+  confirmacion: [
+    { id: 'seleccion', nombre: 'Confirmación', corto: 'Confirmación' },
+    { id: 'resumen', nombre: 'Revisión', corto: 'Revisión' },
+    { id: 'listo', nombre: 'Enviada', corto: 'Listo' },
+  ],
 }
 
 interface Props {
   actual: string
-  variante?: 'carga' | 'avance' | 'avanceDespacho' | 'vista' | 'aduana' | 'planificar' | 'envio'
+  variante?:
+    | 'carga'
+    | 'avance'
+    | 'avanceDespacho'
+    | 'vista'
+    | 'aduana'
+    | 'planificar'
+    | 'envio'
+    | 'fechas'
+    | 'confirmacion'
   /** Volver atrás sólo se permite a etapas ya recorridas; `undefined` deja el stepper de lectura. */
   onIr?: (etapa: string) => void
 }

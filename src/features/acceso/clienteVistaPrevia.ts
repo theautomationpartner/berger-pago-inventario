@@ -53,7 +53,7 @@ export const clienteVistaPrevia: ClienteIngreso = {
         if (pedido.codigo === '000000') return { estado: 'codigo_incorrecto', intentosRestantes: 2 }
         return {
           estado: 'listo',
-          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts'],
+          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts', 'fechas'],
           perfil: PERFIL,
           sesion: 'vista-previa',
           codigosRecuperacion: Array.from({ length: 10 }, () => `${azar(5)}-${azar(5)}`),
@@ -63,7 +63,7 @@ export const clienteVistaPrevia: ClienteIngreso = {
         if (pedido.codigo === '000000') return { estado: 'codigo_incorrecto', intentosRestantes: 4 }
         return {
           estado: 'listo',
-          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts'],
+          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts', 'fechas'],
           perfil: PERFIL,
           sesion: 'vista-previa',
           ...(pedido.recuperacion ? { recuperacionRestantes: 9 } : {}),

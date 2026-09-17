@@ -4,6 +4,7 @@ import type {
   OpcionPanel,
   OperacionAduana,
   OperacionDrafts,
+  OperacionFechas,
   OperacionPrincipal,
 } from '@/types'
 
@@ -17,14 +18,6 @@ import type {
  */
 export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modulo: ModuloApp })[] = [
   {
-    id: 'despacho',
-    modulo: 'despacho',
-    titulo: 'DESPACHO',
-    corto: 'Despacho',
-    detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
-    icono: 'fa-solid fa-truck-ramp-box',
-  },
-  {
     id: 'drafts',
     modulo: 'drafts',
     titulo: 'PLANIFICACIÓN DE DRAFTS',
@@ -33,6 +26,24 @@ export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modul
       'Período de producción de cada draft y envío de la planificación al proveedor, antes de que ' +
       'el tractor exista.',
     icono: 'fa-solid fa-calendar-check',
+  },
+  {
+    id: 'fechas',
+    modulo: 'fechas',
+    titulo: 'FECHAS DE PRODUCCIÓN INVENTARIO',
+    corto: 'Fechas de producción',
+    detalle:
+      'El ida y vuelta con el proveedor por la fecha de producción de cada tractor: confirmarla o ' +
+      'proponer otra.',
+    icono: 'fa-solid fa-calendar-day',
+  },
+  {
+    id: 'despacho',
+    modulo: 'despacho',
+    titulo: 'PAGOS DESPACHO',
+    corto: 'Pagos despacho',
+    detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
+    icono: 'fa-solid fa-truck-ramp-box',
   },
   {
     id: 'aduana',
@@ -74,6 +85,26 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
     corto: 'Dashboard',
     detalle: 'Cuántas OP hay en cada estado, qué arriba primero y qué quedó sin cargar.',
     icono: 'fa-solid fa-chart-simple',
+  },
+]
+
+/** Operaciones dentro de FECHAS DE PRODUCCIÓN INVENTARIO. */
+export const OPERACIONES_FECHAS: OpcionPanel<OperacionFechas>[] = [
+  {
+    id: 'confirmar',
+    titulo: 'CONFIRMAR / PROPONER FECHA PRODUCCIÓN',
+    corto: 'Confirmar / proponer',
+    detalle:
+      'Aceptar la fecha que informó el proveedor para cada tractor, o devolverle una propuesta.',
+    icono: 'fa-solid fa-calendar-check',
+  },
+  {
+    id: 'enviar',
+    titulo: 'ENVIAR CONFIRMACIÓN',
+    corto: 'Enviar confirmación',
+    detalle:
+      'Revisar qué se confirma y qué se propone en una confirmación del proveedor, y mandársela.',
+    icono: 'fa-solid fa-paper-plane',
   },
 ]
 

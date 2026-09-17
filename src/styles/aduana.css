@@ -458,3 +458,168 @@
 .dato--ficha .dato-val {
   color: #14532d;
 }
+
+/* ==================================================================== *
+ * Fechas de producción
+ * ==================================================================== */
+
+/* La fecha es lo que se está decidiendo, así que no va como una etiqueta más entre las otras seis:
+   va grande, a la derecha, con su rótulo arriba. */
+.fecha-prod {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #eef5ff;
+  border: 1px solid #bcd6f5;
+}
+.fecha-prod-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #1256a8;
+}
+.fecha-prod-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #0b3d7a;
+}
+.fecha-prod--propuesta {
+  background: #fff8e6;
+  border-color: #ffe08a;
+}
+.fecha-prod--propuesta .fecha-prod-lbl {
+  color: #8a5a00;
+}
+.fecha-prod--propuesta .fecha-prod-val {
+  color: #6b4400;
+}
+.fechas-par {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.fechas-par .fecha-prod {
+  margin-left: 0;
+}
+
+/* Confirmar o proponer: dos tarjetas grandes, excluyentes. La elegida se pinta entera; la otra
+   queda en blanco. Un desplegable con dos opciones escondería justo la decisión de la pantalla. */
+.decision {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radio);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.opcion:hover:not(:disabled) {
+  border-color: var(--text-gray);
+}
+.opcion:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.opcion-ic {
+  flex: 0 0 auto;
+  font-size: 20px;
+  color: var(--text-gray);
+}
+.opcion-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.opcion-tit {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.opcion-det {
+  font-size: 11.5px;
+  color: var(--text-gray);
+}
+.opcion--confirmar.opcion--elegida {
+  background: #eef9f2;
+  border-color: var(--green);
+}
+.opcion--confirmar.opcion--elegida .opcion-ic,
+.opcion--confirmar.opcion--elegida .opcion-tit {
+  color: var(--green-dark);
+}
+.opcion--proponer.opcion--elegida {
+  background: #fff8e6;
+  border-color: var(--orange);
+}
+.opcion--proponer.opcion--elegida .opcion-ic,
+.opcion--proponer.opcion--elegida .opcion-tit {
+  color: #8a5a00;
+}
+.campo--propuesta {
+  margin-top: 12px;
+  max-width: 280px;
+}
+.campo-ayuda--falta {
+  color: var(--berger-red-dark);
+  font-weight: 600;
+}
+
+/* La planilla de Google, incrustada. Alta pero no infinita: se ve de qué se trata y se puede
+   abrir aparte para mirarla en serio. */
+.planilla {
+  width: 100%;
+  height: 420px;
+  border: none;
+  border-top: 1px solid var(--tint-data-bd);
+  display: block;
+}
+
+/* La confirmación explícita de que alguien miró la planilla. De acá sale un mail al proveedor:
+   la app no puede dar por hecho que se revisó. */
+.revisada {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--tint-summary-bd);
+  border-radius: var(--radio);
+  background: var(--tint-summary);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-dark);
+  cursor: pointer;
+}
+.revisada input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+
+@media (max-width: 640px) {
+  .fecha-prod,
+  .fechas-par {
+    margin-left: 0;
+  }
+  .planilla {
+    height: 320px;
+  }
+}

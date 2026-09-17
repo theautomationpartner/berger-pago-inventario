@@ -141,6 +141,39 @@ export const COL_PLANIF = {
 /** Etiqueta de "Tipo" que le corresponde a lo que crea la app. */
 export const PLANIF_TIPO = '🤚PLANIFICACION'
 
+/**
+ * 📬 El mismo tablero, visto del otro lado: las CONFIRMACIONES que manda DEUTZ.
+ *
+ * La app no las crea —las genera el circuito que lee los mails del proveedor—: las lee para
+ * mostrar qué se va a confirmar y qué se va a proponer, y cuando está todo en orden deja el envío
+ * en "Enviar".
+ */
+export const COL_CONFIRMACION = {
+  tipo: 'color_mm737v3t',
+  fecha: 'date4',
+  /** Items del Inventario que entran en esa confirmación. */
+  inventario: 'board_relation_mm6zhvba',
+  /** Si la automatización ya volcó las fechas al Inventario. */
+  estadoActInventario: 'color_mm6v8tv3',
+  /** Si ya existe la planilla de Google con las fechas. */
+  creacionSheet: 'color_mm6zx241',
+  /** Disparador del envío de la propuesta al proveedor. */
+  estadoPropuesta: 'color_mm6ss2d2',
+  /** Link a la planilla de Google con las confirmaciones y las propuestas. */
+  driveLink: 'link_mm6n3cwf',
+  idConfirmacion: 'pulse_id_mm6vwvgr',
+} as const
+
+/** Etiqueta de "Tipo" de las confirmaciones, y su índice para filtrar. */
+export const CONFIRMACION_TIPO = '🤖CONFIRMACION'
+export const CONFIRMACION_TIPO_INDEX = 1
+
+/** Los dos estados que tienen que estar en verde para poder mandar una confirmación. */
+export const CONFIRMACION_LISTA = {
+  INVENTARIO_ACTUALIZADO: 'Actualizado',
+  SHEET_CREADO: 'Creado',
+} as const
+
 /** URL del tablero de planificación, para los enlaces "ver en monday". */
 export const URL_TABLERO_PLANIFICACION =
   'https://maquinariasagricolas.monday.com/boards/18428677294'
@@ -186,6 +219,20 @@ export const COL_INV = {
   confirmacionFecha: 'color_mm6s8xp2',
   /** Conexión al Catálogo de Productos. Es lo que permite saber en qué contenedor entra. */
   catalogo: 'board_relation_mm6sxre2',
+
+  /* Lo que mira y escribe el módulo de Fechas de Producción. */
+  /** Estado del PRIMARY STATUS de fábrica, como lo informa el proveedor. */
+  primaryStatus: 'color_mm6n5xb',
+  /** El mismo estado, en castellano. Es el que se lee en pantalla. */
+  primaryStatusEsp: 'color_mm70vjqf',
+  /** Medida del rodado. No confundir con `estadoRodado`, que dice si lo lleva o no. */
+  tipoRodado: 'dropdown_mm709vd3',
+  /** Fecha que BERGER propone cuando NO acepta la del proveedor. */
+  fechaPropuesta: 'date_mm6n11kn',
+  /** Estado de la fecha: aceptada, o con una nueva propuesta sobre la mesa. */
+  estadoFechaProd: 'color_mm6sc76v',
+  /** Confirmación de DEUTZ que respalda la fecha. Sin esto no se puede confirmar ni proponer. */
+  confirmacion: 'board_relation_mm6z1cn9',
 } as const
 
 /** 🚜 Catálogo de Productos (18428421090) — de acá sale el puerto de carga de cada modelo. */
@@ -313,6 +360,31 @@ export const PEDIDO_EN_DESPACHANTE = 'En Despachante'
 
 /** Etiquetas de "Estado Confirmación Fecha Producción" (`color_mm6s8xp2`). */
 export const FECHA_CONFIRMADA = 'Fecha Confirmada'
+
+/**
+ * Las tres etiquetas de esa columna, con su índice para filtrar en monday.
+ *
+ * `Fecha Pend Confirmar` es la que espera una decisión de BERGER. `Fecha a Confirmar` es en la que
+ * queda un tractor al que BERGER le propuso otra fecha: ahora el que tiene que responder es el
+ * proveedor.
+ */
+export const ESTADO_FECHA = {
+  CONFIRMADA: FECHA_CONFIRMADA,
+  PEND_CONFIRMAR: 'Fecha Pend Confirmar',
+  A_CONFIRMAR: 'Fecha a Confirmar',
+} as const
+
+export const ESTADO_FECHA_INDEX: Record<string, number> = {
+  [ESTADO_FECHA.CONFIRMADA]: 0,
+  [ESTADO_FECHA.PEND_CONFIRMAR]: 1,
+  [ESTADO_FECHA.A_CONFIRMAR]: 2,
+}
+
+/** Etiquetas de "Estado Fecha Producción" (`color_mm6sc76v`): en qué quedó la fecha. */
+export const ESTADO_FECHA_PROD = {
+  PROPUESTA: 'Nueva Fecha Propuesta',
+  ACEPTADA: 'Aceptada',
+} as const
 
 /**
  * Opciones de "Forma de Pago" (`dropdown_mm6v2sa0`), con el id de cada etiqueta.

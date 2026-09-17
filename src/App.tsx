@@ -9,6 +9,8 @@ import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
 import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
 import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
+import { ConfirmarProponerFecha } from '@/features/fechas/ConfirmarProponerFecha'
+import { EnviarConfirmacion } from '@/features/fechas/EnviarConfirmacion'
 import { DashboardDrafts } from '@/features/drafts/DashboardDrafts'
 import { EnviarPlanificacion } from '@/features/drafts/EnviarPlanificacion'
 import { PlanificarPeriodo } from '@/features/drafts/PlanificarPeriodo'
@@ -21,6 +23,7 @@ import {
   MODALIDADES_DESPACHO,
   OPERACIONES_ADUANA,
   OPERACIONES_DRAFTS,
+  OPERACIONES_FECHAS,
   OPERACIONES_PRINCIPALES,
   principalesDeModulos,
   puedeEnAduana,
@@ -31,6 +34,7 @@ import type {
   ModalidadDespacho,
   OperacionAduana,
   OperacionDrafts,
+  OperacionFechas,
   OperacionPrincipal,
 } from '@/types'
 
@@ -72,7 +76,7 @@ export function App() {
       <AppAdentro
         sesion={{
           perfil: { id: 'desarrollo', nombre: 'Desarrollo local' },
-          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts'],
+          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts', 'fechas'],
           salir: () => {},
           recuperacionRestantes: null,
         }}
@@ -103,6 +107,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
   const [modalidad, setModalidad] = useState<ModalidadDespacho | null>(null)
   const [operacionAduana, setOperacionAduana] = useState<OperacionAduana | null>(null)
   const [operacionDrafts, setOperacionDrafts] = useState<OperacionDrafts | null>(null)
+  const [operacionFechas, setOperacionFechas] = useState<OperacionFechas | null>(null)
 
   const principales = principalesDeModulos(sesion.modulos)
   const operacionesAduana = aduanaDeModulos(sesion.modulos)
@@ -142,19 +147,22 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
     setModalidad(null)
     setOperacionAduana(null)
     setOperacionDrafts(null)
+    setOperacionFechas(null)
   }
 
   const volverAlPrincipal = () => {
     setModalidad(null)
     setOperacionAduana(null)
     setOperacionDrafts(null)
+    setOperacionFechas(null)
   }
 
   const defPrincipal = OPERACIONES_PRINCIPALES.find((o) => o.id === principal)
   const defSegundo =
     MODALIDADES_DESPACHO.find((m) => m.id === modalidad) ??
     OPERACIONES_ADUANA.find((o) => o.id === operacionAduana) ??
-    OPERACIONES_DRAFTS.find((o) => o.id === operacionDrafts)
+    OPERACIONES_DRAFTS.find((o) => o.id === operacionDrafts) ??
+    OPERACIONES_FECHAS.find((o) => o.id === operacionFechas)
 
   const migas: Miga[] = [{ rotulo: 'Operaciones', onIr: irAlInicio }]
   if (defPrincipal) migas.push({ rotulo: defPrincipal.corto, onIr: volverAlPrincipal })
@@ -201,6 +209,18 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
 
       {principal === 'despacho' && modalidad === 'anticipado' && <DespachoAnticipado />}
       {principal === 'despacho' && modalidad === 'vista' && <DespachoVista />}
+
+      {principal === 'fechas' && operacionFechas === null && (
+        <PanelOpciones
+          titulo="Fechas de producción"
+          detalle="El ida y vuelta con el proveedor por la fecha de cada tractor."
+          opciones={OPERACIONES_FECHAS}
+          onElegir={setOperacionFechas}
+        />
+      )}
+
+      {principal === 'fechas' && operacionFechas === 'confirmar' && <ConfirmarProponerFecha />}
+      {principal === 'fechas' && operacionFechas === 'enviar' && <EnviarConfirmacion />}
 
       {principal === 'drafts' && operacionDrafts === null && (
         <PanelOpciones

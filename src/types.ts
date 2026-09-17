@@ -16,7 +16,10 @@
  * El primer nivel hoy tiene una sola opción, pero existe desde ya: es donde se van a sumar los
  * próximos tipos de operación sin tener que rearmar la pantalla de entrada.
  */
-export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts'
+export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts' | 'fechas'
+
+/** Operaciones dentro de "Fechas de Producción Inventario". */
+export type OperacionFechas = 'confirmar' | 'enviar'
 
 /** Operaciones dentro de "Despachante de Aduana". */
 export type OperacionAduana = 'actualizar' | 'dashboard'
@@ -379,6 +382,74 @@ export interface ResultadoEnvio {
   drafts: number
   advertencias: string[]
 }
+
+/**
+ * Un tractor del Inventario visto desde el módulo de fechas: lo que hace falta para decidir si la
+ * fecha que propuso el proveedor se acepta o se le propone otra.
+ */
+export interface TractorFecha {
+  id: string
+  nombre: string
+  modelo: string
+  numInterno: string
+  /** PRIMARY STATUS de fábrica, y su traducción. */
+  primaryStatus: string
+  primaryStatusEsp: string
+  tipoRodado: string
+  precioUnitario: number | null
+  /** Fecha de producción que informó el proveedor, en ISO. */
+  fechaProd: string
+  /** Fecha que BERGER propuso, si ya propuso alguna. */
+  fechaPropuesta: string
+  /** Estado de confirmación (`Fecha Pend Confirmar`, `Fecha Confirmada`, `Fecha a Confirmar`). */
+  estadoConfirmacion: string
+  /** Estado de la fecha (`Aceptada`, `Nueva Fecha Propuesta`), o `''`. */
+  estadoFecha: string
+  /**
+   * Confirmación de DEUTZ conectada. Sin ella no se puede confirmar ni proponer: no habría
+   * respaldo de que el proveedor dijo esa fecha.
+   */
+  confirmacionId: string | null
+}
+
+/** Qué se decidió para un tractor: aceptar la fecha del proveedor, o proponer otra. */
+export type DecisionFecha =
+  | { tipo: 'confirmar' }
+  | { tipo: 'proponer'; fecha: string }
+
+/** Resultado de confirmar o proponer fechas en un lote. */
+export interface ResultadoFechas {
+  confirmados: string[]
+  propuestos: string[]
+  advertencias: string[]
+}
+
+/** Una confirmación que mandó el proveedor, con los tractores que trae. */
+export interface Confirmacion {
+  id: string
+  nombre: string
+  idConfirmacion: string
+  /** Fecha del item, en ISO. */
+  fecha: string
+  /** Estado de la actualización del Inventario por la automatización. */
+  estadoActInventario: string
+  /** Estado de la creación de la planilla de Google. */
+  creacionSheet: string
+  /** Estado del envío de la propuesta. La app lo deja en "Enviar". */
+  estadoPropuesta: string
+  /** Link a la planilla con las fechas confirmadas y propuestas. */
+  driveLink: string
+  /** Ids de los items del Inventario conectados. */
+  inventarioIds: string[]
+  /** Esos mismos items, ya cargados. */
+  tractores: TractorFecha[]
+}
+
+/** Etapa del asistente de "Confirmar / Proponer Fecha de Producción". */
+export type EtapaFechas = 'seleccion' | 'decision' | 'listo'
+
+/** Etapa del asistente de "Enviar Confirmación". */
+export type EtapaConfirmacion = 'seleccion' | 'resumen' | 'listo'
 
 /** Etapa del asistente de "Planificar Período de Producción". */
 export type EtapaPlanificacion = 'seleccion' | 'periodos' | 'listo'

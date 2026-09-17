@@ -20,6 +20,7 @@
  */
 import {
   COL_CATALOGO,
+  COL_CONFIRMACION,
   COL_DESPACHANTE,
   COL_DESPACHANTE_SUB,
   COL_DRAFT,
@@ -38,7 +39,8 @@ import {
  * hace el despachante externo: actualizar el estado de las OP que ya existen. `aduanaDashboard` es
  * la lectura de conjunto de ese mismo tablero, que es de BERGER y no del externo. `drafts` es lo
  * que pasa ANTES de que el tractor exista: planificar el período de producción de cada draft y
- * mandarle la planificación al proveedor.
+ * mandarle la planificación al proveedor. `fechas` es el ida y vuelta con el proveedor por la
+ * fecha de producción de cada tractor.
  *
  * El dashboard es un módulo aparte y no una pantalla más de `aduana` justamente porque el
  * despachante NO lo ve: entra a actualizar sus OP, no a mirar el estado de toda la operación.
@@ -49,7 +51,7 @@ import {
  * habilitado. Es lo que impide que un despachante pida los pagos del inventario aunque la pantalla
  * no se los muestre.
  */
-export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard' | 'drafts' | 'drafts'
+export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard' | 'drafts' | 'fechas' | 'drafts'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
@@ -74,6 +76,11 @@ export type NombreOperacion =
   | 'actualizarDraft'
   | 'crearPlanificacion'
   | 'actualizarPlanificacion'
+  | 'inventarioPorEstadoFecha'
+  | 'inventarioPorIds'
+  | 'actualizarFechaProduccion'
+  | 'confirmaciones'
+  | 'actualizarConfirmacion'
 
 export type Variables = Record<string, unknown>
 
@@ -151,6 +158,21 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
 }
 
 /**
+ * Las ÚNICAS columnas que toca el módulo de Fechas de Producción, en el Inventario.
+ *
+ * Es una lista aparte de la del circuito de pago —que sólo mueve el Estado Pago— porque son dos
+ * módulos distintos sobre el mismo tablero: cada uno puede escribir lo suyo y nada más.
+ */
+const COLUMNAS_DE_FECHAS = new Set<string>([
+  COL_INV.confirmacionFecha,
+  COL_INV.estadoFechaProd,
+  COL_INV.fechaPropuesta,
+])
+
+/** Lo único que la app escribe de una confirmación: el disparador del envío. */
+const COLUMNAS_DE_CONFIRMACION = new Set<string>([COL_CONFIRMACION.estadoPropuesta])
+
+/**
  * Las ÚNICAS columnas que el despachante puede escribir.
  *
  * Es una lista aparte de la que se usa al crear el despacho a propósito: al crearlo, la app
@@ -226,6 +248,35 @@ function valoresDeColumnas(valor: unknown, tablero: string): string {
     }
   }
   // Se vuelve a serializar lo YA validado: así no se reenvía el texto original del cliente.
+  return JSON.stringify(objeto)
+}
+
+/**
+ * Valida un `column_values` contra una lista cerrada de columnas.
+ *
+ * Es el mismo candado que `valoresDeColumnas`, pero con una lista que NO es la del tablero: la usan
+ * los módulos que comparten tablero con otro y pueden tocar menos columnas que él. El Inventario es
+ * el caso: el circuito de pago mueve el Estado Pago y el módulo de fechas mueve las fechas, y
+ * ninguno de los dos puede escribir lo del otro aunque el tablero sea el mismo.
+ */
+function valoresAcotados(valor: unknown, permitidas: Set<string>, quien: string): string {
+  let objeto: unknown
+  try {
+    objeto = JSON.parse(String(valor ?? ''))
+  } catch {
+    throw new OperacionInvalida('"column_values" no es JSON válido.')
+  }
+  if (!objeto || typeof objeto !== 'object' || Array.isArray(objeto)) {
+    throw new OperacionInvalida('"column_values" tiene que ser un objeto.')
+  }
+
+  const claves = Object.keys(objeto as Record<string, unknown>)
+  if (claves.length === 0) throw new OperacionInvalida('"column_values" está vacío.')
+  for (const clave of claves) {
+    if (!permitidas.has(clave)) {
+      throw new OperacionInvalida(`La columna "${clave}" no la puede escribir ${quien}.`)
+    }
+  }
   return JSON.stringify(objeto)
 }
 
@@ -785,6 +836,123 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       tablero: TABLEROS.planificacion,
       item: idMonday(v.item, 'item'),
       valores: valoresDeColumnas(v.valores, TABLEROS.planificacion),
+    }),
+  },
+
+  /* ------------------------------------------------------------------ *
+   * Módulo de fechas de producción: el ida y vuelta con el proveedor
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Tractores del Inventario filtrados por el estado de confirmación de la fecha.
+   *
+   * Trae también la conexión a la Confirmación: sin ella no se puede ni confirmar ni proponer, y
+   * saberlo ANTES de elegir es lo que evita que el usuario arme una tanda que después no se puede
+   * guardar.
+   */
+  inventarioPorEstadoFecha: {
+    modulo: 'fechas',
+    query: `
+      query ($tablero: ID!, $columnas: [String!], $estado: CompareValue!, $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(
+            limit: $limite
+            query_params: {
+              rules: [{ column_id: "${COL_INV.confirmacionFecha}", compare_value: $estado, operator: any_of }]
+            }
+          ) {
+            cursor
+            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.inventario,
+      columnas: idsDeColumnas(v.columnas),
+      estado: [entero(Array.isArray(v.estado) ? v.estado[0] : v.estado, 'estado', 0, 999)],
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /**
+   * Items del Inventario por id: los que cuelgan de una confirmación.
+   *
+   * Los ids los elige el cliente, pero las columnas las fija el servidor y son del Inventario: en
+   * un item de otro tablero vuelven vacías, así que no hay nada que sacar por acá.
+   */
+  inventarioPorIds: {
+    modulo: 'fechas',
+    query: `
+      query ($ids: [ID!]!, $columnas: [String!]) {
+        items(ids: $ids) { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+      }
+    `,
+    validar: (v) => {
+      if (!Array.isArray(v.ids) || v.ids.length === 0) {
+        throw new OperacionInvalida('Faltan los ids del Inventario.')
+      }
+      if (v.ids.length > 500) throw new OperacionInvalida('Demasiados ids.')
+      return { ids: v.ids.map((id) => idMonday(id, 'ids')), columnas: idsDeColumnas(v.columnas) }
+    },
+  },
+
+  /** La decisión sobre la fecha de UN tractor: confirmada, o con otra propuesta. */
+  actualizarFechaProduccion: {
+    modulo: 'fechas',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.inventario,
+      item: idMonday(v.item, 'item'),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_FECHAS, 'el módulo de fechas'),
+    }),
+  },
+
+  /** Las confirmaciones que mandó el proveedor, con los tractores que traen conectados. */
+  confirmaciones: {
+    modulo: 'fechas',
+    query: `
+      query ($tablero: ID!, $tipo: CompareValue!, $columnas: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(
+            limit: $limite
+            query_params: {
+              rules: [{ column_id: "${COL_CONFIRMACION.tipo}", compare_value: $tipo, operator: any_of }]
+            }
+          ) {
+            items {
+              id
+              name
+              column_values(ids: $columnas) { ${CAMPOS_COLUMNA} ... on LinkValue { url } }
+            }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.planificacion,
+      tipo: [entero(Array.isArray(v.tipo) ? v.tipo[0] : v.tipo, 'tipo', 0, 999)],
+      columnas: idsDeColumnas(v.columnas),
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /** El disparador del envío de una confirmación. Es lo único que la app le escribe. */
+  actualizarConfirmacion: {
+    modulo: 'fechas',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.planificacion,
+      item: idMonday(v.item, 'item'),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_CONFIRMACION, 'el módulo de fechas'),
     }),
   },
 }
