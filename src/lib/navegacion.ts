@@ -54,7 +54,7 @@ export const principalesDeModulos = (
 /**
  * Operaciones dentro de DESPACHANTE DE ADUANA: el segundo panel del módulo de aduana.
  *
- * El dashboard tiene su propio módulo: el despachante externo entra a cargar las novedades de sus
+ * El dashboard tiene su propio módulo: el despachante externo entra a actualizar los datos de sus
  * OP, no a mirar el estado de toda la operación de BERGER. Administración ve las dos.
  */
 export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: ModuloApp })[] = [
@@ -64,7 +64,7 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
     titulo: 'ACTUALIZAR DESPACHO OP',
     corto: 'Actualizar OP',
     detalle:
-      'Cargar las novedades de una o varias OP: estado de la carga, ETA, buque y documentación.',
+      'Actualizar los datos de una o varias OP: estado de la carga, ETA, buque y documentación.',
     icono: 'fa-solid fa-pen-to-square',
   },
   {

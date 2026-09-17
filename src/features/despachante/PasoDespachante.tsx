@@ -23,6 +23,10 @@ interface Props {
  * La vista previa no es un resumen escrito aparte: es el TEXTO que se guarda en el pago y que el
  * despachante va a leer. Mostrar una versión parecida obligaría a mantener dos redacciones y, el
  * día que se separen, lo que se aprueba en pantalla no sería lo que sale.
+ *
+ * Si el equipo de Despachantes está VACÍO, no se muestra ninguna lista para elegir: no hay a quién.
+ * El despacho se crea igual, con la persona sin asignar, y se dice por qué. Bloquear la operación
+ * ahí sería dejar el circuito trabado por un equipo de monday que la app no administra.
  */
 export function PasoDespachante({
   despachantes,
@@ -34,6 +38,10 @@ export function PasoDespachante({
   informacion,
   numeroPaso,
 }: Props) {
+  /* Sin nadie en el equipo no hay nada que elegir: se avisa y se sigue. Mientras carga no se
+     decide todavía, para no mostrar "no hay despachantes" durante medio segundo. */
+  const equipoVacio = !cargando && !error && despachantes.length === 0
+
   return (
     <>
       <div className="sec-head">
@@ -41,11 +49,23 @@ export function PasoDespachante({
         <span className="sec-txt">
           <span className="sec-tit">Despachante</span>
           <span className="sec-det">
-            Elegí a quién se le manda la información del despacho. Queda asignado al item que se
-            crea en <b>Despachante de aduana</b> y es quien recibe el mail.
+            {equipoVacio
+              ? 'El despacho se va a crear sin despachante asignado. Abajo está la información que lleva.'
+              : 'Elegí a quién se le manda la información del despacho. Queda asignado al item que se crea en Despachante de aduana y es quien recibe el mail.'}
           </span>
         </span>
       </div>
+
+      {equipoVacio && (
+        <div className="aviso aviso--alerta">
+          <i className="fa-solid fa-user-slash" aria-hidden="true" />
+          <span>
+            El equipo <b>Despachantes</b> de monday no tiene a nadie, así que el despacho se crea
+            con el despachante <b>sin asignar</b>. Agregá a quien corresponda al equipo y asignalo
+            después desde el tablero.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="aviso aviso--error">
@@ -59,67 +79,56 @@ export function PasoDespachante({
         </div>
       )}
 
-      <div className="lista" style={{ marginBottom: 16 }}>
-        <div className="lista-head">
-          <span>Despachante</span>
-          <span className="lista-head-acciones">
-            <button type="button" className="btn btn--borde btn--chico" onClick={onReintentar}>
-              <i className="fa-solid fa-rotate" aria-hidden="true" /> Actualizar
-            </button>
-          </span>
-        </div>
+      {!equipoVacio && (
+        <div className="lista" style={{ marginBottom: 16 }}>
+          <div className="lista-head">
+            <span>Despachante</span>
+            <span className="lista-head-acciones">
+              <button type="button" className="btn btn--borde btn--chico" onClick={onReintentar}>
+                <i className="fa-solid fa-rotate" aria-hidden="true" /> Actualizar
+              </button>
+            </span>
+          </div>
 
-        <div className="lista-body">
-          {cargando && (
-            <div className="vacio">
-              <span className="spin spin--oscuro" aria-hidden="true" />
-              <span className="vacio-tit">Buscando despachantes…</span>
-            </div>
-          )}
+          <div className="lista-body">
+            {cargando && (
+              <div className="vacio">
+                <span className="spin spin--oscuro" aria-hidden="true" />
+                <span className="vacio-tit">Buscando despachantes…</span>
+              </div>
+            )}
 
-          {!cargando && despachantes.length === 0 && !error && (
-            <div className="vacio">
-              <span className="vacio-ic">
-                <i className="fa-solid fa-user-slash" aria-hidden="true" />
-              </span>
-              <span className="vacio-tit">No hay despachantes cargados</span>
-              <span className="vacio-det">
-                El equipo <b>Despachantes</b> de monday está vacío. Agregá ahí a quien corresponda y
-                volvé a actualizar.
-              </span>
-            </div>
-          )}
-
-          {!cargando &&
-            despachantes.map((d) => {
-              const marcado = d.id === elegidoId
-              return (
-                <button
-                  key={d.id}
-                  type="button"
-                  aria-pressed={marcado}
-                  className={`trow${marcado ? ' trow--sel' : ''}`}
-                  onClick={() => onElegir(marcado ? null : d.id)}
-                >
-                  <span className={`trow-radio${marcado ? ' trow-radio--sel' : ''}`} />
-                  <span className="persona">
-                    {d.foto ? (
-                      <img className="persona-foto" src={d.foto} alt="" />
-                    ) : (
-                      <span className="persona-foto persona-foto--sin" aria-hidden="true">
-                        <i className="fa-solid fa-user" />
+            {!cargando &&
+              despachantes.map((d) => {
+                const marcado = d.id === elegidoId
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    aria-pressed={marcado}
+                    className={`trow${marcado ? ' trow--sel' : ''}`}
+                    onClick={() => onElegir(marcado ? null : d.id)}
+                  >
+                    <span className={`trow-radio${marcado ? ' trow-radio--sel' : ''}`} />
+                    <span className="persona">
+                      {d.foto ? (
+                        <img className="persona-foto" src={d.foto} alt="" />
+                      ) : (
+                        <span className="persona-foto persona-foto--sin" aria-hidden="true">
+                          <i className="fa-solid fa-user" />
+                        </span>
+                      )}
+                      <span className="persona-txt">
+                        <span className="persona-nom">{d.nombre}</span>
+                        {d.email && <span className="persona-mail">{d.email}</span>}
                       </span>
-                    )}
-                    <span className="persona-txt">
-                      <span className="persona-nom">{d.nombre}</span>
-                      {d.email && <span className="persona-mail">{d.email}</span>}
                     </span>
-                  </span>
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card card--flush">
         <div className="ctitle">

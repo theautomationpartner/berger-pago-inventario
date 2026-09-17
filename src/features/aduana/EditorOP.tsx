@@ -157,7 +157,7 @@ export function EditorOP({ op, edicion, cambios, onCambiar, onQuitar, onDeshacer
             className="input textarea"
             rows={3}
             value={edicion.observaciones}
-            placeholder="Novedades de la carga: demoras, transbordos, lo que haya que dejar asentado."
+            placeholder="Actualización de la carga: demoras, transbordos, lo que haya que dejar asentado."
             onChange={(e) => set('observaciones', e.target.value)}
           />
           {ayuda('observaciones')}

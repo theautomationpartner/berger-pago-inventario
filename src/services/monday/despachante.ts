@@ -4,8 +4,12 @@
  * Es el último movimiento de las dos modalidades, y el mismo en las dos: cuando el pago ya quedó
  * completo —confirmado el SWIFT en ANTICIPADO, registrado el pedido en VISTA— se crea acá un item
  * conectado a ese pago, con lo que el despachante necesita para empezar a trabajar: cuántos
- * contenedores, de qué país salen, quién provee y quién importa; y un subitem por tractor con los
- * mismos datos que ya tenía el subitem del pago.
+ * contenedores, de qué país y de qué puerto salen, quién provee y quién importa; y un subitem por
+ * tractor con los mismos datos que ya tenía el subitem del pago.
+ *
+ * Cada tractor que entra como subitem pasa además a "En Despachante" en el Inventario: es el único
+ * momento en que la app toca el Estado Pedido, y es el que separa "lo despachamos" de "ya está en
+ * manos del despachante".
  *
  * Ninguna de sus fallas aborta la operación de la que cuelga: para cuando se llega acá el pago ya
  * está escrito y los tractores ya avanzaron, así que lo que salga mal se informa como advertencia
@@ -16,8 +20,12 @@ import type { TractorDeDespacho } from '@/types'
 import {
   COL_DESPACHANTE,
   COL_DESPACHANTE_SUB,
+  COL_INV,
   IMPORTADOR_DESPACHO,
+  PEDIDO_EN_DESPACHANTE,
   PROVEEDOR_DESPACHO,
+  PUERTOS_DESPACHANTE,
+  TABLEROS,
 } from './columns'
 import { mondayApi } from './sdk'
 
@@ -38,6 +46,14 @@ interface Entrada {
   cantidadContenedores: number | null
   /** Países de los puertos de carga. Puede haber más de uno si el despacho mezcla orígenes. */
   paises: string[]
+  /**
+   * Puertos de carga, tal como salieron del Catálogo.
+   *
+   * Van todos los que tengan los modelos del despacho. Un modelo alemán figura con Bremerhaven Y
+   * Hamburgo, y los dos se cargan: el criterio para elegir uno todavía no está definido, y
+   * elegirlo por nuestra cuenta sería inventar un dato que después nadie podría revisar.
+   */
+  puertos: string[]
   /** Id de monday del despachante al que se le asigna. `null` deja el item sin asignar. */
   despachanteId: string | null
   tractores: TractorDeDespacho[]
@@ -55,6 +71,7 @@ export async function crearDespachoDeAduana({
   nombre,
   cantidadContenedores,
   paises,
+  puertos,
   despachanteId,
   tractores,
 }: Entrada): Promise<ResultadoDespachante> {
@@ -73,6 +90,12 @@ export async function crearDespachoDeAduana({
   // Un dropdown con una etiqueta que no existe hace fallar la escritura ENTERA, así que si no hay
   // países la columna ni se manda: el resto del despacho se carga igual.
   if (paises.length > 0) valores[COL_DESPACHANTE.paisOrigen] = { labels: paises }
+  /* Mismo cuidado con el puerto: se mandan sólo los que la columna conoce. Un dropdown con una
+     etiqueta inexistente no falla en esa columna, falla la escritura ENTERA del item. */
+  const puertosConocidos = puertos.filter((p) => PUERTOS_DESPACHANTE.includes(p))
+  if (puertosConocidos.length > 0) {
+    valores[COL_DESPACHANTE.puertoOrigen] = { labels: puertosConocidos }
+  }
   // La columna admite una sola persona, que es justamente lo que se eligió en el paso anterior.
   if (despachanteId) {
     valores[COL_DESPACHANTE.despachante] = {
@@ -108,6 +131,26 @@ export async function crearDespachoDeAduana({
       advertencias.push(
         `No se pudo crear el subitem de ${t.nombre} en el Despachante: ${motivo(e)}`,
       )
+    }
+
+    /* El tractor pasa a "En Despachante" en el Inventario. Va acá, dentro del mismo recorrido que
+       creó su subitem: así el estado lo cambia exactamente el tractor que quedó en el despacho, y
+       ninguno más. Es una escritura por tractor y no una sola para todos porque monday no permite
+       cambiarle una columna a varios items en una mutation. */
+    if (t.tractorId) {
+      try {
+        await mondayApi('actualizarColumnas', {
+          tablero: TABLEROS.inventario,
+          item: t.tractorId,
+          valores: JSON.stringify({
+            [COL_INV.estadoPedido]: { label: PEDIDO_EN_DESPACHANTE },
+          }),
+        })
+      } catch (e) {
+        advertencias.push(
+          `No se pudo pasar ${t.nombre} a "${PEDIDO_EN_DESPACHANTE}" en el Inventario: ${motivo(e)}`,
+        )
+      }
     }
   }
 

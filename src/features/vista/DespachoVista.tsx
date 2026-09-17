@@ -328,7 +328,13 @@ export function DespachoVista() {
             <button
               type="button"
               className="btn btn--marca"
-              disabled={elegidos.length === 0 || enviando || !despachanteId}
+              /* Mismo criterio que en anticipado: se exige elegir sólo si hay a quién elegir. */
+              disabled={
+                elegidos.length === 0 ||
+                enviando ||
+                equipo.cargando ||
+                (equipo.despachantes.length > 0 && !despachanteId)
+              }
               onClick={() => void registrar()}
             >
               {enviando ? (

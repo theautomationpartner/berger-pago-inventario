@@ -287,6 +287,8 @@ export interface DespachoOP {
   buque: string
   observaciones: string
   paisOrigen: string
+  /** Puerto(s) de carga. Puede traer más de uno cuando el modelo sale por cualquiera de dos. */
+  puertoOrigen: string
   proveedor: string
   cantidadContenedores: number | null
   /** Nombre del despachante asignado, o `''`. */

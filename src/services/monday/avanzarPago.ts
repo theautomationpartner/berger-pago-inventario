@@ -144,10 +144,12 @@ async function crearDespacho(
     .map((t) => t.catalogoId)
     .filter((id): id is string => Boolean(id))
 
+  let puertos: string[] = []
   let paises: string[] = []
   try {
-    const puertos = await puertosDeCatalogo(idsCatalogo)
-    paises = paisesDePuertos([...puertos.values()].flat())
+    const porCatalogo = await puertosDeCatalogo(idsCatalogo)
+    puertos = [...new Set([...porCatalogo.values()].flat())]
+    paises = paisesDePuertos(puertos)
   } catch (e) {
     advertencias.push(`No se pudo leer el puerto de carga del Catálogo: ${motivo(e)}`)
   }
@@ -162,6 +164,7 @@ async function crearDespacho(
     nombre: pago.nombre,
     cantidadContenedores,
     paises,
+    puertos,
     despachanteId,
     tractores: pago.tractores.map((t) => ({
       nombre: t.nombre,

@@ -123,7 +123,7 @@ export function textoEta(dias: number | null): string {
 }
 
 /** Días desde la última vez que alguien tocó la OP. `null` si monday no lo informa. */
-export function diasSinNovedades(ultimaActualizacion: string, hoy = new Date()): number | null {
+export function diasSinActualizar(ultimaActualizacion: string, hoy = new Date()): number | null {
   const t = Date.parse(ultimaActualizacion)
   if (Number.isNaN(t)) return null
   return Math.max(0, Math.floor((hoy.getTime() - t) / 86_400_000))
@@ -146,8 +146,8 @@ export interface ResumenDespachos {
   sinEta: DespachoOP[]
   /** En curso sin N° de OP del despachante. */
   sinNroOp: DespachoOP[]
-  /** En curso sin novedades hace una semana o más. */
-  sinNovedades: DespachoOP[]
+  /** En curso sin ninguna actualización hace una semana o más. */
+  sinActualizar: DespachoOP[]
   /** Contenedores declarados en las OP que están en curso. */
   contenedoresEnCurso: number
   /** Cuántas OP por país de origen, de mayor a menor. */
@@ -156,8 +156,8 @@ export interface ResumenDespachos {
   actualizadasHoy: number
 }
 
-/** Días sin novedades a partir de los cuales una OP en curso se considera dormida. */
-export const DIAS_SIN_NOVEDADES = 7
+/** Días sin actualizar a partir de los cuales una OP en curso se considera dormida. */
+export const DIAS_SIN_ACTUALIZAR = 7
 
 /** Cuántas OP entran en cada corte del tablero. */
 export function resumirDespachos(ops: DespachoOP[], hoy = new Date()): ResumenDespachos {
@@ -185,14 +185,14 @@ export function resumirDespachos(ops: DespachoOP[], hoy = new Date()): ResumenDe
     vencidas: conEta.filter((x) => x.dias < 0).map((x) => x.op),
     sinEta: abiertas.filter((op) => diasHastaEta(op.eta, hoy) == null),
     sinNroOp: abiertas.filter((op) => !op.nroOp.trim()),
-    sinNovedades: abiertas.filter((op) => {
-      const dias = diasSinNovedades(op.ultimaActualizacion, hoy)
-      return dias != null && dias >= DIAS_SIN_NOVEDADES
+    sinActualizar: abiertas.filter((op) => {
+      const dias = diasSinActualizar(op.ultimaActualizacion, hoy)
+      return dias != null && dias >= DIAS_SIN_ACTUALIZAR
     }),
     contenedoresEnCurso: abiertas.reduce((n, op) => n + (op.cantidadContenedores ?? 0), 0),
     porPais: [...paises.entries()]
       .map(([pais, cantidad]) => ({ pais, cantidad }))
       .sort((a, b) => b.cantidad - a.cantidad),
-    actualizadasHoy: ops.filter((op) => diasSinNovedades(op.ultimaActualizacion, hoy) === 0).length,
+    actualizadasHoy: ops.filter((op) => diasSinActualizar(op.ultimaActualizacion, hoy) === 0).length,
   }
 }

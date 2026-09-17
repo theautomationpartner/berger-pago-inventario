@@ -398,7 +398,14 @@ export function FlujoAvancePago({ flujo }: Props) {
               <button
                 type="button"
                 className="btn btn--marca"
-                disabled={!archivo || enviando || (Boolean(flujo.cierraDespacho) && !despachanteId)}
+                /* Con el equipo vacío no se pide elegir: no hay a quién. Mientras carga tampoco se
+                   deja confirmar, porque todavía no se sabe si hay despachantes. */
+                disabled={
+                  !archivo ||
+                  enviando ||
+                  (Boolean(flujo.cierraDespacho) &&
+                    (equipo.cargando || (equipo.despachantes.length > 0 && !despachanteId)))
+                }
                 onClick={() => void impactar()}
               >
                 {enviando ? (

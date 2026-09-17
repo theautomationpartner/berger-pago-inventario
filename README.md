@@ -1,4 +1,4 @@
-# BERGER S.A. · Operaciones de Inventario de Tractores
+# BERGER S.A. · Importación Berger S.A.
 
 Aplicación de **vista de tablero** (board view) de monday.com para las operaciones sobre el
 inventario de tractores de BERGER S.A. Se instala en el workspace como un tablero más y se usa
@@ -29,7 +29,7 @@ DESPACHO                 →  PAGO ANTICIPADO          →  1. Cargar Transferen
                          →  PAGO VISTA (Contra BL)   →  1. Selección · 2. Despachante
 
 DESPACHANTE DE ADUANA    →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
-                                                        2. Novedades
+                                                        2. Actualización de datos
                                                         3. Resumen
                          →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
@@ -407,18 +407,36 @@ habilita.
 
 El elegido queda en la columna de persona (`person`) del item, que admite **una sola**.
 
+**Si el equipo está vacío**, no se muestra ninguna lista para elegir —no hay a quién— y el despacho
+se crea igual, con la persona **sin asignar** y un aviso que lo dice. Bloquear la operación ahí
+dejaría el circuito trabado por un equipo de monday que la app no administra. La obligación de
+elegir aparece sólo cuando hay alguien en el equipo.
+
 | Dato | Columna | De dónde sale |
 |------|---------|----------------|
 | Conexión al pago | `board_relation_mm7815ae` | el item de Pagos del Inventario |
 | Despachante asignado | `person` | el elegido en el paso anterior |
 | Cantidad de contenedores | `numeric_mm77sq5g` | del reporte ya guardado en el pago |
 | País de origen | `dropdown_mm776ha7` | del puerto del Catálogo de cada tractor |
+| Puerto de origen | `dropdown_mm79vwr1` | el puerto del Catálogo, tal cual |
 | Proveedor = `Same Deutz Fahr SPA` | `dropdown_mm77czh3` | fijo |
 | Importador = `Berger SA` | `color_mm77sys5` | fijo |
 
 Y un **subitem por tractor** (`18431188087`) con los mismos datos que su subitem del pago: valor
 neto (`numeric_mm78rw31`), N° de draft (`text_mm78wee6`), cód. de producto (`text_mm78m15e`) y la
 conexión al Inventario (`board_relation_mm78fqs9`).
+
+Cada tractor que entra como subitem pasa además a **En Despachante** en el Estado Pedido del
+Inventario (`color_mm6n109a`). Es el único momento en que la app toca esa columna —el resto del
+viaje lo maneja el tablero— y es el que separa "lo despachamos" de "ya está en manos del
+despachante". Se escribe tractor por tractor, dentro del mismo recorrido que creó su subitem, así
+que cambia el estado de exactamente los que quedaron en el despacho y de ninguno más.
+
+**Cuando el modelo tiene dos puertos** —los alemanes salen por Bremerhaven o por Hamburgo— se
+cargan los dos: el criterio para elegir uno todavía no está definido, y elegirlo por nuestra cuenta
+sería inventar un dato que después nadie podría revisar. Un puerto que la columna no conozca se
+deja afuera antes de mandar, porque un dropdown con una etiqueta inexistente no falla en su columna:
+hace fallar la escritura entera del item.
 
 Dos decisiones que conviene saber:
 
@@ -461,9 +479,14 @@ Tres pasos, y cada uno existe por un motivo distinto.
 
 Cada fila muestra el nombre, el ID del despacho, el estado, el N° de OP —o **Sin N° de OP** en
 naranja, si todavía no se cargó—, el arribo, el país y los contenedores. Y se despliega: antes de
-marcar una OP se puede ver **cómo está hoy en monday**, campo por campo.
+marcar una OP se puede ver **cómo está hoy en monday**, campo por campo, en recuadros verde claro.
 
-**Paso 2 · Novedades.** Un formulario por OP, con los valores actuales ya cargados:
+En esa ficha **sólo aparece lo que está cargado**: un campo vacío se omite, no se muestra con una
+raya. Una ficha llena de rayas obliga a leer doce casilleros para encontrar los cuatro que tienen
+algo, y lo que falta se nota igual por ausencia. Ahí va también el **puerto de origen**, al lado del
+país: uno dice de dónde sale la mercadería y el otro de dónde zarpa.
+
+**Paso 2 · Actualización de datos.** Un formulario por OP, con los valores actuales ya cargados:
 
 | Campo | Columna |
 |-------|---------|
@@ -483,7 +506,7 @@ bueno por haber tipeado en la fila equivocada.
 
 Una OP seleccionada **sin ningún cambio** bloquea el paso, y se avisa con su nombre y un botón para
 sacarla de la selección. Guardarla igual escribiría una actualización vacía y la dejaría "tocada"
-sin novedades, que es peor que no haberla abierto.
+sin nada nuevo, que es peor que no haberla abierto.
 
 **Paso 3 · Resumen.** Campo por campo, `antes → después`, antes de escribir nada. No es un trámite:
 acá se editan varias OP de una vez, y una fila equivocada se nota mucho más leyendo
@@ -508,7 +531,7 @@ esa etiqueta tiene en el resto de la app.
 | Llegan esta semana | arribo dentro de 7 días |
 | Sin ETA cargada | OP en curso sin fecha de arribo |
 | Sin N° de OP | falta el número del despachante |
-| Sin novedades 7+ días | nadie las tocó en una semana (`pulse_updated_mm784qds`) |
+| Sin actualizar 7+ días | nadie cargó nada en una semana (`pulse_updated_mm784qds`) |
 | Contenedores en curso | contenedores en OP todavía no nacionalizadas |
 
 Los tres cortes del medio no son estadística: son **trabajo pendiente del propio despachante**, y
@@ -601,7 +624,7 @@ poblaciones que no se cruzan.
 Administración ve todo lo que la app tenga, hoy y cuando se sumen operaciones nuevas: es el equipo
 dueño de la operación. El único restringido es el despachante, que es externo.
 
-Por eso son **cuatro** módulos: `drafts`, `despacho`, `aduana` (cargar novedades) y
+Por eso son **cuatro** módulos: `drafts`, `despacho`, `aduana` (actualizar las OP) y
 `aduanaDashboard` (la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
 a cargar sus OP, no a mirar el estado de toda la operación de BERGER— y, como se alimenta de la
 misma consulta que él sí usa, separarlo por módulo es lo único que los distingue del lado del

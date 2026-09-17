@@ -116,6 +116,7 @@ export async function crearPedidoVista({
       nombre: nombreDelPedidoVista(fecha),
       cantidadContenedores: totalContenedores,
       paises: paisesDePuertos(puertosDeTractores(tractores)),
+      puertos: puertosDeTractores(tractores),
       despachanteId,
       tractores: tractores.map((t) => ({
         nombre: t.nombre,

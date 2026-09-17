@@ -24,7 +24,7 @@ export function MarcoIngreso({ titulo, bajada, children, ancha = false }: Props)
         {bajada && <p className="ingreso-bajada">{bajada}</p>}
         {children}
       </div>
-      <p className="ingreso-pie">Operaciones de Inventario · BERGER S.A.</p>
+      <p className="ingreso-pie">Importación Berger S.A.</p>
     </div>
   )
 }

@@ -25,8 +25,8 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  *
  *   1. Selección — encontrar las OP. Se filtra por estado, se busca por número, y antes de marcar
  *      una se puede desplegar para ver cómo está hoy.
- *   2. Edición   — cargar las novedades. Cada OP arranca con sus valores actuales y sólo viaja lo
- *      que se cambió.
+ *   2. Edición   — cargar la actualización de datos. Cada OP arranca con sus valores actuales y
+ *      sólo viaja lo que se cambió.
  *   3. Resumen   — leer, campo por campo, qué va a quedar distinto antes de escribir en monday.
  *
  * El paso 3 no es un trámite: acá se editan varias OP de una vez, y una fila equivocada se nota
@@ -377,7 +377,7 @@ export function ActualizarDespachos() {
               <div className="sec-head">
                 <span className="sec-num">2</span>
                 <span className="sec-txt">
-                  <span className="sec-tit">Novedades de cada OP</span>
+                  <span className="sec-tit">Actualización de datos de cada OP</span>
                   <span className="sec-det">
                     Cada campo viene con lo que hay hoy en monday. Lo que no toques queda como
                     está: sólo se guarda lo que cambies.
@@ -394,7 +394,7 @@ export function ActualizarDespachos() {
                         ? 'Hay 1 OP sin editar.'
                         : `Hay ${sinCambios.length} OP sin editar.`}
                     </b>{' '}
-                    Cargales alguna novedad o quitalas de la selección para poder continuar:
+                    Actualizales algún dato o quitalas de la selección para poder continuar:
                     <span className="aviso-chips">
                       {sinCambios.map((op) => (
                         <button
@@ -521,7 +521,7 @@ export function ActualizarDespachos() {
               type="button"
               className="btn btn--primario"
               /* No se puede seguir con una OP sin editar: o se le carga algo, o se saca. Guardarla
-                 igual escribiría una actualización vacía y la dejaría "tocada" sin novedades. */
+                 igual escribiría una actualización vacía y la dejaría "tocada" sin nada nuevo. */
               disabled={elegidas.length === 0 || sinCambios.length > 0}
               onClick={() => setEtapa('resumen')}
             >

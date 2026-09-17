@@ -41,7 +41,7 @@ const PASOS: Record<
   ],
   aduana: [
     { id: 'seleccion', nombre: 'Selección de OP', corto: 'OP' },
-    { id: 'edicion', nombre: 'Novedades', corto: 'Novedades' },
+    { id: 'edicion', nombre: 'Actualización de datos', corto: 'Actualización' },
     { id: 'resumen', nombre: 'Resumen', corto: 'Resumen' },
     { id: 'listo', nombre: 'Actualizado', corto: 'Listo' },
   ],

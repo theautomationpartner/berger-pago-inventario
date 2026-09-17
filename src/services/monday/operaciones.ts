@@ -41,7 +41,7 @@ import {
  * mandarle la planificación al proveedor.
  *
  * El dashboard es un módulo aparte y no una pantalla más de `aduana` justamente porque el
- * despachante NO lo ve: entra a cargar sus novedades, no a mirar el estado de toda la operación.
+ * despachante NO lo ve: entra a actualizar sus OP, no a mirar el estado de toda la operación.
  * Como se alimenta de la misma consulta que usa el despachante, separarlo por módulo es lo único
  * que lo distingue del lado del servidor.
  *
@@ -100,7 +100,7 @@ const TABLEROS_ESCRIBIBLES = new Set<string>([TABLEROS.inventario, TABLEROS.pago
 
 /** Columnas que la app puede escribir, por tablero. Cualquier otra se rechaza. */
 const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
-  [TABLEROS.inventario]: new Set([COL_INV.estadoPago]),
+  [TABLEROS.inventario]: new Set([COL_INV.estadoPago, COL_INV.estadoPedido]),
   [TABLEROS.pagos]: new Set([
     COL_PAGO.montoTransferencia,
     COL_PAGO.fechaEmision,
@@ -128,6 +128,7 @@ const COLUMNAS_ESCRIBIBLES: Record<string, Set<string>> = {
     COL_DESPACHANTE.despachante,
     COL_DESPACHANTE.cantidadContenedores,
     COL_DESPACHANTE.paisOrigen,
+    COL_DESPACHANTE.puertoOrigen,
     COL_DESPACHANTE.proveedor,
     COL_DESPACHANTE.importador,
   ]),

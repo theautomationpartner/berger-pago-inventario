@@ -34,7 +34,7 @@ import type {
   OperacionPrincipal,
 } from '@/types'
 
-const TITULO = 'Operaciones de Inventario'
+const TITULO = 'Importación Berger S.A.'
 const SUBTITULO = 'Tractores · BERGER S.A.'
 
 /**
@@ -47,7 +47,8 @@ const VISTA_PREVIA_INGRESO =
   import.meta.env.DEV && new URLSearchParams(window.location.search).has('vista-previa')
 
 /**
- * Vista de tablero de BERGER S.A. — Operaciones de Inventario de Tractores.
+ * Vista de tablero de BERGER S.A. — Importación Berger S.A. (operaciones sobre el inventario de
+ * tractores).
  *
  * Tres barreras, en orden, y ninguna dibuja la app hasta que pasa:
  *

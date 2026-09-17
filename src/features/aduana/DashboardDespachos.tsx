@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { tonoEstadoCarga, tonoEta, type Tono } from '@/lib/chips'
-import { DIAS_SIN_NOVEDADES, diasHastaEta, resumirDespachos, textoEta } from '@/lib/despachos'
+import { DIAS_SIN_ACTUALIZAR, diasHastaEta, resumirDespachos, textoEta } from '@/lib/despachos'
 import { fechaCorta } from '@/lib/format'
 import { URL_TABLERO_DESPACHANTE } from '@/services/monday/columns'
 import type { DespachoOP } from '@/types'
@@ -102,9 +102,9 @@ function ListaOP({
  *
  *   ¿En qué estado está cada carga?  →  la fila de estados, con el color del circuito.
  *   ¿Qué tengo que mirar HOY?        →  lo vencido, lo que llega esta semana, y lo que quedó sin
- *                                       novedades o sin datos que el despachante tiene que cargar.
+ *                                       actualizar o sin datos que el despachante tiene que cargar.
  *
- * Los cortes "sin ETA", "sin N° de OP" y "sin novedades" no son estadística: son trabajo pendiente
+ * Los cortes "sin ETA", "sin N° de OP" y "sin actualizar" no son estadística: son trabajo pendiente
  * del propio despachante, y son los que hacen que el dashboard sirva para algo más que mirar.
  *
  * Todo se calcula sobre las OP que ya están en pantalla, sin una consulta aparte: el número de
@@ -229,9 +229,9 @@ export function DashboardDespachos() {
             tono="chip--magenta"
           />
           <Tarjeta
-            rotulo={`Sin novedades ${DIAS_SIN_NOVEDADES}+ días`}
-            valor={r.sinNovedades.length}
-            detalle="Nadie las tocó en una semana"
+            rotulo={`Sin actualizar ${DIAS_SIN_ACTUALIZAR}+ días`}
+            valor={r.sinActualizar.length}
+            detalle="Nadie actualizó sus datos en una semana"
             icono="fa-hourglass-half"
             tono="chip--violeta"
           />
@@ -276,10 +276,10 @@ export function DashboardDespachos() {
             extra={(op) => textoEta(diasHastaEta(op.eta))}
           />
           <ListaOP
-            titulo={`Sin novedades hace ${DIAS_SIN_NOVEDADES} días o más`}
+            titulo={`Sin actualizar hace ${DIAS_SIN_ACTUALIZAR} días o más`}
             icono="fa-hourglass-half"
-            ops={r.sinNovedades}
-            vacio="Todas las OP tuvieron movimiento esta semana"
+            ops={r.sinActualizar}
+            vacio="Todas las OP se actualizaron esta semana"
           />
           <ListaOP
             titulo="Sin fecha de arribo"

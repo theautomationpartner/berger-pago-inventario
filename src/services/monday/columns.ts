@@ -158,6 +158,13 @@ export const COL_INV = {
   fechaProd: 'date_mm6nymx',
   /** Estado Pago. Es lo que la app va avanzando en las tres operaciones. */
   estadoPago: 'color_mm6v6532',
+  /**
+   * Estado Pedido: dónde está el tractor en el viaje, no en el circuito de pago.
+   *
+   * La app la toca en un solo momento —cuando el despacho pasa al despachante de aduana— y el
+   * resto del recorrido (en tránsito, arribado, nacionalizado…) lo maneja el tablero.
+   */
+  estadoPedido: 'color_mm6n109a',
   /** Mirror del Costo de Flete (viene de Importación – Drafts). Sólo lectura. */
   costoFlete: 'lookup_mm6vg317',
   /** Mirror del Precio Unitario. Sólo lectura. */
@@ -213,6 +220,15 @@ export const COL_DESPACHANTE = {
   cantidadContenedores: 'numeric_mm77sq5g',
   /** País de origen, deducido del puerto del Catálogo. Admite más de uno. */
   paisOrigen: 'dropdown_mm776ha7',
+  /**
+   * Puerto de carga, tal como viene del Catálogo de Productos.
+   *
+   * Va al lado del país porque es el dato con el que trabaja el despachante: el país dice de dónde
+   * sale la mercadería, el puerto dice de dónde zarpa. Cuando el modelo tiene más de uno —los
+   * alemanes salen por Bremerhaven o por Hamburgo— se cargan LOS DOS: el criterio para elegir
+   * todavía no está definido, y elegir uno por nuestra cuenta sería inventarlo.
+   */
+  puertoOrigen: 'dropdown_mm79vwr1',
   proveedor: 'dropdown_mm77czh3',
   importador: 'color_mm77sys5',
 
@@ -229,7 +245,7 @@ export const COL_DESPACHANTE = {
 
   /** ID legible del despacho ("DESPACHO-003"). Sólo lectura: lo numera monday. */
   idDespacho: 'pulse_id_mm78a7v4',
-  /** Cuándo se tocó por última vez. Sirve para ver qué OP quedaron sin novedades. */
+  /** Cuándo se tocó por última vez. Sirve para ver qué OP quedaron sin actualizar. */
   ultimaActualizacion: 'pulse_updated_mm784qds',
 } as const
 
@@ -279,9 +295,21 @@ export const COL_DESPACHANTE_SUB = {
  */
 export const TEAM_DESPACHANTES = '1504184'
 
+/**
+ * Los puertos que acepta la columna del Despachante.
+ *
+ * Son los mismos que el Catálogo, pero la lista vive acá porque es la del tablero DONDE SE ESCRIBE:
+ * un dropdown rechaza la escritura entera si una etiqueta no existe, así que lo que no está en
+ * esta lista se deja afuera en vez de hacer fallar todo el despacho.
+ */
+export const PUERTOS_DESPACHANTE = ['Bremerhaven', 'Hamburgo', 'Chennai', 'Gemlik', 'Genova']
+
 /** Valores fijos del despacho: hoy la app despacha un solo proveedor y un solo importador. */
 export const PROVEEDOR_DESPACHO = 'Same Deutz Fahr SPA'
 export const IMPORTADOR_DESPACHO = 'Berger SA'
+
+/** Etiqueta de "Estado Pedido" que deja la app al armar el despacho de aduana. */
+export const PEDIDO_EN_DESPACHANTE = 'En Despachante'
 
 /** Etiquetas de "Estado Confirmación Fecha Producción" (`color_mm6s8xp2`). */
 export const FECHA_CONFIRMADA = 'Fecha Confirmada'

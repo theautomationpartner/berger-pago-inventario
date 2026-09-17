@@ -120,7 +120,7 @@
   flex-wrap: wrap;
   margin-left: auto;
 }
-/* Una OP todavía sin novedades: el borde ámbar la distingue sin necesidad de contar tarjetas,
+/* Una OP todavía sin cambios: el borde ámbar la distingue sin necesidad de contar tarjetas,
    porque es la que impide continuar. */
 .op-editor--pendiente {
   border-color: #fdd2b5;
@@ -443,4 +443,18 @@
   .corte-datos {
     margin-left: 0;
   }
+}
+
+/* La ficha de una OP va en verde muy claro, no en blanco: lo que se está mirando ahí es lo que YA
+   está cargado —los vacíos ni aparecen—, y el verde es el color que en toda la app significa
+   "esto es lo que vale". Sobre el blanco de la fila, además, separa la ficha del resto. */
+.dato--ficha {
+  background: #f3faf5;
+  border-color: #cfe9da;
+}
+.dato--ficha .dato-lbl {
+  color: #3f7a5c;
+}
+.dato--ficha .dato-val {
+  color: #14532d;
 }
