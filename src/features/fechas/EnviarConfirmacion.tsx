@@ -121,8 +121,8 @@ export function EnviarConfirmacion() {
                 <span className="sec-txt">
                   <span className="sec-tit">Confirmaciones del proveedor</span>
                   <span className="sec-det">
-                    Items de tipo <b>CONFIRMACION</b> en Confirmación y Planificación. Elegí cuál
-                    vas a revisar y mandar.
+                    Items de tipo <b>CONFIRMACION</b> en Confirmación y Planificación que todavía no
+                    se mandaron. Elegí cuál vas a revisar y mandar.
                   </span>
                 </span>
               </div>
@@ -170,9 +170,10 @@ export function EnviarConfirmacion() {
                       <span className="vacio-ic">
                         <i className="fa-solid fa-inbox" aria-hidden="true" />
                       </span>
-                      <span className="vacio-tit">No hay confirmaciones</span>
+                      <span className="vacio-tit">No hay confirmaciones pendientes de enviar</span>
                       <span className="vacio-det">
-                        Todavía no llegó ninguna confirmación de DEUTZ al tablero.
+                        O todavía no llegó ninguna confirmación de DEUTZ, o las que hay ya se
+                        mandaron: las que quedaron en <b>Enviado</b> no se listan.
                       </span>
                     </div>
                   )}
@@ -205,6 +206,17 @@ export function EnviarConfirmacion() {
                               <span className="chip chip--rojo">
                                 <i className="fa-solid fa-hourglass-half" aria-hidden="true" /> En
                                 preparación
+                              </span>
+                            )}
+                            {/* El estado del envío se muestra tal cual: "Enviar" y "Enviando" ya
+                                están en marcha, "Detenido" quedó trabado. Las "Enviado" no llegan
+                                hasta acá. */}
+                            {c.estadoPropuesta && (
+                              <span
+                                className={`chip ${r.enCurso ? 'chip--azul' : 'chip--naranja'}`}
+                                title="Estado del envío"
+                              >
+                                {c.estadoPropuesta}
                               </span>
                             )}
                           </span>
@@ -268,6 +280,16 @@ export function EnviarConfirmacion() {
                   <span className="tarjeta-rot">Planilla de Google</span>
                 </div>
               </div>
+
+              {resumen.enCurso && (
+                <div className="aviso aviso--info">
+                  <i className="fa-solid fa-paper-plane" aria-hidden="true" />
+                  <span>
+                    El envío de esta confirmación ya está en <b>{elegida.estadoPropuesta}</b>. Volver
+                    a mandarla no agrega nada: esperá a que la automatización termine.
+                  </span>
+                </div>
+              )}
 
               {!resumen.listaParaEnviar && (
                 <div className="aviso aviso--alerta">

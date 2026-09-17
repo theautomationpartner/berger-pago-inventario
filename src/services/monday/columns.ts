@@ -168,6 +168,19 @@ export const COL_CONFIRMACION = {
 export const CONFIRMACION_TIPO = '🤖CONFIRMACION'
 export const CONFIRMACION_TIPO_INDEX = 1
 
+/**
+ * Etiquetas de "Estado Propuesta" (`color_mm6ss2d2`): en qué anda el envío de la confirmación.
+ *
+ * `Enviado` es el final del camino: esa confirmación ya salió y no hay nada más que hacer con
+ * ella. Las demás siguen sobre la mesa.
+ */
+export const ESTADO_PROPUESTA = {
+  ENVIANDO: 'Enviando',
+  ENVIADO: 'Enviado',
+  DETENIDO: 'Detenido',
+  ENVIAR: 'Enviar',
+} as const
+
 /** Los dos estados que tienen que estar en verde para poder mandar una confirmación. */
 export const CONFIRMACION_LISTA = {
   INVENTARIO_ACTUALIZADO: 'Actualizado',

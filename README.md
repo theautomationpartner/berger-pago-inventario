@@ -229,7 +229,12 @@ las que manda DEUTZ. Cada una trae conectados sus tractores del Inventario
 (`board_relation_mm6zhvba`).
 
 **Paso 1 · Selección.** Cada confirmación se lista con cuántas fechas se van a confirmar y cuántas a
-proponer, ya contadas.
+proponer, ya contadas, y con el estado de su envío.
+
+**Las que ya salieron no se listan.** Una confirmación con 🤖Estado Propuesta (`color_mm6ss2d2`) en
+**Enviado** está terminada: ofrecerla otra vez sólo habilita a mandarla dos veces. Las demás sí
+aparecen —`Enviar`, `Enviando`, `Detenido` o sin estado— porque todas son situaciones que pueden
+terminar de resolverse desde acá; cuando el envío ya está en marcha, la pantalla lo dice.
 
 **Paso 2 · Revisión.** El detalle tractor por tractor, con **la fecha del proveedor y la propuesta,
 una al lado de la otra**, y qué le va a pasar a cada uno:

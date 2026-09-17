@@ -13,6 +13,7 @@ import {
   CONFIRMACION_TIPO,
   CONFIRMACION_TIPO_INDEX,
   EMAIL_ENVIAR,
+  ESTADO_PROPUESTA,
 } from './columns'
 import { tractoresPorIds } from './fechas'
 import { fechaISO, porId, texto, type ColumnaCruda } from './parse'
@@ -59,7 +60,11 @@ function aConfirmacion(item: ItemCrudo): Confirmacion {
 }
 
 /**
- * Las confirmaciones del proveedor, con sus tractores ya cargados.
+ * Las confirmaciones del proveedor que TODAVÍA no se mandaron, con sus tractores ya cargados.
+ *
+ * Las que están en `Enviado` quedan afuera: esa confirmación ya salió, y ofrecerla otra vez sólo
+ * habilita a mandarla dos veces. Las demás —`Enviar`, `Enviando`, `Detenido` o sin estado— siguen
+ * en la lista, porque todas son cosas que pueden terminar de resolverse desde acá.
  *
  * Los tractores se piden en UNA sola consulta para todas las confirmaciones de la pantalla: con
  * seis confirmaciones de seis tractores serían treinta y seis viajes a monday si se pidieran de a
@@ -78,6 +83,7 @@ export async function confirmacionesDelProveedor(): Promise<Confirmacion[]> {
       return texto(c[COL_CONFIRMACION.tipo]) === CONFIRMACION_TIPO
     })
     .map(aConfirmacion)
+    .filter((c) => c.estadoPropuesta !== ESTADO_PROPUESTA.ENVIADO)
 
   const ids = [...new Set(items.flatMap((c) => c.inventarioIds))]
   const tractores = await tractoresPorIds(ids)

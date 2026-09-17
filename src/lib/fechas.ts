@@ -1,4 +1,4 @@
-import { CONFIRMACION_LISTA } from '@/services/monday/columns'
+import { CONFIRMACION_LISTA, ESTADO_PROPUESTA } from '@/services/monday/columns'
 import type { Confirmacion, TractorFecha } from '@/types'
 
 /**
@@ -54,8 +54,10 @@ export interface ResumenConfirmacion {
   planillaCreada: boolean
   /** Si el circuito ya está en condiciones de mandarse. */
   listaParaEnviar: boolean
-  /** Si ya se mandó alguna vez (el estado quedó fuera de "Enviar" por la automatización). */
+  /** Si ya salió. Una confirmación enviada ni siquiera llega a la lista, pero el dato se informa. */
   yaEnviada: boolean
+  /** Si el envío está en curso o detenido: se puede mirar, pero volver a mandarlo no ayuda. */
+  enCurso: boolean
 }
 
 export function resumirConfirmacion(c: Confirmacion): ResumenConfirmacion {
@@ -68,7 +70,10 @@ export function resumirConfirmacion(c: Confirmacion): ResumenConfirmacion {
     inventarioActualizado,
     planillaCreada,
     listaParaEnviar: inventarioActualizado && planillaCreada,
-    yaEnviada: c.estadoPropuesta !== '' && c.estadoPropuesta !== 'Detenido',
+    yaEnviada: c.estadoPropuesta === ESTADO_PROPUESTA.ENVIADO,
+    enCurso:
+      c.estadoPropuesta === ESTADO_PROPUESTA.ENVIANDO ||
+      c.estadoPropuesta === ESTADO_PROPUESTA.ENVIAR,
   }
 }
 
