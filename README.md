@@ -664,9 +664,12 @@ El aviso son **dos cosas**, no una:
 
 - Un **update en el item** con el texto de qué hay que completar, y —si hay contenedores— los links
   de cada uno.
-- Una **notificación personal** a Sofía (`115175712`) y Micaela (`115175739`), porque monday
-  **descarta el marcado de las menciones** dentro del cuerpo de un update: se guarda el texto, pero
-  la persona nunca se entera. Probado contra la API.
+- Las **menciones a Sofía** (`115175712`) **y Micaela** (`115175739`), que son lo que hace que les
+  llegue. Van en el argumento `mentions_list` de `create_update`, no incrustadas en el cuerpo:
+  el marcado dentro del `body` monday lo descarta al guardar —el texto queda y nadie se entera—.
+  Como `mentions_list` no existe en la versión de la API que usa el resto de la app (2024-10), esa
+  operación declara la suya (2025-07). Si el update falla, se cae a **notificaciones personales**:
+  menos prolijo, pero el aviso no se pierde.
 
 ### ACTUALIZAR OP - BERGER S.A.
 

@@ -60,6 +60,7 @@ export default async function handler(req: Request): Promise<Response> {
      propio GraphQL no obtiene nada, porque este archivo no lee ningún campo `query`. */
   let query: string
   let variables: Record<string, unknown>
+  let version = API_VERSION
   try {
     const operacion = resolverOperacion(pedido.operacion)
     /* Y acá está el segundo candado, el que separa a las dos poblaciones: la operación existe,
@@ -69,6 +70,7 @@ export default async function handler(req: Request): Promise<Response> {
       return error(403, 'No tenés acceso a esta aplicación. Contactá al administrador.')
     }
     query = operacion.query
+    version = operacion.apiVersion ?? API_VERSION
     variables = operacion.validar((pedido.variables ?? {}) as Record<string, unknown>)
   } catch (e: unknown) {
     if (e instanceof OperacionInvalida) return error(400, e.message)
@@ -81,7 +83,7 @@ export default async function handler(req: Request): Promise<Response> {
       'Content-Type': 'application/json',
       // El token del usuario NO se reenvía: acá se cambia por el de la cuenta, del lado servidor.
       Authorization: token,
-      'API-Version': API_VERSION,
+      'API-Version': version,
     },
     body: JSON.stringify({ query, variables }),
   })

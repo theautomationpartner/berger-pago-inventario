@@ -789,12 +789,17 @@ El aviso son **dos cosas**:
 
 | Qué | Dónde | Contenido |
 |---|---|---|
-| Update | en el item de la OP | qué campos hay que completar y, si hay, los links de los contenedores |
-| Notificación | a Sofía (`115175712`) y Micaela (`115175739`) | el mismo pedido, en una línea |
+| Update con menciones | en el item de la OP | qué campos hay que completar, los links de los contenedores si los hay, y la mención a Sofía (`115175712`) y Micaela (`115175739`) |
+| Notificación | a las dos | **sólo si el update falla**: el mismo pedido, en una línea |
 
-**Consideración.** Son dos porque monday **descarta el marcado de las menciones** dentro del cuerpo
-de un update: el texto se guarda, pero la persona nunca se entera. Probado contra la API. La
-notificación es lo que de verdad les llega; el update es el registro.
+**Consideración · cómo se menciona.** Las menciones van en el argumento `mentions_list` de
+`create_update`, no incrustadas en el cuerpo: el marcado dentro del `body` monday lo descarta al
+guardar —el texto queda y la persona nunca se entera—. Probado contra la API.
+
+**Consideración · versión de la API.** `mentions_list` no existe en 2024-10, que es la versión con
+la que corre el resto de la app. En vez de subir la versión de todo —lo que obligaría a volver a
+probar las treinta y pico de consultas—, **esa operación declara la suya** (2025-07). El catálogo
+admite una versión por operación justamente para esto.
 
 Ninguna de las dos aborta nada: para cuando se llega ahí la OP ya está actualizada, así que un fallo
 del aviso se informa como advertencia.

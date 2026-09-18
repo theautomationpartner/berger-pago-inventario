@@ -5,12 +5,14 @@
  * definir forma de pago, fondeo, banco, VEP, transporte y entrega. El despachante lo marca desde la
  * app, y de ahí en adelante la pelota es de BERGER, así que el aviso tiene que salir solo.
  *
- * Salen **dos cosas** por cada OP, y no una:
+ * El aviso es **un update con menciones de verdad**: `create_update` acepta un `mentions_list`, y
+ * eso es lo que hace que a la persona le llegue. Incrustar el marcado de la mención dentro del
+ * `body` NO sirve —monday lo descarta al guardar, el texto queda y nadie se entera—, y `mentions_list`
+ * no existe en la versión de la API que usa el resto de la app, así que esa operación declara una
+ * versión propia.
  *
- * - Un **update en el item**, que queda como registro de qué se pidió y cuándo.
- * - Una **notificación personal** a cada una, porque monday **descarta el marcado de las menciones**
- *   dentro del cuerpo de un update: se guarda el texto pero la persona nunca se entera. Probado
- *   contra la API: el `data-mention-id` desaparece al guardar.
+ * Si el update falla, se cae a **notificaciones personales**: es menos prolijo —no queda registro en
+ * el item— pero la gente se entera igual, que es lo que no se puede perder.
  */
 import { AVISO_PROXIMA_ARRIBAR, URL_TABLERO_CONTENEDORES } from './columns'
 import type { ContenedorDespacho, DespachoOP } from '@/types'
@@ -38,7 +40,11 @@ export function cuerpoDelAviso(op: DespachoOP, contenedores: ContenedorDespacho[
     `"Próxima a Arribar", deben ingresar a completar los campos de ese ítem correspondientes a: ` +
     `${PENDIENTES_BERGER}</p>`
 
-  if (contenedores.length === 0) return saludo
+  /* monday agrega las menciones AL FINAL del cuerpo, como enlaces. Por eso el texto no las nombra
+     adentro y termina con esta línea: sin ella, los "@" aparecerían sueltos sin decir para qué. */
+  const cierre = `<p>Aviso para:</p>`
+
+  if (contenedores.length === 0) return saludo + cierre
 
   const items = contenedores
     .map(
@@ -53,7 +59,8 @@ export function cuerpoDelAviso(op: DespachoOP, contenedores: ContenedorDespacho[
     saludo +
     `<p>Los contenedores de esta OP ya están armados (${contenedores.length}). ` +
     `Entren al tablero de Contenedores a completar el <b>Transportista</b> y la ` +
-    `<b>Ubicación de entrega</b> de cada uno:</p><ul>${items}</ul>`
+    `<b>Ubicación de entrega</b> de cada uno:</p><ul>${items}</ul>` +
+    cierre
   )
 }
 
@@ -71,11 +78,11 @@ export function textoDeLaNotificacion(op: DespachoOP, contenedores: ContenedorDe
 }
 
 /**
- * Deja el aviso en el item y notifica a cada persona.
+ * Deja el aviso en el item, mencionando a las dos.
  *
- * Ninguna de las dos cosas aborta nada: para cuando se llega acá, la OP ya quedó actualizada en el
- * tablero. Si el aviso falla, se devuelve el motivo para mostrarlo como advertencia —y el estado,
- * que es lo que de verdad importa, ya está escrito—.
+ * No aborta nada: para cuando se llega acá, la OP ya quedó actualizada en el tablero. Si el update
+ * falla, se intenta la notificación personal —el camino de atrás— y recién si eso también falla se
+ * devuelve el motivo para mostrarlo como advertencia.
  */
 export async function avisarProximaArribar(
   op: DespachoOP,
@@ -84,13 +91,21 @@ export async function avisarProximaArribar(
   const advertencias: string[] = []
 
   try {
-    await mondayApi('crearUpdate', { item: op.id, cuerpo: cuerpoDelAviso(op, contenedores) })
+    await mondayApi('crearUpdate', {
+      item: op.id,
+      cuerpo: cuerpoDelAviso(op, contenedores),
+      menciones: AVISO_PROXIMA_ARRIBAR.map((p) => ({ id: p.id })),
+    })
+    return advertencias
   } catch (e) {
     advertencias.push(
-      `No se pudo dejar el update en ${op.nombre}: ${e instanceof Error ? e.message : String(e)}`,
+      `No se pudo dejar el update en ${op.nombre}: ${e instanceof Error ? e.message : String(e)}. ` +
+        'Se avisa por notificación.',
     )
   }
 
+  /* Camino de atrás: sin update, al menos que les llegue la notificación. Es lo que no se puede
+     perder, porque de este aviso depende que BERGER complete el despacho antes de que llegue. */
   const texto = textoDeLaNotificacion(op, contenedores)
   for (const persona of AVISO_PROXIMA_ARRIBAR) {
     try {

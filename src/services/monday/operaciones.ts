@@ -105,6 +105,14 @@ export class OperacionInvalida extends Error {}
 interface Operacion {
   /** A qué módulo pertenece. Sin él, cualquier perfil podría pedir cualquier cosa del catálogo. */
   modulo: ModuloApp
+  /**
+   * Versión de la API de monday con la que tiene que correr ESTA operación.
+   *
+   * Casi todas usan la de la app (`API_VERSION`). La excepción son las que necesitan algo que
+   * todavía no existía entonces: subir la versión de toda la app por una sola consulta obligaría a
+   * volver a probar las otras treinta, y cada versión de monday cambia el comportamiento de algo.
+   */
+  apiVersion?: string
   query: string
   /**
    * Comprueba y normaliza las variables. Puede devolver otras: cuando un valor lo decide el
@@ -256,6 +264,15 @@ export const MODULO_DE_ARCHIVO: Record<string, ModuloApp> = {
   [COL_DESPACHANTE.fcTerminal]: 'aduana',
   [COL_DESPACHANTE.gastosVarios]: 'aduana',
 }
+
+/**
+ * Versión de la API con la que corre `create_update` con menciones.
+ *
+ * `mentions_list` no existe en 2024-10, que es la versión del resto de la app. Se fija una versión
+ * concreta y no "la actual": una versión que se mueve sola es una dependencia que cambia sin que
+ * nadie la toque.
+ */
+const API_CON_MENCIONES = '2025-07'
 
 /** Un id de monday es una cadena de dígitos. Sirve para items, subitems y tableros. */
 function idMonday(valor: unknown, campo: string): string {
@@ -1125,20 +1142,38 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
   },
 
   /**
-   * Un update en el item de la OP.
+   * Un update en el item de la OP, con menciones de verdad.
    *
-   * El texto lo arma la app y no el cliente: viaja como variable, pero se acota el largo. Las
-   * menciones NO se pueden incrustar —monday descarta el marcado al guardar—, así que a las
-   * personas se les avisa aparte, con `notificar`.
+   * `mentions_list` es lo que hace que a la persona LE LLEGUE la mención. Incrustar el marcado de
+   * la mención dentro del `body` no sirve: monday lo descarta al guardar, el texto queda pero nadie
+   * se entera. Probado contra la API.
+   *
+   * Necesita una versión de la API **más nueva que la de la app**: `mentions_list` aparece recién
+   * en 2025-07, y la app corre en 2024-10. Por eso esta operación declara la suya.
    */
   crearUpdate: {
     modulo: 'aduana',
-    query: `mutation ($item: ID!, $cuerpo: String!) { create_update(item_id: $item, body: $cuerpo) { id } }`,
+    apiVersion: API_CON_MENCIONES,
+    query: `
+      mutation ($item: ID!, $cuerpo: String!, $menciones: [UpdateMention]) {
+        create_update(item_id: $item, body: $cuerpo, mentions_list: $menciones) { id }
+      }
+    `,
     validar: (v) => {
       const cuerpo = String(v.cuerpo ?? '')
       if (!cuerpo.trim()) throw new OperacionInvalida('El update está vacío.')
       if (cuerpo.length > 5000) throw new OperacionInvalida('El update es demasiado largo.')
-      return { item: idMonday(v.item, 'item'), cuerpo }
+
+      /* Sólo se mencionan PERSONAS, y por id: con el tipo libre se podrían mencionar tableros o
+         proyectos enteros de la cuenta desde una pantalla que sólo habla de una OP. */
+      const crudas = Array.isArray(v.menciones) ? v.menciones : []
+      if (crudas.length > 20) throw new OperacionInvalida('Demasiadas menciones.')
+      const menciones = crudas.map((m) => ({
+        id: idMonday((m as { id?: unknown })?.id, 'mención'),
+        type: 'User',
+      }))
+
+      return { item: idMonday(v.item, 'item'), cuerpo, menciones }
     },
   },
 

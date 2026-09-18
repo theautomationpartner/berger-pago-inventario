@@ -126,13 +126,15 @@ export async function mondayApi<T>(
     throw new SinAcceso('No hay una sesión de monday activa.')
   }
 
+  /* La versión de la API sale de la operación cuando ésta pide una distinta de la de la app. En
+     producción la resuelve el proxy; acá hace falta en desarrollo, donde el pedido sale directo. */
+  const definicion = resolverOperacion(operacion)
+  const version = definicion.apiVersion ?? API_VERSION
+
   const cuerpo = import.meta.env.DEV
-    ? (() => {
-        const { query, validar } = resolverOperacion(operacion)
-        // Se valida también en desarrollo: si una variable no pasa el filtro del servidor,
-        // conviene enterarse acá y no recién cuando la app está publicada.
-        return { query, variables: validar(variables) }
-      })()
+    ? // Se valida también en desarrollo: si una variable no pasa el filtro del servidor,
+      // conviene enterarse acá y no recién cuando la app está publicada.
+      { query: definicion.query, variables: definicion.validar(variables) }
     : { operacion, variables }
 
   const res = await fetch(ENDPOINT, {
@@ -140,7 +142,7 @@ export async function mondayApi<T>(
     headers: {
       'Content-Type': 'application/json',
       ...cabeceras,
-      'API-Version': API_VERSION,
+      'API-Version': version,
     },
     body: JSON.stringify(cuerpo),
   })
