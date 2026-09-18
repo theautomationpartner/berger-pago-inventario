@@ -1,16 +1,24 @@
 import { useMemo, useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
-import { cambiosDe, coincide, soloLoCambiado, valoresActuales } from '@/lib/despachos'
-import { ESTADO_CARGA, URL_TABLERO_DESPACHANTE } from '@/services/monday/columns'
-import { actualizarDespacho } from '@/services/monday/despachos'
 import { tonoEstadoCarga } from '@/lib/chips'
+import { cambiosDe, coincide, soloLoCambiado, valoresActuales } from '@/lib/despachos'
+import { avisarProximaArribar } from '@/services/monday/avisos'
+import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, URL_TABLERO_DESPACHANTE } from '@/services/monday/columns'
+import { contenedoresDeOp, tractoresDeOps } from '@/services/monday/contenedoresDespacho'
+import { actualizarDespacho, ARCHIVOS_OP, ROTULO_ARCHIVO } from '@/services/monday/despachos'
+import { subirArchivoAColumna } from '@/services/monday/sdk'
 import type {
+  ArchivosDespacho,
   CambioDespacho,
+  ContenedorDespacho,
   DespachoOP,
   EdicionDespacho,
   EtapaAduana,
+  ModoDespachante,
   ResultadoActualizacion,
+  TractorDeOp,
 } from '@/types'
+import { ArmarContenedores } from './ArmarContenedores'
 import { EditorOP } from './EditorOP'
 import { EtiquetasOP } from './EtiquetasOP'
 import { FichaOP } from './FichaOP'
@@ -18,24 +26,43 @@ import { useDespachos } from './useDespachos'
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+const SIN_ARCHIVOS: ArchivosDespacho = {
+  fcTransporteImpo: null,
+  despachoImpo: null,
+  fcTerminal: null,
+  gastosVarios: null,
+}
+
+/** Qué columna de monday le corresponde a cada archivo del formulario. */
+const COLUMNA_DE_ARCHIVO: Record<keyof ArchivosDespacho, string> = {
+  fcTransporteImpo: ARCHIVOS_OP[0],
+  despachoImpo: ARCHIVOS_OP[1],
+  fcTerminal: ARCHIVOS_OP[2],
+  gastosVarios: ARCHIVOS_OP[3],
+}
+
 /**
- * Actualizar Despacho OP: lo que hace el despachante de aduana todos los días.
+ * Actualizar Despacho OP · DESPACHANTE.
  *
- * Tres pasos, y cada uno existe por un motivo distinto:
+ * Lo que hace el despachante de aduana todos los días. Después de elegir las OP, decide qué va a
+ * hacer con ellas:
  *
- *   1. Selección — encontrar las OP. Se filtra por estado, se busca por número, y antes de marcar
- *      una se puede desplegar para ver cómo está hoy.
- *   2. Edición   — cargar la actualización de datos. Cada OP arranca con sus valores actuales y
- *      sólo viaja lo que se cambió.
- *   3. Resumen   — leer, campo por campo, qué va a quedar distinto antes de escribir en monday.
+ *   **Actualizar datos** — cargar cómo avanza el viaje y subir los comprobantes del trámite.
+ *   **Armar contenedores** — decir en qué contenedor va cada tractor. Se habilita cuando la OP ya
+ *   tiene N° de OP del despachante: antes de eso el trámite no arrancó y no hay contra qué armar.
  *
- * El paso 3 no es un trámite: acá se editan varias OP de una vez, y una fila equivocada se nota
- * mucho más leyendo "ETA: 12/10 → 12/11" que releyendo siete formularios.
+ * El camino de actualizar tiene tres pasos, y cada uno evita un error distinto: ver cómo está la OP
+ * antes de tocarla, mandar sólo lo que cambió, y leer `antes → después` antes de escribir.
+ *
+ * **"Próxima a Arribar" exige los contenedores armados.** Ese estado dispara el aviso a BERGER, que
+ * lleva los links de los contenedores para que carguen transportista y ubicación de entrega: sin
+ * contenedores, el aviso no sirve para nada.
  */
 export function ActualizarDespachos() {
   const { despachos, cargando, error, recargar } = useDespachos()
 
   const [etapa, setEtapa] = useState<EtapaAduana>('seleccion')
+  const [modo, setModo] = useState<ModoDespachante>('datos')
   const [estados, setEstados] = useState<string[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
@@ -43,6 +70,12 @@ export function ActualizarDespachos() {
   /** Lo elegido y lo editado viven juntos: una OP seleccionada siempre tiene su formulario. */
   const [seleccion, setSeleccion] = useState<string[]>([])
   const [ediciones, setEdiciones] = useState<Record<string, EdicionDespacho>>({})
+  const [archivos, setArchivos] = useState<Record<string, ArchivosDespacho>>({})
+
+  /** Tractores y contenedores de las OP elegidas. Se cargan al pasar del paso 1. */
+  const [tractores, setTractores] = useState<Record<string, TractorDeOp[]>>({})
+  const [contenedores, setContenedores] = useState<Record<string, ContenedorDespacho[]>>({})
+  const [cargandoOp, setCargandoOp] = useState(false)
 
   const [enviando, setEnviando] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
@@ -71,16 +104,39 @@ export function ActualizarDespachos() {
     return mapa
   }, [elegidas, ediciones])
 
-  const sinCambios = elegidas.filter((op) => (cambiosPorOp.get(op.id) ?? []).length === 0)
-  const totalCambios = elegidas.reduce((n, op) => n + (cambiosPorOp.get(op.id) ?? []).length, 0)
+  /** Cuántos archivos nuevos hay cargados para una OP. */
+  const archivosDe = (id: string) => archivos[id] ?? SIN_ARCHIVOS
+  const archivosNuevos = (id: string) =>
+    Object.values(archivosDe(id)).filter((f) => f != null).length
+
+  /** Una OP sin cambios y sin archivos nuevos no tiene nada que guardar. */
+  const sinNada = elegidas.filter(
+    (op) => (cambiosPorOp.get(op.id) ?? []).length === 0 && archivosNuevos(op.id) === 0,
+  )
+  const totalCambios = elegidas.reduce(
+    (n, op) => n + (cambiosPorOp.get(op.id) ?? []).length + archivosNuevos(op.id),
+    0,
+  )
+
+  /** Tractores de una OP que todavía no están en ningún contenedor. */
+  const sinContenedor = (id: string) => (tractores[id] ?? []).filter((t) => !t.contenedorId).length
+
+  /** Las que quieren pasar a "Próxima a Arribar" sin tener los contenedores armados. */
+  const bloqueadas = elegidas.filter(
+    (op) =>
+      (ediciones[op.id] ?? valoresActuales(op)).estadoCarga === PROXIMA_A_ARRIBAR &&
+      sinContenedor(op.id) > 0,
+  )
+
+  /** La OP sobre la que se arman contenedores: el modo trabaja sobre UNA. */
+  const opDeContenedores = elegidas[0] ?? null
+  const puedeArmar = elegidas.length === 1 && Boolean(opDeContenedores?.nroOp.trim())
 
   const alternar = (op: DespachoOP) => {
     setSeleccion((actual) =>
       actual.includes(op.id) ? actual.filter((id) => id !== op.id) : [...actual, op.id],
     )
-    setEdiciones((actual) =>
-      actual[op.id] ? actual : { ...actual, [op.id]: valoresActuales(op) },
-    )
+    setEdiciones((actual) => (actual[op.id] ? actual : { ...actual, [op.id]: valoresActuales(op) }))
   }
 
   const quitar = (id: string) => setSeleccion((actual) => actual.filter((x) => x !== id))
@@ -93,16 +149,52 @@ export function ActualizarDespachos() {
   const reiniciar = () => {
     setSeleccion([])
     setEdiciones({})
+    setArchivos({})
+    setTractores({})
+    setContenedores({})
     setResultado(null)
     setErrorEnvio(null)
+    setModo('datos')
     setEtapa('seleccion')
     void recargar()
+  }
+
+  /**
+   * Trae los tractores de las OP elegidas y sus contenedores.
+   *
+   * Se hace al salir del paso 1 y no al entrar a la pantalla: sólo importan las OP elegidas, y
+   * pedir los subitems de todo el tablero para mostrar una lista sería traer de más.
+   */
+  const cargarDetalle = async () => {
+    setCargandoOp(true)
+    try {
+      const porOp = await tractoresDeOps(elegidas.map((op) => op.id))
+      const nuevosTractores: Record<string, TractorDeOp[]> = {}
+      const nuevosContenedores: Record<string, ContenedorDespacho[]> = {}
+      for (const [opId, lista] of porOp) {
+        nuevosTractores[opId] = lista
+        nuevosContenedores[opId] = await contenedoresDeOp(lista)
+      }
+      setTractores(nuevosTractores)
+      setContenedores(nuevosContenedores)
+    } catch (e) {
+      setErrorEnvio(`No se pudieron leer los tractores de la OP: ${mensaje(e)}`)
+    } finally {
+      setCargandoOp(false)
+    }
+  }
+
+  const irAModo = () => {
+    setErrorEnvio(null)
+    setEtapa('modo')
+    void cargarDetalle()
   }
 
   const guardar = async () => {
     setEnviando(true)
     setErrorEnvio(null)
     const actualizadas: string[] = []
+    const avisadas: string[] = []
     const advertencias: string[] = []
 
     /* Una por una y no todo o nada: si la quinta falla, las cuatro anteriores ya quedaron bien
@@ -110,12 +202,44 @@ export function ActualizarDespachos() {
     for (const op of elegidas) {
       const edicion = ediciones[op.id] ?? valoresActuales(op)
       const cambios = soloLoCambiado(op, edicion)
-      if (Object.keys(cambios).length === 0) continue
-      try {
-        await actualizarDespacho(op.id, cambios)
-        actualizadas.push(op.nombre || op.idDespacho || op.id)
-      } catch (e) {
-        advertencias.push(`No se pudo actualizar ${op.nombre || op.id}: ${mensaje(e)}`)
+      const nombre = op.nombre || op.idDespacho || op.id
+      let tocada = false
+
+      if (Object.keys(cambios).length > 0) {
+        try {
+          await actualizarDespacho(op.id, cambios)
+          tocada = true
+        } catch (e) {
+          advertencias.push(`No se pudo actualizar ${nombre}: ${mensaje(e)}`)
+          continue
+        }
+      }
+
+      /* Los archivos van DESPUÉS de las columnas: si una subida falla, los datos ya quedaron
+         guardados y sólo se pierde el adjunto, que se puede volver a subir. */
+      for (const [campo, archivo] of Object.entries(archivosDe(op.id))) {
+        if (!archivo) continue
+        const columna = COLUMNA_DE_ARCHIVO[campo as keyof ArchivosDespacho]
+        try {
+          await subirArchivoAColumna(op.id, columna, archivo)
+          tocada = true
+        } catch (e) {
+          advertencias.push(
+            `No se pudo subir "${ROTULO_ARCHIVO[columna]}" de ${nombre}: ${mensaje(e)}`,
+          )
+        }
+      }
+
+      if (tocada) actualizadas.push(nombre)
+
+      /* El aviso a BERGER sale sólo cuando la OP RECIÉN pasa a "Próxima a Arribar": si ya estaba
+         en ese estado, volver a guardarla no vuelve a avisar. */
+      const entraAProxima =
+        cambios.estadoCarga === PROXIMA_A_ARRIBAR && op.estadoCarga !== PROXIMA_A_ARRIBAR
+      if (entraAProxima) {
+        const avisos = await avisarProximaArribar(op, contenedores[op.id] ?? [])
+        advertencias.push(...avisos)
+        if (avisos.length === 0) avisadas.push(nombre)
       }
     }
 
@@ -124,8 +248,31 @@ export function ActualizarDespachos() {
       setErrorEnvio(advertencias.join(' · '))
       return
     }
-    setResultado({ actualizadas, advertencias })
+    setResultado({ actualizadas, advertencias, avisadas })
     setEtapa('listo')
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Armar contenedores
+   * ------------------------------------------------------------------ */
+  if (etapa === 'contenedores' && opDeContenedores) {
+    return (
+      <ArmarContenedores
+        op={opDeContenedores}
+        tractores={tractores[opDeContenedores.id] ?? []}
+        armados={contenedores[opDeContenedores.id] ?? []}
+        onVolver={() => setEtapa('modo')}
+        onListo={(r) => {
+          setResultado({
+            actualizadas: [],
+            advertencias: r.advertencias,
+            avisadas: [],
+          })
+          setModo('contenedores')
+          setEtapa('listo')
+        }}
+      />
+    )
   }
 
   /* ------------------------------------------------------------------ *
@@ -133,6 +280,7 @@ export function ActualizarDespachos() {
    * ------------------------------------------------------------------ */
   if (etapa === 'listo' && resultado) {
     const conProblemas = resultado.advertencias.length > 0
+    const armoContenedores = modo === 'contenedores'
     return (
       <div className="scroll">
         <div className="view">
@@ -142,7 +290,7 @@ export function ActualizarDespachos() {
             <div className="aviso aviso--alerta">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <span>
-                <b>Algunas OP no se pudieron actualizar.</b> Revisalas en monday:
+                <b>Quedaron cosas sin resolver.</b> Revisalas en monday:
                 <ul style={{ margin: '6px 0 0 18px' }}>
                   {resultado.advertencias.map((a) => (
                     <li key={a}>{a}</li>
@@ -160,17 +308,23 @@ export function ActualizarDespachos() {
               />
             </span>
             <span className="final-tit">
-              {conProblemas ? 'Actualización con observaciones' : 'OP actualizadas'}
+              {armoContenedores ? 'Contenedores armados' : 'OP actualizadas'}
             </span>
             <span className="final-det">
-              Se guardaron los cambios de {resultado.actualizadas.length} OP en el tablero del
-              Despachante de aduana.
+              {armoContenedores
+                ? 'Los contenedores quedaron creados con sus tractores conectados.'
+                : `Se guardaron los cambios de ${resultado.actualizadas.length} OP en el tablero del Despachante de aduana.`}
             </span>
 
             <div className="final-datos">
               {resultado.actualizadas.map((nombre) => (
                 <span key={nombre} className="chip chip--verde">
                   <i className="fa-solid fa-check" aria-hidden="true" /> {nombre}
+                </span>
+              ))}
+              {resultado.avisadas.map((nombre) => (
+                <span key={`aviso-${nombre}`} className="chip chip--violeta">
+                  <i className="fa-solid fa-bell" aria-hidden="true" /> Aviso a BERGER · {nombre}
                 </span>
               ))}
             </div>
@@ -218,7 +372,7 @@ export function ActualizarDespachos() {
               <div className="sec-head">
                 <span className="sec-num">1</span>
                 <span className="sec-txt">
-                  <span className="sec-tit">OP a actualizar</span>
+                  <span className="sec-tit">OP a trabajar</span>
                   <span className="sec-det">
                     Filtrá por estado de carga o buscá por nombre, N° de OP o ID del despacho.
                     Desplegá una OP para ver cómo está hoy antes de elegirla.
@@ -371,32 +525,114 @@ export function ActualizarDespachos() {
             </>
           )}
 
-          {/* ---------------- Paso 2 · Edición ---------------- */}
-          {etapa === 'edicion' && (
+          {/* ---------------- Paso 2 · Qué hacer ---------------- */}
+          {etapa === 'modo' && (
             <>
               <div className="sec-head">
                 <span className="sec-num">2</span>
                 <span className="sec-txt">
-                  <span className="sec-tit">Actualización de datos de cada OP</span>
+                  <span className="sec-tit">¿Qué vas a hacer con esta OP?</span>
                   <span className="sec-det">
-                    Cada campo viene con lo que hay hoy en monday. Lo que no toques queda como
-                    está: sólo se guarda lo que cambies.
+                    Actualizar los datos del viaje y subir comprobantes, o armar los contenedores
+                    diciendo qué tractor va en cada uno.
                   </span>
                 </span>
               </div>
 
-              {sinCambios.length > 0 && (
+              {cargandoOp && (
+                <div className="vacio">
+                  <span className="spin spin--oscuro" aria-hidden="true" />
+                  <span className="vacio-tit">Leyendo los tractores de la OP…</span>
+                </div>
+              )}
+
+              {!cargandoOp && (
+                <div className="decision">
+                  <button
+                    type="button"
+                    className="opcion opcion--confirmar"
+                    onClick={() => {
+                      setModo('datos')
+                      setEtapa('edicion')
+                    }}
+                  >
+                    <span className="opcion-ic">
+                      <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
+                    </span>
+                    <span className="opcion-txt">
+                      <span className="opcion-tit">Actualizar datos</span>
+                      <span className="opcion-det">
+                        Estado de carga, ETA, buque, documentación y comprobantes
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!puedeArmar}
+                    className="opcion opcion--proponer"
+                    onClick={() => {
+                      setModo('contenedores')
+                      setEtapa('contenedores')
+                    }}
+                  >
+                    <span className="opcion-ic">
+                      <i className="fa-solid fa-boxes-packing" aria-hidden="true" />
+                    </span>
+                    <span className="opcion-txt">
+                      <span className="opcion-tit">Armar contenedores</span>
+                      <span className="opcion-det">
+                        {elegidas.length !== 1
+                          ? 'Se arman de a una OP por vez: elegí una sola'
+                          : !opDeContenedores?.nroOp.trim()
+                            ? 'Falta cargarle el N° de OP del despachante'
+                            : `${sinContenedor(opDeContenedores.id)} de ${
+                                (tractores[opDeContenedores.id] ?? []).length
+                              } tractores sin contenedor`}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {!cargandoOp && elegidas.length === 1 && !opDeContenedores?.nroOp.trim() && (
+                <div className="aviso aviso--alerta" style={{ marginTop: 14 }}>
+                  <i className="fa-solid fa-hashtag" aria-hidden="true" />
+                  <span>
+                    Esta OP todavía no tiene <b>N° Op Despachante</b>. Cargáselo desde{' '}
+                    <b>Actualizar datos</b> y después vas a poder armarle los contenedores.
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ---------------- Paso 3 · Actualización de datos ---------------- */}
+          {etapa === 'edicion' && (
+            <>
+              <div className="sec-head">
+                <span className="sec-num">3</span>
+                <span className="sec-txt">
+                  <span className="sec-tit">Actualización de datos de cada OP</span>
+                  <span className="sec-det">
+                    Cada campo viene con lo que hay hoy en monday. Lo que no toques queda como está:
+                    sólo se guarda lo que cambies.
+                  </span>
+                </span>
+              </div>
+
+              {sinNada.length > 0 && (
                 <div className="aviso aviso--alerta">
                   <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
                   <span>
                     <b>
-                      {sinCambios.length === 1
+                      {sinNada.length === 1
                         ? 'Hay 1 OP sin editar.'
-                        : `Hay ${sinCambios.length} OP sin editar.`}
+                        : `Hay ${sinNada.length} OP sin editar.`}
                     </b>{' '}
                     Actualizales algún dato o quitalas de la selección para poder continuar:
                     <span className="aviso-chips">
-                      {sinCambios.map((op) => (
+                      {sinNada.map((op) => (
                         <button
                           key={op.id}
                           type="button"
@@ -419,21 +655,32 @@ export function ActualizarDespachos() {
                     edicion={ediciones[op.id] ?? valoresActuales(op)}
                     cambios={cambiosPorOp.get(op.id) ?? []}
                     onCambiar={(edicion) => setEdiciones((a) => ({ ...a, [op.id]: edicion }))}
-                    onDeshacer={() =>
-                      setEdiciones((a) => ({ ...a, [op.id]: valoresActuales(op) }))
-                    }
+                    onDeshacer={() => setEdiciones((a) => ({ ...a, [op.id]: valoresActuales(op) }))}
                     onQuitar={() => quitar(op.id)}
+                    archivos={archivosDe(op.id)}
+                    onArchivo={(campo, archivo) =>
+                      setArchivos((a) => ({
+                        ...a,
+                        [op.id]: { ...archivosDe(op.id), [campo]: archivo },
+                      }))
+                    }
+                    sinContenedor={sinContenedor(op.id)}
+                    onArmarContenedores={() => {
+                      setSeleccion([op.id])
+                      setModo('contenedores')
+                      setEtapa('contenedores')
+                    }}
                   />
                 ))}
               </div>
             </>
           )}
 
-          {/* ---------------- Paso 3 · Resumen ---------------- */}
+          {/* ---------------- Paso 4 · Resumen ---------------- */}
           {etapa === 'resumen' && (
             <>
               <div className="sec-head">
-                <span className="sec-num">3</span>
+                <span className="sec-num">4</span>
                 <span className="sec-txt">
                   <span className="sec-tit">Resumen de los cambios</span>
                   <span className="sec-det">
@@ -443,9 +690,35 @@ export function ActualizarDespachos() {
                 </span>
               </div>
 
+              {bloqueadas.length > 0 && (
+                <div className="aviso aviso--error">
+                  <i className="fa-solid fa-boxes-packing" aria-hidden="true" />
+                  <span>
+                    <b>
+                      {bloqueadas.length === 1
+                        ? 'Hay 1 OP que pasa a "Próxima a Arribar" sin contenedores armados.'
+                        : `Hay ${bloqueadas.length} OP que pasan a "Próxima a Arribar" sin contenedores armados.`}
+                    </b>{' '}
+                    Armalos primero: el aviso a BERGER lleva los links de los contenedores para que
+                    carguen transportista y ubicación de entrega.
+                    <span className="aviso-chips">
+                      {bloqueadas.map((op) => (
+                        <span key={op.id} className="chip chip--rojo">
+                          {op.nombre} · faltan {sinContenedor(op.id)}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                </div>
+              )}
+
               <div className="op-editores">
                 {elegidas.map((op) => {
                   const cambios = cambiosPorOp.get(op.id) ?? []
+                  const nuevos = Object.entries(archivosDe(op.id)).filter(([, f]) => f != null)
+                  const entraAProxima =
+                    (ediciones[op.id] ?? valoresActuales(op)).estadoCarga === PROXIMA_A_ARRIBAR &&
+                    op.estadoCarga !== PROXIMA_A_ARRIBAR
                   return (
                     <div key={op.id} className="card card--flush">
                       <div className="ctitle op-editor-head">
@@ -455,7 +728,8 @@ export function ActualizarDespachos() {
                         <span className="op-editor-chips">
                           <EtiquetasOP op={op} />
                           <span className="chip chip--verde">
-                            {cambios.length} cambio{cambios.length === 1 ? '' : 's'}
+                            {cambios.length + nuevos.length} cambio
+                            {cambios.length + nuevos.length === 1 ? '' : 's'}
                           </span>
                         </span>
                       </div>
@@ -468,6 +742,27 @@ export function ActualizarDespachos() {
                             <span className="cambio-despues">{c.despues}</span>
                           </li>
                         ))}
+                        {nuevos.map(([campo, archivo]) => (
+                          <li key={campo} className="cambio">
+                            <span className="cambio-campo">
+                              {ROTULO_ARCHIVO[COLUMNA_DE_ARCHIVO[campo as keyof ArchivosDespacho]]}
+                            </span>
+                            <span className="cambio-despues">
+                              <i className="fa-solid fa-paperclip" aria-hidden="true" />{' '}
+                              {archivo?.name}
+                            </span>
+                          </li>
+                        ))}
+                        {entraAProxima && (
+                          <li className="cambio">
+                            <span className="cambio-campo">Aviso a BERGER</span>
+                            <span className="cambio-despues">
+                              <i className="fa-solid fa-bell" aria-hidden="true" /> se avisa a Sofía
+                              y Micaela con {(contenedores[op.id] ?? []).length} contenedor
+                              {(contenedores[op.id] ?? []).length === 1 ? '' : 'es'}
+                            </span>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   )
@@ -496,7 +791,11 @@ export function ActualizarDespachos() {
               type="button"
               className="btn btn--texto"
               disabled={enviando}
-              onClick={() => setEtapa(etapa === 'resumen' ? 'edicion' : 'seleccion')}
+              onClick={() =>
+                setEtapa(
+                  etapa === 'resumen' ? 'edicion' : etapa === 'edicion' ? 'modo' : 'seleccion',
+                )
+              }
             >
               <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Volver
             </button>
@@ -507,10 +806,7 @@ export function ActualizarDespachos() {
               type="button"
               className="btn btn--primario"
               disabled={elegidas.length === 0}
-              onClick={() => {
-                setErrorEnvio(null)
-                setEtapa('edicion')
-              }}
+              onClick={irAModo}
             >
               Continuar <i className="fa-solid fa-arrow-right" aria-hidden="true" />
             </button>
@@ -522,7 +818,7 @@ export function ActualizarDespachos() {
               className="btn btn--primario"
               /* No se puede seguir con una OP sin editar: o se le carga algo, o se saca. Guardarla
                  igual escribiría una actualización vacía y la dejaría "tocada" sin nada nuevo. */
-              disabled={elegidas.length === 0 || sinCambios.length > 0}
+              disabled={elegidas.length === 0 || sinNada.length > 0}
               onClick={() => setEtapa('resumen')}
             >
               Ver resumen <i className="fa-solid fa-arrow-right" aria-hidden="true" />
@@ -533,7 +829,7 @@ export function ActualizarDespachos() {
             <button
               type="button"
               className="btn btn--marca"
-              disabled={enviando || totalCambios === 0}
+              disabled={enviando || totalCambios === 0 || bloqueadas.length > 0}
               onClick={() => void guardar()}
             >
               {enviando ? (

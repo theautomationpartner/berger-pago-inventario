@@ -23,7 +23,8 @@ const PASOS: Record<
   | 'planificar'
   | 'envio'
   | 'fechas'
-  | 'confirmacion',
+  | 'confirmacion'
+  | 'berger',
   Paso[]
 > = {
   carga: [
@@ -49,9 +50,15 @@ const PASOS: Record<
   ],
   aduana: [
     { id: 'seleccion', nombre: 'Selección de OP', corto: 'OP' },
+    { id: 'modo', nombre: 'Qué hacer', corto: 'Qué hacer' },
     { id: 'edicion', nombre: 'Actualización de datos', corto: 'Actualización' },
     { id: 'resumen', nombre: 'Resumen', corto: 'Resumen' },
-    { id: 'listo', nombre: 'Actualizado', corto: 'Listo' },
+    { id: 'listo', nombre: 'Guardado', corto: 'Listo' },
+  ],
+  berger: [
+    { id: 'seleccion', nombre: 'OP próximas a arribar', corto: 'OP' },
+    { id: 'edicion', nombre: 'Pago y entrega', corto: 'Datos' },
+    { id: 'listo', nombre: 'Guardado', corto: 'Listo' },
   ],
   planificar: [
     { id: 'seleccion', nombre: 'Selección de drafts', corto: 'Drafts' },
@@ -87,6 +94,7 @@ interface Props {
     | 'envio'
     | 'fechas'
     | 'confirmacion'
+    | 'berger'
   /** Volver atrás sólo se permite a etapas ya recorridas; `undefined` deja el stepper de lectura. */
   onIr?: (etapa: string) => void
 }

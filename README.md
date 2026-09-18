@@ -32,9 +32,12 @@ PAGOS DESPACHO           →  PAGO ANTICIPADO          →  1. Cargar Transferen
                                                         3. Confirmar Pago - SWIFT
                          →  PAGO VISTA (Contra BL)   →  1. Selección · 2. Despachante
 
-DESPACHANTE DE ADUANA    →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
-                                                        2. Actualización de datos
-                                                        3. Resumen
+DESPACHO DE ADUANA       →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
+                            - DESPACHANTE               2. Qué hacer
+                                                        3a. Actualización + resumen
+                                                        3b. Armar contenedores
+                         →  ACTUALIZAR OP - BERGER   →  1. OP próximas a arribar
+                                                        2. Pago y entrega
                          →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
 
@@ -553,15 +556,26 @@ relación.
 
 ---
 
-## DESPACHANTE DE ADUANA
+## DESPACHO DE ADUANA
 
 El otro lado del mismo circuito. Cuando una OP sale del despacho queda en el tablero
 👮**Despachante de aduana** (`18430575903`), y de ahí en adelante quien la mueve es el despachante:
 no toca tractores ni pagos, sólo informa dónde está la carga.
 
-### ACTUALIZAR DESPACHO OP
+**Quién entra.** Administración ve las tres operaciones; los despachantes externos, **sólo**
+Actualizar Despacho OP - DESPACHANTE.
+
+### ACTUALIZAR DESPACHO OP - DESPACHANTE
 
 Tres pasos, y cada uno existe por un motivo distinto.
+
+Después de elegir las OP, el paso 2 pregunta **qué va a hacer**: actualizar los datos del viaje, o
+armar los contenedores. Son dos trabajos distintos sobre la misma OP y por eso se eligen, en vez de
+mezclarse en una pantalla sola.
+
+Después de elegir las OP, el paso 2 pregunta **qué va a hacer**: actualizar los datos del viaje, o
+armar los contenedores. Son dos trabajos distintos sobre la misma OP y por eso se eligen, en vez de
+mezclarse en una pantalla sola.
 
 **Paso 1 · Selección.** Todas las OP del tablero, con dos formas de acotarlas que se combinan:
 
@@ -594,6 +608,11 @@ país: uno dice de dónde sale la mercadería y el otro de dónde zarpa.
 | Contenedor de referencia | `text_mm772j1r` |
 | Observaciones de la carga | `long_text_mm78yvbx` |
 
+También se suben ahí los **cuatro comprobantes del trámite**: FC transporte de importación
+(`file_mm77pmw7`), Despacho de importación (`file_mm77dbsc`), FC terminal (`file_mm77qde5`) y
+Gastos varios · rendición (`file_mm774a1r`). Lo que ya está adjunto se muestra: subir otro **suma**
+un archivo, no reemplaza al anterior, y conviene saberlo antes de apretar.
+
 **Sólo viaja lo que se cambió.** Lo que no se toca no se manda, así que dos personas trabajando el
 mismo día no se pisan los datos que cargó la otra, aunque tengan la OP abierta al mismo tiempo. Cada
 campo modificado muestra al lado qué decía antes: el error más caro acá es sobreescribir un dato
@@ -609,6 +628,77 @@ acá se editan varias OP de una vez, y una fila equivocada se nota mucho más le
 
 Al guardar, cada OP se escribe por separado: si la quinta falla, las cuatro anteriores ya quedaron
 bien y no hay nada que deshacer. Lo que falle se informa con nombre y apellido.
+
+### Armar contenedores
+
+Al crear el despacho, la app dejó una **estimación** de cuántos contenedores harían falta. Acá manda
+la realidad: **el dato que vale es cómo los arma el despachante**, aunque no coincida. Por eso no hay
+tope ni validación contra ese número; sólo se muestra al lado para que se vea la diferencia.
+
+Se habilita cuando la OP ya tiene **N° Op Despachante** (`text_mm78qbvc`): antes de eso el trámite
+no arrancó. Un tractor está pendiente cuando su subitem no tiene nada en
+`board_relation_mm7a62tt`.
+
+Por cada contenedor se carga su **número** y se marcan los tractores que van adentro. Cada tractor se
+identifica por su **chasis** (`lookup_mm7am1p1`, espejo del Inventario), en monoespaciado y
+destacado: dos unidades del mismo modelo tienen el mismo nombre y el mismo modelo, y la matrícula es
+lo único que las distingue. Un tractor entra en un solo contenedor: marcarlo en otro lo saca del
+anterior.
+
+**No se puede guardar con tractores sin ubicar**, y los que faltan están siempre a la vista. Al
+guardar se crea un item en 🚚**Contenedores** (`18431711942`) con su número y los tractores
+conectados; **la conexión es de doble vía**, así que monday completa solo el lado del subitem
+—probado contra la API—.
+
+### "Próxima a Arribar": el cruce entre los dos
+
+Ese estado es la bisagra del circuito, y por eso tiene dos reglas:
+
+1. **Exige los contenedores armados.** Si algún tractor de la OP quedó sin contenedor, no se puede
+   guardar ese estado y la pantalla ofrece ir a armarlos. El aviso a BERGER lleva los links de los
+   contenedores para que carguen transportista y entrega: sin contenedores, ese aviso no sirve.
+2. **Dispara el aviso a BERGER**, y sólo cuando la OP RECIÉN entra a ese estado: volver a guardar una
+   que ya estaba ahí no vuelve a avisar.
+
+El aviso son **dos cosas**, no una:
+
+- Un **update en el item** con el texto de qué hay que completar, y —si hay contenedores— los links
+  de cada uno.
+- Una **notificación personal** a Sofía (`115175712`) y Micaela (`115175739`), porque monday
+  **descarta el marcado de las menciones** dentro del cuerpo de un update: se guarda el texto, pero
+  la persona nunca se entera. Probado contra la API.
+
+### ACTUALIZAR OP - BERGER S.A.
+
+El otro lado de "Próxima a Arribar", y **sólo para Administración**. Muestra únicamente las OP en ese
+estado: antes no hay nada que decidir, y después ya se decidió.
+
+Dos cosas en la misma pantalla, porque se deciden juntas:
+
+| De la **OP** | Columna |
+|---|---|
+| Forma de pago | `dropdown_mm77scb3` |
+| Fondeo | `dropdown_mm77t4vd` |
+| Banco a declarar | `dropdown_mm77yeb2` |
+| VEP por dónde | `dropdown_mm77tkx3` |
+| Estado Pago VEP | `color_mm793phx` |
+
+| De **cada contenedor** | Columna |
+|---|---|
+| Ubicación de entrega | `location_mm7a16dx` |
+| Transportista | `board_relation_mm7axy2m` (del tablero de Contactos) |
+
+Van en el contenedor y no en la OP porque cada uno puede ir a un lugar distinto y con un
+transportista distinto. Se puede completar sólo una parte: el banco suele definirse antes que el
+transporte.
+
+> **La ubicación exige coordenadas.** Una columna de tipo location de monday rechaza la escritura si
+> sólo se manda la dirección. Como la app no geocodifica, las coordenadas van en 0 y la dirección
+> —que es lo que se lee en el tablero y lo que necesita el transportista— queda bien escrita. El
+> punto exacto en el mapa se ajusta desde monday.
+
+**El Estado Pago VEP nace en `NO PAGADO`**: lo escribe la app al crear el despacho, así que BERGER
+lo encuentra siempre en un estado explícito y no vacío.
 
 ### DASHBOARD DE DESPACHOS
 
@@ -632,6 +722,12 @@ esa etiqueta tiene en el resto de la app.
 Los tres cortes del medio no son estadística: son **trabajo pendiente del propio despachante**, y
 son los que hacen que el dashboard sirva para algo más que mirar. Abajo, las mismas OP listadas
 —próximos arribos, vencidas, dormidas, sin ETA— y el reparto por país de origen.
+
+**Las tarjetas se abren.** Tocar cualquiera despliega las OP de ese corte con su ficha completa y
+**sus contenedores**: número, cuántos tractores lleva, estado de arribo, transportista, ubicación y
+turno, más el chasis de cada tractor. Los contenedores se piden **sólo al abrir** y sólo de esas OP:
+traerlos todos al cargar el dashboard sería una consulta por OP para dibujar unos números que casi
+siempre se miran sin abrir nada.
 
 Todo se calcula sobre las OP que ya están en pantalla, sin una consulta aparte: el número de arriba
 y la lista de abajo salen del mismo dato, así que no pueden contradecirse. Las cuentas están en
@@ -713,14 +809,15 @@ poblaciones que no se cruzan.
 | Quién | Condiciones | Qué ve |
 |-------|-------------|--------|
 | Administración | 🤚Team `dropdown_mm72dj2g` incluye **Administracion** | **todo**: Planificación de Drafts, Fechas de Producción, Pagos Despacho, Actualizar Despacho OP y los dashboards |
-| Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | **sólo** Actualizar Despacho OP |
+| Despachante de aduana | 🤚Tipo Usuario `color_mm728j0d` = **INVITADO**, 🤚Team = **Despachantes** **y** estar en el equipo [Despachantes](https://maquinariasagricolas.monday.com/teams/1504184) de monday | **sólo** Actualizar Despacho OP - DESPACHANTE |
 | Fila sin equipo cargado | — | Despacho |
 
 Administración ve todo lo que la app tenga, hoy y cuando se sumen operaciones nuevas: es el equipo
 dueño de la operación. El único restringido es el despachante, que es externo.
 
-Por eso son **cinco** módulos: `drafts`, `fechas`, `despacho`, `aduana` (actualizar las OP) y
-`aduanaDashboard` (la lectura de conjunto). El dashboard está aparte justamente porque el despachante no lo ve —entra
+Por eso son **seis** módulos: `drafts`, `fechas`, `despacho`, `aduana` (lo del despachante
+externo), `aduanaBerger` (lo que completa BERGER sobre la misma OP) y `aduanaDashboard` (la lectura
+de conjunto). Los tres últimos comparten tablero y escriben cosas distintas. El dashboard está aparte justamente porque el despachante no lo ve —entra
 a cargar sus OP, no a mirar el estado de toda la operación de BERGER— y, como se alimenta de la
 misma consulta que él sí usa, separarlo por módulo es lo único que los distingue del lado del
 servidor.
@@ -941,7 +1038,9 @@ src/
       ListaDrafts.tsx           Lista, etiquetas, importes y productos de un draft
       useDrafts.ts              Carga de drafts por estado
     aduana/
-      ActualizarDespachos.tsx   Actualizar Despacho OP (tres pasos)
+      ActualizarDespachos.tsx   Actualizar Despacho OP · despachante
+      ActualizarOpBerger.tsx    Pago y entrega de las OP próximas a arribar
+      ArmarContenedores.tsx     Qué tractor va en cada contenedor
       DashboardDespachos.tsx    Dashboard de Despachos
       EditorOP.tsx              Formulario de una OP
       FichaOP.tsx               Los datos actuales de una OP
@@ -984,6 +1083,8 @@ src/
     catalogo.ts               Puerto de carga de cada modelo
     despachantes.ts           El equipo Despachantes de monday
     despachos.ts              Lectura y actualización de las OP de aduana
+    contenedoresDespacho.ts   Tractores de una OP, contenedores y contactos
+    avisos.ts                 El update y las notificaciones a BERGER
     drafts.ts                 Lectura de drafts y asignación del período
     planificacion.ts          El item de planificación que se manda al proveedor
     fechas.ts                 Tractores pendientes y la decisión sobre su fecha

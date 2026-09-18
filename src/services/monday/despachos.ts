@@ -8,7 +8,7 @@
  * crece de a una fila por despacho, así que filtrar en el navegador es instantáneo y no cuesta un
  * viaje a monday por cada tecla.
  */
-import type { DespachoOP, EdicionDespacho } from '@/types'
+import type { DespachoOP, EdicionBerger, EdicionDespacho } from '@/types'
 import { COL_DESPACHANTE } from './columns'
 import { aNumeroEspejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
@@ -22,6 +22,22 @@ interface ItemCrudo {
 interface PaginaCruda {
   cursor: string | null
   items: ItemCrudo[]
+}
+
+/** Las cuatro columnas de comprobante que carga el despachante, en el orden en que las usa. */
+export const ARCHIVOS_OP = [
+  COL_DESPACHANTE.fcTransporteImpo,
+  COL_DESPACHANTE.despachoImpo,
+  COL_DESPACHANTE.fcTerminal,
+  COL_DESPACHANTE.gastosVarios,
+]
+
+/** Cómo se llama cada comprobante en pantalla. */
+export const ROTULO_ARCHIVO: Record<string, string> = {
+  [COL_DESPACHANTE.fcTransporteImpo]: 'FC transporte de Importación',
+  [COL_DESPACHANTE.despachoImpo]: 'Despacho de importación',
+  [COL_DESPACHANTE.fcTerminal]: 'FC terminal',
+  [COL_DESPACHANTE.gastosVarios]: 'Gastos varios · rendición',
 }
 
 const COLUMNAS = [
@@ -40,6 +56,15 @@ const COLUMNAS = [
   COL_DESPACHANTE.cantidadContenedores,
   COL_DESPACHANTE.despachante,
   COL_DESPACHANTE.ultimaActualizacion,
+
+  /* Lo que completa BERGER, y los comprobantes del despachante: se leen para mostrar lo que ya
+     está cargado, no para decidir nada. */
+  COL_DESPACHANTE.formaPago,
+  COL_DESPACHANTE.fondeo,
+  COL_DESPACHANTE.bancoDeclarar,
+  COL_DESPACHANTE.vepPorDonde,
+  COL_DESPACHANTE.estadoPagoVep,
+  ...ARCHIVOS_OP,
 ]
 
 const PAGINA = 200
@@ -65,6 +90,13 @@ function aDespacho(item: ItemCrudo): DespachoOP {
     cantidadContenedores: aNumeroEspejo(texto(c[COL_DESPACHANTE.cantidadContenedores])),
     despachante: texto(c[COL_DESPACHANTE.despachante]),
     ultimaActualizacion: texto(c[COL_DESPACHANTE.ultimaActualizacion]),
+    formaPago: texto(c[COL_DESPACHANTE.formaPago]),
+    fondeo: texto(c[COL_DESPACHANTE.fondeo]),
+    bancoDeclarar: texto(c[COL_DESPACHANTE.bancoDeclarar]),
+    vepPorDonde: texto(c[COL_DESPACHANTE.vepPorDonde]),
+    estadoPagoVep: texto(c[COL_DESPACHANTE.estadoPagoVep]),
+    // De una columna de archivo, el texto son los nombres de lo que ya está adjunto.
+    archivos: Object.fromEntries(ARCHIVOS_OP.map((id) => [id, texto(c[id])])),
   }
 }
 
@@ -81,11 +113,14 @@ export async function despachosDeAduana(): Promise<DespachoOP[]> {
 
   let cursor = pagina.cursor
   for (let i = 0; cursor && i < MAX_PAGINAS; i += 1) {
-    const siguiente = await mondayApi<{ next_items_page: PaginaCruda }>('despachosPaginaSiguiente', {
-      cursor,
-      columnas: COLUMNAS,
-      limite: PAGINA,
-    })
+    const siguiente = await mondayApi<{ next_items_page: PaginaCruda }>(
+      'despachosPaginaSiguiente',
+      {
+        cursor,
+        columnas: COLUMNAS,
+        limite: PAGINA,
+      },
+    )
     items.push(...siguiente.next_items_page.items)
     cursor = siguiente.next_items_page.cursor
   }
@@ -130,6 +165,40 @@ export function valoresDeEdicion(cambios: Partial<EdicionDespacho>): Record<stri
   }
 
   return valores
+}
+
+/**
+ * Lo que BERGER completa de una OP: pago, fondeo, banco, VEP y estado del VEP.
+ *
+ * Igual que con el despachante, sólo viaja lo que cambió: los campos que BERGER no toca quedan como
+ * estaban, aunque los edite otra persona al mismo tiempo.
+ */
+export async function actualizarOpBerger(
+  id: string,
+  cambios: Partial<EdicionBerger>,
+): Promise<string> {
+  const valores: Record<string, unknown> = {}
+  const dropdown = (valor: string) => (valor ? { labels: [valor] } : {})
+
+  if (cambios.formaPago !== undefined) {
+    valores[COL_DESPACHANTE.formaPago] = dropdown(cambios.formaPago)
+  }
+  if (cambios.fondeo !== undefined) valores[COL_DESPACHANTE.fondeo] = dropdown(cambios.fondeo)
+  if (cambios.bancoDeclarar !== undefined) {
+    valores[COL_DESPACHANTE.bancoDeclarar] = dropdown(cambios.bancoDeclarar)
+  }
+  if (cambios.vepPorDonde !== undefined) {
+    valores[COL_DESPACHANTE.vepPorDonde] = dropdown(cambios.vepPorDonde)
+  }
+  if (cambios.estadoPagoVep !== undefined) {
+    valores[COL_DESPACHANTE.estadoPagoVep] = cambios.estadoPagoVep
+      ? { label: cambios.estadoPagoVep }
+      : {}
+  }
+
+  if (Object.keys(valores).length === 0) throw new Error('No hay cambios para guardar.')
+  await mondayApi('actualizarOpBerger', { item: id, valores: JSON.stringify(valores) })
+  return id
 }
 
 /** Escribe los cambios de UNA OP. Devuelve el id, o lanza con el motivo. */

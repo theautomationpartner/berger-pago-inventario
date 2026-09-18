@@ -21,6 +21,7 @@
 import {
   COL_CATALOGO,
   COL_CONFIRMACION,
+  COL_CONT_DESPACHO,
   COL_DESPACHANTE,
   COL_DESPACHANTE_SUB,
   COL_DRAFT,
@@ -51,7 +52,13 @@ import {
  * habilitado. Es lo que impide que un despachante pida los pagos del inventario aunque la pantalla
  * no se los muestre.
  */
-export type ModuloApp = 'despacho' | 'aduana' | 'aduanaDashboard' | 'drafts' | 'fechas' | 'drafts'
+export type ModuloApp =
+  | 'despacho'
+  | 'aduana'
+  | 'aduanaBerger'
+  | 'aduanaDashboard'
+  | 'drafts'
+  | 'fechas' | 'drafts'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
@@ -71,6 +78,14 @@ export type NombreOperacion =
   | 'despachosDeAduana'
   | 'despachosPaginaSiguiente'
   | 'actualizarDespacho'
+  | 'tractoresDeOp'
+  | 'contenedoresDeDespacho'
+  | 'crearContenedorDespacho'
+  | 'actualizarContenedorDespacho'
+  | 'contactos'
+  | 'actualizarOpBerger'
+  | 'crearUpdate'
+  | 'notificar'
   | 'draftsPorEstado'
   | 'draftsPaginaSiguiente'
   | 'actualizarDraft'
@@ -169,6 +184,29 @@ const COLUMNAS_DE_FECHAS = new Set<string>([
   COL_INV.fechaPropuesta,
 ])
 
+/**
+ * Lo que BERGER completa sobre una OP cuando la carga está por llegar.
+ *
+ * Es otra lista sobre el MISMO tablero que edita el despachante, y por eso están separadas: el
+ * despachante carga el viaje, BERGER carga el pago y la aduana, y ninguno de los dos puede escribir
+ * lo del otro.
+ */
+const COLUMNAS_DE_BERGER = new Set<string>([
+  COL_DESPACHANTE.formaPago,
+  COL_DESPACHANTE.fondeo,
+  COL_DESPACHANTE.bancoDeclarar,
+  COL_DESPACHANTE.vepPorDonde,
+  COL_DESPACHANTE.estadoPagoVep,
+])
+
+/** Lo que se puede escribir de un contenedor del despacho. */
+const COLUMNAS_DE_CONTENEDOR = new Set<string>([
+  COL_CONT_DESPACHO.numero,
+  COL_CONT_DESPACHO.tractores,
+  COL_CONT_DESPACHO.ubicacion,
+  COL_CONT_DESPACHO.transportista,
+])
+
 /** Lo único que la app escribe de una confirmación: el disparador del envío. */
 const COLUMNAS_DE_CONFIRMACION = new Set<string>([COL_CONFIRMACION.estadoPropuesta])
 
@@ -196,7 +234,28 @@ export const COLUMNAS_ARCHIVO = new Set<string>([
   COL_PAGO.transferencia,
   COL_PAGO.transferenciaConNumero,
   COL_PAGO.comprobanteBanco,
+  COL_DESPACHANTE.fcTransporteImpo,
+  COL_DESPACHANTE.despachoImpo,
+  COL_DESPACHANTE.fcTerminal,
+  COL_DESPACHANTE.gastosVarios,
 ])
+
+/**
+ * A qué módulo pertenece cada columna de archivo.
+ *
+ * Los comprobantes del circuito de pago son del módulo de despacho; los del trámite de aduana, del
+ * despachante. Sin esta distinción, habilitar los cuatro comprobantes nuevos le habría dado al
+ * despachante externo la posibilidad de subir archivos al circuito de pago.
+ */
+export const MODULO_DE_ARCHIVO: Record<string, ModuloApp> = {
+  [COL_PAGO.transferencia]: 'despacho',
+  [COL_PAGO.transferenciaConNumero]: 'despacho',
+  [COL_PAGO.comprobanteBanco]: 'despacho',
+  [COL_DESPACHANTE.fcTransporteImpo]: 'aduana',
+  [COL_DESPACHANTE.despachoImpo]: 'aduana',
+  [COL_DESPACHANTE.fcTerminal]: 'aduana',
+  [COL_DESPACHANTE.gastosVarios]: 'aduana',
+}
 
 /** Un id de monday es una cadena de dígitos. Sirve para items, subitems y tableros. */
 function idMonday(valor: unknown, campo: string): string {
@@ -955,6 +1014,153 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
       valores: valoresAcotados(v.valores, COLUMNAS_DE_CONFIRMACION, 'el módulo de fechas'),
     }),
   },
+
+  /* ------------------------------------------------------------------ *
+   * Contenedores del despacho, avisos y lo que completa BERGER
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Los tractores de una OP: los subitems del Despachante, con su chasis y su contenedor.
+   *
+   * El chasis es un espejo del Inventario y es lo único que distingue dos tractores del mismo
+   * modelo, así que viaja siempre: sin él, armar contenedores sería adivinar.
+   */
+  tractoresDeOp: {
+    modulo: 'aduana',
+    query: `
+      query ($ids: [ID!]!, $columnas: [String!]) {
+        items(ids: $ids) {
+          id
+          name
+          subitems { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+        }
+      }
+    `,
+    validar: (v) => {
+      if (!Array.isArray(v.ids) || v.ids.length === 0) throw new OperacionInvalida('Faltan las OP.')
+      if (v.ids.length > 100) throw new OperacionInvalida('Demasiadas OP.')
+      return { ids: v.ids.map((id) => idMonday(id, 'ids')), columnas: idsDeColumnas(v.columnas) }
+    },
+  },
+
+  /** Contenedores del despacho por id: los que ya están armados. */
+  contenedoresDeDespacho: {
+    modulo: 'aduana',
+    query: `
+      query ($ids: [ID!]!, $columnas: [String!]) {
+        items(ids: $ids) { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+      }
+    `,
+    validar: (v) => {
+      if (!Array.isArray(v.ids) || v.ids.length === 0) {
+        throw new OperacionInvalida('Faltan los ids de los contenedores.')
+      }
+      if (v.ids.length > 200) throw new OperacionInvalida('Demasiados ids.')
+      return { ids: v.ids.map((id) => idMonday(id, 'ids')), columnas: idsDeColumnas(v.columnas) }
+    },
+  },
+
+  /**
+   * Un contenedor armado por el despachante.
+   *
+   * Sólo se escribe el lado del contenedor: la conexión con el subitem del tractor es de doble vía,
+   * así que monday completa el otro lado solo. Escribir los dos sería pisar el mismo dato dos veces.
+   */
+  crearContenedorDespacho: {
+    modulo: 'aduana',
+    query: `
+      mutation ($tablero: ID!, $nombre: String!, $valores: JSON!) {
+        create_item(board_id: $tablero, item_name: $nombre, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.contenedoresDespacho,
+      nombre: nombre(v.nombre),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_CONTENEDOR, 'el módulo de aduana'),
+    }),
+  },
+
+  /** Ubicación de entrega y transportista de un contenedor. Lo completa BERGER. */
+  actualizarContenedorDespacho: {
+    modulo: 'aduanaBerger',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.contenedoresDespacho,
+      item: idMonday(v.item, 'item'),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_CONTENEDOR, 'BERGER'),
+    }),
+  },
+
+  /** Los contactos, para elegir el transportista de cada contenedor. */
+  contactos: {
+    modulo: 'aduanaBerger',
+    query: `
+      query ($tablero: ID!, $limite: Int!) {
+        boards(ids: [$tablero]) { items_page(limit: $limite) { items { id name } } }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.contactos,
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
+  /** Forma de pago, fondeo, banco, VEP y estado del pago: lo que completa BERGER de una OP. */
+  actualizarOpBerger: {
+    modulo: 'aduanaBerger',
+    query: `
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.despachante,
+      item: idMonday(v.item, 'item'),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_BERGER, 'BERGER'),
+    }),
+  },
+
+  /**
+   * Un update en el item de la OP.
+   *
+   * El texto lo arma la app y no el cliente: viaja como variable, pero se acota el largo. Las
+   * menciones NO se pueden incrustar —monday descarta el marcado al guardar—, así que a las
+   * personas se les avisa aparte, con `notificar`.
+   */
+  crearUpdate: {
+    modulo: 'aduana',
+    query: `mutation ($item: ID!, $cuerpo: String!) { create_update(item_id: $item, body: $cuerpo) { id } }`,
+    validar: (v) => {
+      const cuerpo = String(v.cuerpo ?? '')
+      if (!cuerpo.trim()) throw new OperacionInvalida('El update está vacío.')
+      if (cuerpo.length > 5000) throw new OperacionInvalida('El update es demasiado largo.')
+      return { item: idMonday(v.item, 'item'), cuerpo }
+    },
+  },
+
+  /** Notificación a una persona, apuntando al item de la OP. */
+  notificar: {
+    modulo: 'aduana',
+    query: `
+      mutation ($usuario: ID!, $item: ID!, $texto: String!) {
+        create_notification(user_id: $usuario, target_id: $item, text: $texto, target_type: Project) { id }
+      }
+    `,
+    validar: (v) => {
+      const texto = String(v.texto ?? '')
+      if (!texto.trim()) throw new OperacionInvalida('La notificación está vacía.')
+      if (texto.length > 1000) throw new OperacionInvalida('La notificación es demasiado larga.')
+      return {
+        usuario: idMonday(v.usuario, 'usuario'),
+        item: idMonday(v.item, 'item'),
+        texto,
+      }
+    },
+  },
 }
 
 /** Resuelve una operación por nombre. Lanza si no existe: no hay consultas fuera del catálogo. */
@@ -970,14 +1176,25 @@ export const MUTATION_ARCHIVO =
   'mutation ($itemId: ID!, $columnId: String!, $file: File!) {' +
   ' add_file_to_column (item_id: $itemId, column_id: $columnId, file: $file) { id } }'
 
-/** Valida el destino de un archivo: sólo las tres columnas de comprobante del circuito. */
+/**
+ * Valida el destino de un archivo: sólo las columnas de comprobante habilitadas.
+ *
+ * Devuelve además el MÓDULO al que pertenece esa columna, para que el proxy compruebe que quien
+ * sube el archivo lo tiene habilitado. Sin eso, habilitar los comprobantes de aduana le habría
+ * abierto al despachante externo la puerta del circuito de pago.
+ */
 export function validarDestinoArchivo(itemId: unknown, columnId: unknown): {
   itemId: string
   columnId: string
+  modulo: ModuloApp
 } {
   const columna = String(columnId ?? '')
   if (!COLUMNAS_ARCHIVO.has(columna)) {
     throw new OperacionInvalida('Esa columna no admite archivos desde la app.')
   }
-  return { itemId: idMonday(itemId, 'itemId'), columnId: columna }
+  return {
+    itemId: idMonday(itemId, 'itemId'),
+    columnId: columna,
+    modulo: MODULO_DE_ARCHIVO[columna] ?? 'despacho',
+  }
 }

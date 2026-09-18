@@ -1,8 +1,18 @@
+import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
 import { ROTULOS } from '@/lib/despachos'
 import { fechaCorta } from '@/lib/format'
-import { ESTADO_CARGA, VIA_TRANSPORTE } from '@/services/monday/columns'
-import type { CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
+import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, VIA_TRANSPORTE } from '@/services/monday/columns'
+import { ARCHIVOS_OP, ROTULO_ARCHIVO } from '@/services/monday/despachos'
+import type { ArchivosDespacho, CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
 import { EtiquetasOP } from './EtiquetasOP'
+
+/** Los cuatro comprobantes, en el orden en que el despachante los consigue. */
+const CAMPOS_ARCHIVO: { columna: string; campo: keyof ArchivosDespacho }[] = [
+  { columna: ARCHIVOS_OP[0], campo: 'fcTransporteImpo' },
+  { columna: ARCHIVOS_OP[1], campo: 'despachoImpo' },
+  { columna: ARCHIVOS_OP[2], campo: 'fcTerminal' },
+  { columna: ARCHIVOS_OP[3], campo: 'gastosVarios' },
+]
 
 interface Props {
   op: DespachoOP
@@ -11,6 +21,17 @@ interface Props {
   onCambiar: (edicion: EdicionDespacho) => void
   onQuitar: () => void
   onDeshacer: () => void
+  /** Los archivos que se van a subir al guardar. */
+  archivos: ArchivosDespacho
+  onArchivo: (campo: keyof ArchivosDespacho, archivo: File | null) => void
+  /**
+   * Tractores de la OP que todavía no tienen contenedor. Con alguno pendiente, la OP no puede
+   * pasar a "Próxima a Arribar": el aviso a BERGER sale con los links de los contenedores, y sin
+   * contenedores no hay nada que mandar.
+   */
+  sinContenedor: number
+  /** Para ofrecer armar los contenedores desde el mismo lugar donde se bloquea. */
+  onArmarContenedores: () => void
 }
 
 /** El valor que tenía antes, para mostrar debajo del campo que se tocó. */
@@ -30,7 +51,21 @@ const antesDe = (campo: keyof EdicionDespacho, op: DespachoOP): string => {
  * sobreescribir un dato bueno por haber tipeado en la fila equivocada, y verlo al lado es lo que
  * lo evita antes de guardar.
  */
-export function EditorOP({ op, edicion, cambios, onCambiar, onQuitar, onDeshacer }: Props) {
+export function EditorOP({
+  op,
+  edicion,
+  cambios,
+  onCambiar,
+  onQuitar,
+  onDeshacer,
+  archivos,
+  onArchivo,
+  sinContenedor,
+  onArmarContenedores,
+}: Props) {
+  /* El bloqueo se muestra acá, pegado al campo que lo provoca, y no sólo al pie: el que elige el
+     estado tiene que enterarse en el momento, no al apretar guardar. */
+  const faltanContenedores = edicion.estadoCarga === PROXIMA_A_ARRIBAR && sinContenedor > 0
   const cambiado = (campo: keyof EdicionDespacho) => cambios.some((c) => c.campo === campo)
   const set = (campo: keyof EdicionDespacho, valor: string) =>
     onCambiar({ ...edicion, [campo]: valor })
@@ -45,7 +80,9 @@ export function EditorOP({ op, edicion, cambios, onCambiar, onQuitar, onDeshacer
     ) : null
 
   return (
-    <div className={`card card--flush op-editor${cambios.length === 0 ? ' op-editor--pendiente' : ''}`}>
+    <div
+      className={`card card--flush op-editor${cambios.length === 0 ? ' op-editor--pendiente' : ''}`}
+    >
       <div className="ctitle op-editor-head">
         <span className="op-editor-nom">
           <i className="fa-solid fa-file-lines" aria-hidden="true" /> {op.nombre}
@@ -151,6 +188,27 @@ export function EditorOP({ op, edicion, cambios, onCambiar, onQuitar, onDeshacer
           </label>
         </div>
 
+        {faltanContenedores && (
+          <div className="aviso aviso--error" style={{ marginTop: 12, marginBottom: 0 }}>
+            <i className="fa-solid fa-boxes-packing" aria-hidden="true" />
+            <span>
+              <b>Para pasar a "{PROXIMA_A_ARRIBAR}" hay que armar los contenedores primero.</b>{' '}
+              Quedan {sinContenedor} tractor{sinContenedor === 1 ? '' : 'es'} sin contenedor. El
+              aviso a BERGER lleva los links de los contenedores para que carguen transportista y
+              entrega, así que sin armarlos ese aviso no sirve.
+              <span className="aviso-chips">
+                <button
+                  type="button"
+                  className="btn btn--borde btn--chico"
+                  onClick={onArmarContenedores}
+                >
+                  <i className="fa-solid fa-boxes-packing" aria-hidden="true" /> Armar contenedores
+                </button>
+              </span>
+            </span>
+          </div>
+        )}
+
         <label className="campo" style={{ marginTop: 10 }}>
           <span className="campo-lbl">{ROTULOS.observaciones}</span>
           <textarea
@@ -162,6 +220,35 @@ export function EditorOP({ op, edicion, cambios, onCambiar, onQuitar, onDeshacer
           />
           {ayuda('observaciones')}
         </label>
+
+        <div className="archivos">
+          <div className="archivos-tit">
+            <i className="fa-solid fa-paperclip" aria-hidden="true" /> Comprobantes del trámite
+          </div>
+          <div className="archivos-grilla">
+            {CAMPOS_ARCHIVO.map(({ columna, campo }) => {
+              const yaCargado = op.archivos?.[columna] ?? ''
+              return (
+                <div key={columna} className="archivo">
+                  <span className="archivo-lbl">{ROTULO_ARCHIVO[columna]}</span>
+                  {/* Lo que ya está en monday se muestra, no se esconde: subir otro no reemplaza
+                      al anterior, lo suma, y conviene saberlo antes de apretar. */}
+                  {yaCargado && (
+                    <span className="chip chip--verde archivo-cargado" title={yaCargado}>
+                      <i className="fa-solid fa-check" aria-hidden="true" /> {yaCargado}
+                    </span>
+                  )}
+                  <ZonaArchivo
+                    archivo={archivos[campo]}
+                    onElegir={(f) => onArchivo(campo, f)}
+                    acepta=".pdf,.jpg,.jpeg,.png"
+                    titulo={yaCargado ? 'Subir otro archivo' : 'Arrastrá el archivo o hacé clic'}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         <div className="op-editor-acciones">
           {cambios.length > 0 && (

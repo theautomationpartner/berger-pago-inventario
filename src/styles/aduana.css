@@ -835,3 +835,175 @@
     min-height: 46px;
   }
 }
+
+/* ==================================================================== *
+ * Comprobantes del trámite, contenedores y cortes del dashboard
+ * ==================================================================== */
+
+.archivos {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-soft);
+}
+.archivos-tit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--text-mid);
+  margin-bottom: 10px;
+}
+.archivos-grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+.archivo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.archivo-lbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+/* Lo que ya está adjunto en monday: se muestra para que quede claro que subir otro lo SUMA. */
+.archivo-cargado {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* ===== Tractores de un contenedor ===== */
+.tractores-cont {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.tractor-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--tint-data-bd);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.tractor-fila:hover {
+  border-color: var(--primary-blue);
+}
+.tractor-fila--sel {
+  background: #eef9f2;
+  border-color: var(--green);
+}
+/* Un tractor que ya está en otro contenedor: se ve, pero se distingue de los libres. */
+.tractor-fila--otro {
+  opacity: 0.6;
+}
+.tractor-fila--lectura {
+  cursor: default;
+}
+.tractor-fila--lectura:hover {
+  border-color: var(--tint-data-bd);
+}
+.tractor-nom {
+  font-size: 12.5px;
+  color: var(--text-mid);
+}
+
+/* El chasis es lo ÚNICO que distingue dos unidades del mismo modelo: va en monoespaciado y
+   destacado, como se lee una matrícula. */
+.chasis {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #3730a3;
+  background: #eef0fe;
+  border: 1px solid #c7cdfa;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+.chasis--chico {
+  font-size: 11.5px;
+  padding: 1px 6px;
+}
+
+/* ===== Tarjetas del dashboard que se abren ===== */
+.tarjeta--boton {
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.tarjeta--boton:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sombra);
+}
+.tarjeta--abierta {
+  box-shadow: 0 0 0 2px currentColor inset;
+}
+.tarjeta-ver {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.corte-abierto {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radio);
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--sombra);
+}
+
+/* Los contenedores de una OP, en línea debajo de su ficha. */
+.conts-linea {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.cont-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #b3e5e1;
+  border-radius: 10px;
+  background: #e8f8f7;
+  min-width: 0;
+}
+.cont-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f766e;
+}
+.cont-chips,
+.cont-tractores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+@media (max-width: 640px) {
+  .archivos-grilla,
+  .conts-linea {
+    grid-template-columns: 1fr;
+  }
+  .chasis {
+    font-size: 12px;
+  }
+}

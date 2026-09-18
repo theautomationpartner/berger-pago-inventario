@@ -5,10 +5,10 @@
  * a `/v2/file` como `multipart/form-data`.
  *
  * Igual que el otro proxy, no reenvía lo que le mandan: el cliente sólo dice a QUÉ item y a QUÉ
- * columna va el archivo, y la mutation la escribe este archivo. La columna tiene que ser una de
- * las tres de comprobante del circuito —transferencia, transferencia con número, comprobante del
- * banco—; con el cuerpo reenviado tal cual, cualquiera podía adjuntar archivos en cualquier
- * columna de la cuenta.
+ * columna va el archivo, y la mutation la escribe este archivo. La columna tiene que estar en la
+ * lista de columnas de archivo habilitadas —los tres comprobantes del circuito de pago y los cuatro
+ * del trámite de aduana— y quien sube tiene que tener el módulo de esa columna; con el cuerpo
+ * reenviado tal cual, cualquiera podía adjuntar archivos en cualquier columna de la cuenta.
  *
  * El formulario se arma de nuevo en vez de retocar el que llegó: así el `boundary` lo calcula
  * `fetch` y no hay que confiar en el `Content-Type` del cliente.
@@ -40,12 +40,6 @@ export default async function handler(req: Request): Promise<Response> {
   const paso = await porton(req)
   if (paso.rechazo) return paso.rechazo
 
-  /* Los comprobantes son del circuito de pago, así que esto es del módulo de despacho. Un
-     despachante de aduana no sube archivos: su módulo no incluye ninguna columna de archivo. */
-  if (!paso.modulos.includes('despacho')) {
-    return error(403, 'No tenés acceso a esta aplicación. Contactá al administrador.')
-  }
-
   const token = process.env.MONDAY_TOKEN
   if (!token) return error(500, 'Falta MONDAY_TOKEN en el entorno.')
 
@@ -61,12 +55,19 @@ export default async function handler(req: Request): Promise<Response> {
   if (archivo.size === 0) return error(400, 'El archivo está vacío.')
   if (archivo.size > MAX_BYTES) return error(413, 'El archivo supera los 20 MB.')
 
-  let destino: { itemId: string; columnId: string }
+  let destino: { itemId: string; columnId: string; modulo: string }
   try {
     destino = validarDestinoArchivo(entrada.get('variables[itemId]'), entrada.get('variables[columnId]'))
   } catch (e: unknown) {
     if (e instanceof OperacionInvalida) return error(400, e.message)
     return error(400, 'Destino de archivo inválido.')
+  }
+
+  /* Cada columna de archivo pertenece a un módulo: los comprobantes del circuito de pago al de
+     despacho, los del trámite de aduana al del despachante. Sin esta comprobación, habilitar los
+     comprobantes de aduana le habría abierto al despachante externo la puerta del circuito de pago. */
+  if (!paso.modulos.includes(destino.modulo as (typeof paso.modulos)[number])) {
+    return error(403, 'No tenés acceso a esta aplicación. Contactá al administrador.')
   }
 
   /*

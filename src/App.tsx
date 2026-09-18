@@ -7,6 +7,7 @@ import {
 import { clienteVistaPrevia } from '@/features/acceso/clienteVistaPrevia'
 import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
 import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
+import { ActualizarOpBerger } from '@/features/aduana/ActualizarOpBerger'
 import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
 import { ConfirmarProponerFecha } from '@/features/fechas/ConfirmarProponerFecha'
@@ -76,7 +77,7 @@ export function App() {
       <AppAdentro
         sesion={{
           perfil: { id: 'desarrollo', nombre: 'Desarrollo local' },
-          modulos: ['despacho', 'aduana', 'aduanaDashboard', 'drafts', 'fechas'],
+          modulos: ['despacho', 'aduana', 'aduanaBerger', 'aduanaDashboard', 'drafts', 'fechas'],
           salir: () => {},
           recuperacionRestantes: null,
         }}
@@ -237,7 +238,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
 
       {principal === 'aduana' && operacionAduana === null && (
         <PanelOpciones
-          titulo="Despachante de aduana"
+          titulo="Despacho de aduana"
           detalle="Seguimiento de las OP que ya salieron del circuito de despacho."
           opciones={operacionesAduana}
           onElegir={setOperacionAduana}
@@ -247,6 +248,9 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
       {principal === 'aduana' &&
         operacionAduana === 'actualizar' &&
         puedeEnAduana(sesion.modulos, 'actualizar') && <ActualizarDespachos />}
+      {principal === 'aduana' &&
+        operacionAduana === 'berger' &&
+        puedeEnAduana(sesion.modulos, 'berger') && <ActualizarOpBerger />}
       {principal === 'aduana' &&
         operacionAduana === 'dashboard' &&
         puedeEnAduana(sesion.modulos, 'dashboard') && <DashboardDespachos />}

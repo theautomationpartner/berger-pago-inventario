@@ -48,10 +48,10 @@ export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modul
   {
     id: 'aduana',
     modulo: 'aduana',
-    titulo: 'DESPACHANTE DE ADUANA',
-    corto: 'Despachante de aduana',
+    titulo: 'DESPACHO DE ADUANA',
+    corto: 'Despacho de aduana',
     detalle:
-      'Seguimiento de las OP ya despachadas: estado de la carga, arribos y datos del transporte.',
+      'Seguimiento de las OP ya despachadas: estado de la carga, contenedores, arribos y pago.',
     icono: 'fa-solid fa-passport',
   },
 ]
@@ -72,11 +72,20 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
   {
     id: 'actualizar',
     modulo: 'aduana',
-    titulo: 'ACTUALIZAR DESPACHO OP',
-    corto: 'Actualizar OP',
+    titulo: 'ACTUALIZAR DESPACHO OP - DESPACHANTE',
+    corto: 'Actualizar OP · despachante',
     detalle:
-      'Actualizar los datos de una o varias OP: estado de la carga, ETA, buque y documentación.',
+      'Estado de la carga, ETA, buque, comprobantes del trámite y armado de los contenedores.',
     icono: 'fa-solid fa-pen-to-square',
+  },
+  {
+    id: 'berger',
+    modulo: 'aduanaBerger',
+    titulo: 'ACTUALIZAR OP - BERGER S.A.',
+    corto: 'Actualizar OP · BERGER',
+    detalle:
+      'De las OP próximas a arribar: forma de pago, fondeo, banco, VEP, transportista y entrega.',
+    icono: 'fa-solid fa-building-columns',
   },
   {
     id: 'dashboard',

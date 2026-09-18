@@ -34,6 +34,10 @@ export const TABLEROS = {
   despachante: '18430575903',
   /** Subelementos del Despachante: un subitem por tractor despachado. */
   despachanteSubitems: '18431188087',
+  /** 🚚Contenedores: los que arma el despachante, con los tractores que van en cada uno. */
+  contenedoresDespacho: '18431711942',
+  /** Contactos: de ahí salen los transportistas. */
+  contactos: '18428421093',
   /** Drafts: un item por draft del proveedor, con un subitem por producto. */
   drafts: '18428667614',
   draftsSubitems: '18428672791',
@@ -292,6 +296,19 @@ export const COL_DESPACHANTE = {
   proveedor: 'dropdown_mm77czh3',
   importador: 'color_mm77sys5',
 
+  /* Lo que completa BERGER cuando la carga está por llegar. */
+  formaPago: 'dropdown_mm77scb3',
+  fondeo: 'dropdown_mm77t4vd',
+  bancoDeclarar: 'dropdown_mm77yeb2',
+  vepPorDonde: 'dropdown_mm77tkx3',
+  estadoPagoVep: 'color_mm793phx',
+
+  /* Los comprobantes que sube el despachante a medida que avanza el trámite. */
+  fcTransporteImpo: 'file_mm77pmw7',
+  despachoImpo: 'file_mm77dbsc',
+  fcTerminal: 'file_mm77qde5',
+  gastosVarios: 'file_mm774a1r',
+
   /* Lo que carga el DESPACHANTE, ya con la OP en la calle. La app no lo escribe al crear el
      despacho: lo completa él desde el módulo de Aduana, a medida que la carga avanza. */
   nroOp: 'text_mm78qbvc',
@@ -316,6 +333,47 @@ export const COL_DESPACHANTE = {
  * que se nacionaliza. Es el que se usa en los filtros y en el dashboard, porque una fila de estados
  * ordenada por cómo avanza la mercadería se lee sin pensar.
  */
+/** Etiquetas de "Estado Pago Vep" (`color_mm793phx`). Un despacho nace en NO PAGADO. */
+export const ESTADO_PAGO_VEP = {
+  PAGADO: 'PAGADO',
+  NO_PAGADO: 'NO PAGADO',
+} as const
+
+/** El estado de carga que obliga a tener los contenedores armados y dispara el aviso a BERGER. */
+export const PROXIMA_A_ARRIBAR = 'Próxima a Arribar'
+
+/**
+ * Quiénes reciben el aviso cuando una OP pasa a "Próxima a Arribar".
+ *
+ * Son usuarios de monday y no un equipo: el aviso es una notificación personal, y monday no
+ * notifica equipos. Si mañana cambian las personas, se cambian acá.
+ */
+export const AVISO_PROXIMA_ARRIBAR = [
+  { id: '115175712', nombre: 'Sofia' },
+  { id: '115175739', nombre: 'Micaela' },
+] as const
+
+/** Opciones de los campos que completa BERGER. Son las etiquetas tal cual están en el tablero. */
+export const FORMA_PAGO_OP = [
+  'B12 - Anticipo Bienes de Capital',
+  'B20 - Contra BL Bienes de Capital',
+  'B22 - Diferido Bienes de Capital',
+  'B05 - Anticipado Bienes Generales',
+  'B06 - Diferido Bienes Generales',
+] as const
+
+export const FONDEO = ['Propio', 'Prestamo banco', 'Cuenta corriente proveedor'] as const
+
+export const BANCO_DECLARAR = [
+  '017 BBVA Frances',
+  '014 BPBA Provincia',
+  '007 BG Galicia',
+  '011 BNA Nacion',
+  '072 Santander',
+] as const
+
+export const VEP_POR_DONDE = ['Interbanking', 'Banelco', 'Link'] as const
+
 export const ESTADO_CARGA = [
   'Nueva OP',
   'Pendiente de Embarque',
@@ -345,7 +403,36 @@ export const COL_DESPACHANTE_SUB = {
   codProducto: 'text_mm78m15e',
   /** Conexión al item del tractor en el Inventario. */
   inventario: 'board_relation_mm78fqs9',
+
+  /* Espejos del Inventario. El chasis es lo que el despachante usa para identificar cada tractor
+     cuando carga los contenedores: el nombre y el modelo se repiten, la matrícula no. */
+  chasis: 'lookup_mm7am1p1',
+  modelo: 'lookup_mm78rbz2',
+  rodado: 'lookup_mm78j0hk',
+  /** Contenedor en el que viaja. Vacío = todavía no se armó. */
+  contenedor: 'board_relation_mm7a62tt',
 } as const
+
+/**
+ * 🚚 Contenedores (18431711942) — los que arma el despachante.
+ *
+ * OJO: no es el tablero 📦Contenedores (18430565324), que dice qué modelos PUEDEN viajar juntos.
+ * Éste es el contenedor real, con su número y los tractores que efectivamente lo ocupan.
+ */
+export const COL_CONT_DESPACHO = {
+  numero: 'text_mm7aye5e',
+  ubicacion: 'location_mm7a16dx',
+  transportista: 'board_relation_mm7axy2m',
+  fechaTurno: 'date_mm7a8jds',
+  patente: 'text_mm7a8ngn',
+  estadoArribo: 'color_mm7ar9rc',
+  /** Tractores que van adentro: subitems del Despachante de aduana. */
+  tractores: 'board_relation_mm7abg4',
+} as const
+
+/** URL del tablero de contenedores del despacho, para los enlaces "ver en monday". */
+export const URL_TABLERO_CONTENEDORES =
+  'https://maquinariasagricolas.monday.com/boards/18431711942'
 
 /**
  * Equipo "Despachantes" de la cuenta (`/teams/1504184`).

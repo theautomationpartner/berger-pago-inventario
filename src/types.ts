@@ -21,8 +21,8 @@ export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts' | 'fechas'
 /** Operaciones dentro de "Fechas de Producción Inventario". */
 export type OperacionFechas = 'confirmar' | 'enviar'
 
-/** Operaciones dentro de "Despachante de Aduana". */
-export type OperacionAduana = 'actualizar' | 'dashboard'
+/** Operaciones dentro de "Despacho de Aduana". */
+export type OperacionAduana = 'actualizar' | 'berger' | 'dashboard'
 
 /** Operaciones dentro de "Planificación de Drafts". */
 export type OperacionDrafts = 'planificar' | 'enviar' | 'dashboard'
@@ -296,9 +296,86 @@ export interface DespachoOP {
   cantidadContenedores: number | null
   /** Nombre del despachante asignado, o `''`. */
   despachante: string
+  /** Lo que completa BERGER cuando la carga está por llegar. */
+  formaPago: string
+  fondeo: string
+  bancoDeclarar: string
+  vepPorDonde: string
+  estadoPagoVep: string
+  /** Nombres de los archivos ya cargados en cada columna de comprobante. */
+  archivos: Record<string, string>
   /** Última vez que se tocó el item, como lo devuelve monday. */
   ultimaActualizacion: string
 }
+
+/** Un tractor de una OP, como lo ve el despachante al armar los contenedores. */
+export interface TractorDeOp {
+  /** Id del SUBITEM del Despachante de aduana, que es lo que se conecta al contenedor. */
+  id: string
+  nombre: string
+  modelo: string
+  rodado: string
+  /** Matrícula o chasis: es lo único que distingue dos tractores del mismo modelo. */
+  chasis: string
+  numDraft: string
+  /** Contenedor en el que ya está cargado, o `null`. */
+  contenedorId: string | null
+}
+
+/** Un contenedor real del despacho, con los tractores que lleva. */
+export interface ContenedorDespacho {
+  id: string
+  nombre: string
+  numero: string
+  ubicacion: string
+  transportista: string
+  patente: string
+  fechaTurno: string
+  estadoArribo: string
+  /** Ids de los subitems (tractores) que van adentro. */
+  tractorIds: string[]
+}
+
+/** Un contenedor mientras se está armando, antes de existir en monday. */
+export interface ContenedorEnArmado {
+  /** Id local, sólo para React. */
+  clave: string
+  numero: string
+  tractorIds: string[]
+}
+
+/** Resultado de armar los contenedores de una OP. */
+export interface ResultadoContenedores {
+  creados: string[]
+  advertencias: string[]
+}
+
+/** Un contacto del tablero de Contactos: de ahí salen los transportistas. */
+export interface Contacto {
+  id: string
+  nombre: string
+}
+
+/** Los campos de una OP que completa BERGER cuando la carga está por llegar. */
+export interface EdicionBerger {
+  formaPago: string
+  fondeo: string
+  bancoDeclarar: string
+  vepPorDonde: string
+  estadoPagoVep: string
+}
+
+/** Lo que BERGER puede cambiarle a un contenedor. */
+export interface EdicionContenedor {
+  ubicacion: string
+  transportistaId: string | null
+}
+
+/** Etapa del asistente de "Actualizar OP - BERGER SA". */
+export type EtapaBerger = 'seleccion' | 'edicion' | 'listo'
+
+/** Qué va a hacer el despachante con la OP que eligió. */
+export type ModoDespachante = 'datos' | 'contenedores'
 
 /** Los campos que el despachante puede editar de una OP. */
 export interface EdicionDespacho {
@@ -320,10 +397,20 @@ export interface CambioDespacho {
   despues: string
 }
 
+/** Los cuatro comprobantes que el despachante puede subir a una OP. */
+export interface ArchivosDespacho {
+  fcTransporteImpo: File | null
+  despachoImpo: File | null
+  fcTerminal: File | null
+  gastosVarios: File | null
+}
+
 /** Resultado de guardar las ediciones de un lote de OP. */
 export interface ResultadoActualizacion {
   actualizadas: string[]
   advertencias: string[]
+  /** OP que además dispararon el aviso a BERGER por pasar a "Próxima a Arribar". */
+  avisadas: string[]
 }
 
 /** Un producto dentro de un draft: lo que el proveedor va a fabricar. */
@@ -457,8 +544,8 @@ export type EtapaPlanificacion = 'seleccion' | 'periodos' | 'listo'
 /** Etapa del asistente de "Enviar Planificación". */
 export type EtapaEnvio = 'seleccion' | 'confirmacion' | 'listo'
 
-/** Etapa del asistente de "Actualizar Despacho OP". */
-export type EtapaAduana = 'seleccion' | 'edicion' | 'resumen' | 'listo'
+/** Etapa del asistente de "Actualizar Despacho OP - DESPACHANTE". */
+export type EtapaAduana = 'seleccion' | 'modo' | 'edicion' | 'resumen' | 'contenedores' | 'listo'
 
 /** Etapa del asistente del despacho a la VISTA. */
 export type EtapaVista = 'seleccion' | 'despachante' | 'listo'

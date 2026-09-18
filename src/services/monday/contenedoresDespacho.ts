@@ -1,0 +1,158 @@
+/**
+ * Los contenedores reales de un despacho: los que arma el despachante.
+ *
+ * No confundir con 📦Contenedores (`18430565324`), que dice qué modelos PUEDEN viajar juntos y se
+ * usa para estimar cuántos harían falta. Éste es el contenedor de verdad, con su número y los
+ * tractores que efectivamente lo ocupan: **el dato que vale es cómo los armó el despachante**, no
+ * la estimación que hizo la app al crear el despacho.
+ */
+import type { ContenedorDespacho, TractorDeOp } from '@/types'
+import { COL_CONT_DESPACHO, COL_DESPACHANTE_SUB } from './columns'
+import { espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
+import { mondayApi } from './sdk'
+
+interface ColumnaRica extends ColumnaCruda {
+  linked_item_ids?: string[] | null
+}
+
+interface SubitemCrudo {
+  id: string
+  name: string
+  column_values: ColumnaRica[]
+}
+
+const COLUMNAS_TRACTOR = [
+  COL_DESPACHANTE_SUB.chasis,
+  COL_DESPACHANTE_SUB.modelo,
+  COL_DESPACHANTE_SUB.rodado,
+  COL_DESPACHANTE_SUB.numDraft,
+  COL_DESPACHANTE_SUB.contenedor,
+]
+
+const COLUMNAS_CONTENEDOR = [
+  COL_CONT_DESPACHO.numero,
+  COL_CONT_DESPACHO.ubicacion,
+  COL_CONT_DESPACHO.transportista,
+  COL_CONT_DESPACHO.patente,
+  COL_CONT_DESPACHO.fechaTurno,
+  COL_CONT_DESPACHO.estadoArribo,
+  COL_CONT_DESPACHO.tractores,
+]
+
+function aTractor(s: SubitemCrudo): TractorDeOp {
+  const c = porId(s.column_values) as Record<string, ColumnaRica | undefined>
+  return {
+    id: s.id,
+    nombre: s.name,
+    // Chasis, modelo y rodado son espejos del Inventario: su valor vive en `display_value`.
+    chasis: espejo(c[COL_DESPACHANTE_SUB.chasis]),
+    modelo: espejo(c[COL_DESPACHANTE_SUB.modelo]),
+    rodado: espejo(c[COL_DESPACHANTE_SUB.rodado]),
+    numDraft: texto(c[COL_DESPACHANTE_SUB.numDraft]),
+    contenedorId: c[COL_DESPACHANTE_SUB.contenedor]?.linked_item_ids?.[0] ?? null,
+  }
+}
+
+/** Los tractores de una o varias OP, por id de la OP. */
+export async function tractoresDeOps(opIds: string[]): Promise<Map<string, TractorDeOp[]>> {
+  const porOp = new Map<string, TractorDeOp[]>()
+  const unicos = [...new Set(opIds.filter(Boolean))]
+  if (unicos.length === 0) return porOp
+
+  const r = await mondayApi<{ items: { id: string; subitems: SubitemCrudo[] | null }[] }>(
+    'tractoresDeOp',
+    { ids: unicos, columnas: COLUMNAS_TRACTOR },
+  )
+  for (const item of r.items ?? []) {
+    porOp.set(item.id, (item.subitems ?? []).map(aTractor))
+  }
+  return porOp
+}
+
+/** Los contenedores ya armados, por id. */
+export async function contenedoresPorIds(ids: string[]): Promise<ContenedorDespacho[]> {
+  const unicos = [...new Set(ids.filter(Boolean))]
+  if (unicos.length === 0) return []
+
+  const r = await mondayApi<{
+    items: { id: string; name: string; column_values: ColumnaRica[] }[]
+  }>('contenedoresDeDespacho', { ids: unicos, columnas: COLUMNAS_CONTENEDOR })
+  return (r.items ?? []).map((item) => {
+    const c = porId(item.column_values) as Record<string, ColumnaRica | undefined>
+    return {
+      id: item.id,
+      nombre: item.name,
+      numero: texto(c[COL_CONT_DESPACHO.numero]),
+      ubicacion: texto(c[COL_CONT_DESPACHO.ubicacion]),
+      transportista: texto(c[COL_CONT_DESPACHO.transportista]),
+      patente: texto(c[COL_CONT_DESPACHO.patente]),
+      fechaTurno: fechaISO(c[COL_CONT_DESPACHO.fechaTurno]),
+      estadoArribo: texto(c[COL_CONT_DESPACHO.estadoArribo]),
+      tractorIds: c[COL_CONT_DESPACHO.tractores]?.linked_item_ids ?? [],
+    }
+  })
+}
+
+/** Los contenedores de una OP, a partir de sus tractores. */
+export async function contenedoresDeOp(tractores: TractorDeOp[]): Promise<ContenedorDespacho[]> {
+  const ids = tractores.map((t) => t.contenedorId).filter((id): id is string => Boolean(id))
+  return contenedoresPorIds(ids)
+}
+
+/**
+ * Crea un contenedor con los tractores que van adentro.
+ *
+ * Sólo se escribe el lado del contenedor: la conexión con el subitem es de doble vía y monday
+ * completa el otro lado solo. Escribir los dos sería pisar el mismo dato dos veces, y dejaría la
+ * puerta abierta a que queden distintos si una de las dos escrituras falla.
+ *
+ * El nombre del item es el número de contenedor: es como se lo nombra en el puerto, en el buque y
+ * en el remito, así que es lo que tiene que leerse en el tablero.
+ */
+export async function crearContenedor(numero: string, tractorIds: string[]): Promise<string> {
+  const r = await mondayApi<{ create_item: { id: string } }>('crearContenedorDespacho', {
+    nombre: numero,
+    valores: JSON.stringify({
+      [COL_CONT_DESPACHO.numero]: numero,
+      [COL_CONT_DESPACHO.tractores]: { item_ids: tractorIds },
+    }),
+  })
+  return r.create_item.id
+}
+
+/** Ubicación de entrega y transportista: lo que completa BERGER de cada contenedor. */
+export async function actualizarContenedor(
+  id: string,
+  cambios: { ubicacion?: string; transportistaId?: string | null },
+): Promise<string> {
+  const valores: Record<string, unknown> = {}
+  if (cambios.ubicacion !== undefined) {
+    /* Una columna de ubicación de monday EXIGE latitud y longitud: con sólo la dirección rechaza la
+       escritura entera —probado contra la API—. Como la app no geocodifica, las coordenadas van en
+       0 y la DIRECCIÓN, que es lo que se lee en el tablero y lo que necesita el transportista,
+       queda bien escrita. Quien quiera el punto exacto en el mapa lo ajusta desde monday.
+       Se limpia con el objeto vacío, igual que una fecha o un dropdown. */
+    valores[COL_CONT_DESPACHO.ubicacion] = cambios.ubicacion
+      ? { lat: '0', lng: '0', address: cambios.ubicacion }
+      : {}
+  }
+  if (cambios.transportistaId !== undefined) {
+    valores[COL_CONT_DESPACHO.transportista] = cambios.transportistaId
+      ? { item_ids: [cambios.transportistaId] }
+      : { item_ids: [] }
+  }
+  if (Object.keys(valores).length === 0) throw new Error('No hay cambios para guardar.')
+
+  await mondayApi('actualizarContenedorDespacho', { item: id, valores: JSON.stringify(valores) })
+  return id
+}
+
+/** Los contactos, para elegir el transportista. */
+export async function listarContactos(): Promise<{ id: string; nombre: string }[]> {
+  const r = await mondayApi<{
+    boards: { items_page: { items: { id: string; name: string }[] } }[]
+  }>('contactos', { limite: 500 })
+  return (r.boards?.[0]?.items_page.items ?? [])
+    .map((i) => ({ id: i.id, nombre: i.name }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+}
