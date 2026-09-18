@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
+import { SelectorPeriodo } from '@/components/ui/SelectorPeriodo'
 import { Stepper } from '@/components/ui/Stepper'
 import { coincideDraft, unidadesDe } from '@/lib/drafts'
 import { DRAFT_ESTADO } from '@/services/monday/columns'
 import { planificarDraft, URL_TABLERO_DRAFTS } from '@/services/monday/drafts'
-import { PERIODOS } from '@/lib/periodos'
 import type { Draft, EtapaPlanificacion, ResultadoPlanificacion } from '@/types'
 import { EtiquetasDraft, ImportesDraft, ListaDrafts } from './ListaDrafts'
 import { useDrafts } from './useDrafts'
@@ -48,7 +48,10 @@ export function PlanificarPeriodo() {
     [pendientes, busqueda],
   )
   const elegidos = useMemo(
-    () => seleccion.map((id) => pendientes.find((d) => d.id === id)).filter((d): d is Draft => Boolean(d)),
+    () =>
+      seleccion
+        .map((id) => pendientes.find((d) => d.id === id))
+        .filter((d): d is Draft => Boolean(d)),
     [seleccion, pendientes],
   )
 
@@ -157,7 +160,12 @@ export function PlanificarPeriodo() {
             </div>
 
             <div className="final-acciones">
-              <a className="btn btn--borde" href={URL_TABLERO_DRAFTS} target="_blank" rel="noreferrer">
+              <a
+                className="btn btn--borde"
+                href={URL_TABLERO_DRAFTS}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /> Ver en
                 monday
               </a>
@@ -273,24 +281,19 @@ export function PlanificarPeriodo() {
               )}
 
               <div className="card card--input card--flush" style={{ marginBottom: 14 }}>
-                <label className="campo">
-                  <span className="campo-lbl">Aplicar el mismo período a los {elegidos.length}</span>
-                  <select
-                    className="select"
-                    value={enTodos}
-                    onChange={(e) => aplicarATodos(e.target.value)}
-                  >
-                    <option value="">Elegir período…</option>
-                    {PERIODOS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="campo-ayuda">
-                    Pisa lo que hayas elegido arriba. Después podés corregir draft por draft.
+                <div className="campo">
+                  <span className="campo-lbl" id="periodo-todos">
+                    Aplicar el mismo período a los {elegidos.length}
                   </span>
-                </label>
+                  <SelectorPeriodo
+                    valor={enTodos}
+                    onElegir={aplicarATodos}
+                    vacio="Buscar y elegir un período…"
+                  />
+                  <span className="campo-ayuda">
+                    Pisa lo que hayas elegido abajo. Después podés corregir draft por draft.
+                  </span>
+                </div>
               </div>
 
               <div className="op-editores">
@@ -325,23 +328,15 @@ export function PlanificarPeriodo() {
                         </div>
                         <ImportesDraft draft={draft} />
 
-                        <label className="campo" style={{ marginTop: 12 }}>
+                        <div className="campo" style={{ marginTop: 12 }}>
                           <span className="campo-lbl">Período de producción sugerido</span>
-                          <select
-                            className="select"
-                            value={periodo}
-                            onChange={(e) =>
-                              setPeriodos((a) => ({ ...a, [draft.id]: e.target.value }))
+                          <SelectorPeriodo
+                            valor={periodo}
+                            onElegir={(elegido) =>
+                              setPeriodos((a) => ({ ...a, [draft.id]: elegido }))
                             }
-                          >
-                            <option value="">Elegir período…</option>
-                            {PERIODOS.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                          />
+                        </div>
 
                         <div className="op-editor-acciones">
                           <button

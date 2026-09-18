@@ -34,3 +34,29 @@ export const PERIODOS: string[] = Array.from(
 
 /** ¿Es un período de los que acepta la columna? */
 export const esPeriodoValido = (periodo: string): boolean => PERIODOS.includes(periodo.trim())
+
+/** Sin tildes y en minúscula: "Diciémbre" y "diciembre" tienen que encontrarse igual. */
+const normalizar = (texto: string): string =>
+  texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+/**
+ * Los períodos que coinciden con lo que se está escribiendo.
+ *
+ * Cada palabra tiene que aparecer en alguna parte del período, así que sirve para las tres formas
+ * en que se piensa una fecha: el mes ("marzo" deja los diez marzos), el año ("2027" deja sus doce
+ * meses) o los dos ("marzo 27" deja uno solo, aunque el año esté escrito a medias).
+ *
+ * Sin búsqueda devuelve la lista entera, que es lo que la pantalla muestra agrupada por año.
+ */
+export function buscarPeriodos(busqueda: string): string[] {
+  const texto = normalizar(busqueda).trim()
+  if (!texto) return PERIODOS
+  const partes = texto.split(/\s+/)
+  return PERIODOS.filter((p) => {
+    const n = normalizar(p)
+    return partes.every((parte) => n.includes(parte))
+  })
+}

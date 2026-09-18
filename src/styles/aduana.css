@@ -623,3 +623,215 @@
     height: 320px;
   }
 }
+
+/* ==================================================================== *
+ * Selector de período con búsqueda
+ *
+ * Reemplaza al <select> nativo de 120 opciones. La tipografía de los períodos es distinta a
+ * propósito —más ancha y en negrita— porque lo que se elige acá es un DATO, no una opción de
+ * menú: tiene que leerse como se lee una fecha.
+ * ==================================================================== */
+
+.combo {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ===== El botón cerrado ===== */
+.combo-boton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.combo-boton:hover {
+  border-color: var(--primary-blue);
+}
+.combo-boton[aria-expanded='true'] {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.14);
+}
+/* Con período elegido el control se pinta: de un vistazo se ve cuáles ya están resueltos. */
+.combo-boton--elegido {
+  background: #f3faf5;
+  border-color: #bfe6cf;
+}
+.combo-ic {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--primary-blue);
+}
+.combo-boton--elegido .combo-ic {
+  color: var(--green-dark);
+}
+.combo-vacio {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-gray);
+}
+.combo-valor {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.combo-mes {
+  font-family: 'Segoe UI Semibold', 'Trebuchet MS', ui-rounded, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--green-dark);
+}
+.combo-anio {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #3f7a5c;
+}
+.combo-flecha {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-gray);
+}
+
+/* ===== El panel abierto ===== */
+.combo-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--sombra-alta);
+  overflow: hidden;
+}
+.combo-buscador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--tint-neutral);
+  color: var(--text-gray);
+}
+.combo-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-dark);
+  min-width: 0;
+}
+.combo-input::placeholder {
+  color: var(--text-gray);
+}
+.combo-limpiar {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-gray);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.combo-limpiar:hover {
+  color: var(--berger-red);
+}
+
+.combo-lista {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+/* El año como separador fijo: se recorre la lista de a bloques en vez de leer 120 renglones. */
+.combo-anio-sep {
+  position: sticky;
+  top: -6px;
+  z-index: 1;
+  padding: 6px 10px 4px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--primary-blue);
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 2px;
+}
+
+/* Cada opción: celda ancha, mes en negrita grande y año a la derecha. */
+.combo-opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.combo-opcion-mes {
+  flex: 1;
+  font-family: 'Segoe UI Semibold', 'Trebuchet MS', ui-rounded, system-ui, sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-dark);
+}
+.combo-opcion-anio {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-gray);
+}
+/* El resaltado sigue al mouse Y a las flechas del teclado: es el mismo estado, no dos. */
+.combo-opcion--resaltada {
+  background: var(--tint-input);
+}
+.combo-opcion--resaltada .combo-opcion-mes {
+  color: #0b3d7a;
+}
+.combo-opcion--elegida {
+  background: #eef9f2;
+}
+.combo-opcion--elegida .combo-opcion-mes,
+.combo-opcion--elegida .combo-opcion-anio,
+.combo-opcion--elegida i {
+  color: var(--green-dark);
+}
+
+.combo-sin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px;
+  font-size: 12.5px;
+  color: var(--text-gray);
+}
+
+@media (max-width: 640px) {
+  .combo {
+    max-width: none;
+  }
+  .combo-lista {
+    max-height: 240px;
+  }
+  .combo-opcion {
+    min-height: 46px;
+  }
+}

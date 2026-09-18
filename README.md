@@ -120,9 +120,17 @@ cantidad, precio unitario, el costo de transporte del producto —FOB `numeric_m
 que ya lo tiene no aparece: volver a asignárselo sería pisar una planificación hecha. Se busca por
 número de draft, que es el nombre del item, y también por ID de monday o N° de orden de pedido.
 
-**Paso 2 · Períodos.** Un período por draft, de la lista de la columna
-`dropdown_mm70awrf` (Enero 2026 → Diciembre 2035). Como lo más común es que varios vayan al mismo
-mes, hay un selector que **los asigna todos de una vez** y después se corrigen los que difieran.
+**Paso 2 · Períodos.** Un período por draft, de la lista de la columna `dropdown_mm70awrf`
+(Enero 2026 → Diciembre 2035). Como lo más común es que varios vayan al mismo mes, hay un selector
+que **los asigna todos de una vez** y después se corrigen los que difieran.
+
+El selector **no es un `<select>` nativo**: son 120 opciones, y bajar por esa lista para llegar a un
+mes que ya se sabe cuál es —peor todavía con la rueda del sistema en el celular— es más trabajo que
+escribirlo. Se escribe y la lista se achica: la búsqueda ignora tildes y mayúsculas y sirve para el
+mes (`marzo` deja los diez marzos), para el año (`2027` deja sus doce meses) o para los dos
+(`marzo 27` deja uno solo, aunque el año esté a medias). Sin búsqueda, la lista va agrupada por año
+con el encabezado fijo arriba. Se recorre también con las flechas y se elige con Enter. El control
+queda **pintado en verde cuando ya tiene período**, así se ve de un vistazo qué draft falta.
 
 Un draft seleccionado **sin período** frena la carga y se ofrece quitarlo con un clic: guardarlo
 igual lo dejaría en `Periodo Prod Planificada` sin nada que planificar, que es justo lo que la
