@@ -5,11 +5,17 @@ import { ListaTractores } from '@/features/tractores/ListaTractores'
 import { ResumenSeleccion } from '@/features/tractores/ResumenSeleccion'
 import { claveMes, mesesDelFiltro } from '@/lib/meses'
 import { mesDeProduccion } from '@/services/monday/inventario'
+import { INV_ESTADO } from '@/services/monday/columns'
 import type { Tractor } from '@/types'
 
 interface Props {
-  /** TODOS los tractores listos para pagar, sin filtrar por mes. */
+  /** TODOS los tractores del grupo elegido, sin filtrar por mes. */
   tractores: Tractor[]
+  /** Cuál de las dos poblaciones se está trabajando. */
+  grupo: string
+  onCambiarGrupo: (grupo: string) => void
+  /** Cuántos tractores hay en cada grupo, para mostrarlo en el selector. */
+  conteoGrupos: Map<string, number>
   /** Claves (`2026-09`) de los meses elegidos en el filtro. Vacío = todos los meses. */
   mesesElegidos: string[]
   onCambiarMeses: (claves: string[]) => void
@@ -37,6 +43,9 @@ interface Props {
  */
 export function Paso1Seleccion({
   tractores,
+  grupo,
+  onCambiarGrupo,
+  conteoGrupos,
   mesesElegidos,
   onCambiarMeses,
   seleccionados,
@@ -77,12 +86,31 @@ export function Paso1Seleccion({
       <div className="sec-head">
         <span className="sec-num">1</span>
         <span className="sec-txt">
-          <span className="sec-tit">Tractores listos para pagar</span>
+          <span className="sec-tit">Tractores a pagar</span>
           <span className="sec-det">
-            Del tablero de Inventario, con Estado Pago en <b>Listo para Pagar</b>. Filtrá por mes de
-            producción eligiendo uno o más meses.
+            Del tablero de Inventario. Una transferencia paga <b>un solo grupo</b>: o tractores
+            listos para pagar, o tractores ya despachados a la vista que quedaron pendientes de
+            pago. Filtrá por mes de producción eligiendo uno o más meses.
           </span>
         </span>
+      </div>
+
+      {/* Los dos grupos son excluyentes: cambiar de grupo vacía la selección, porque un pago no
+          puede mezclar tractores que generan despacho con otros que ya lo tienen. */}
+      <div className="filtros-tags" style={{ marginBottom: 12 }}>
+        {[...conteoGrupos.entries()].map(([nombre, cuantos]) => (
+          <button
+            key={nombre}
+            type="button"
+            aria-pressed={grupo === nombre}
+            className={`chip chip--boton ${
+              nombre === INV_ESTADO.LISTO ? 'chip--teal' : 'chip--violeta'
+            }${grupo === nombre ? ' chip--activo' : ''}`}
+            onClick={() => onCambiarGrupo(nombre)}
+          >
+            {nombre} ({cuantos})
+          </button>
+        ))}
       </div>
 
       <div className="filtros">

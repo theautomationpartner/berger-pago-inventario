@@ -188,6 +188,12 @@ export interface SubitemPago {
 export interface Pago {
   id: string
   nombre: string
+  /**
+   * `ANTICIPADO` o `VISTA`. Es lo que decide si al confirmarlo hay que armar el despacho de
+   * aduana: un pago VISTA corresponde a tractores que YA se despacharon, así que no se vuelve a
+   * crear nada ni se elige despachante.
+   */
+  tipoPago: string
   monto: number | null
   fechaEmision: string
   estadoPago: string

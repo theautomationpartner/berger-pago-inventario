@@ -513,6 +513,8 @@ export const RODADO = {
  * `TRANSF_APROBADA` → `PAGADO`.
  */
 export const INV_ESTADO = {
+  /** Todavía no entra en una transferencia: se paga el mes que viene. */
+  A_PAGAR_PROX_MES: 'A Pagar Prox Mes',
   LISTO: 'Listo para Pagar',
   /** En el que quedan los tractores pedidos a la vista: se despachan sin pago previo. */
   PENDIENTE_PAGO: 'Pendiente de Pago',
@@ -520,6 +522,23 @@ export const INV_ESTADO = {
   TRANSF_APROBADA: 'Transf Aprobada',
   PAGADO: 'Pagado',
 } as const
+
+/**
+ * Índices de cada etiqueta de "Estado Pago", para filtrar en monday.
+ *
+ * Monday filtra los `status` por índice, no por texto: mandar la etiqueta devuelve una lista vacía
+ * sin error, que es la forma más silenciosa posible de romper una pantalla. El índice sirve para
+ * pedirle menos filas a la API; el filtro que decide de verdad se vuelve a aplicar en el cliente
+ * comparando la ETIQUETA, así que un cambio de orden no cuelga nada.
+ */
+export const INV_ESTADO_INDEX: Record<string, number> = {
+  [INV_ESTADO.A_PAGAR_PROX_MES]: 0,
+  [INV_ESTADO.PAGADO]: 1,
+  [INV_ESTADO.LISTO]: 2,
+  [INV_ESTADO.TRANSF_CARGADA]: 3,
+  [INV_ESTADO.TRANSF_APROBADA]: 4,
+  [INV_ESTADO.PENDIENTE_PAGO]: 6,
+}
 
 /**
  * Índice de "Listo para Pagar" dentro de la columna de estado del Inventario.

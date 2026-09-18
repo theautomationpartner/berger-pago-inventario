@@ -279,7 +279,7 @@ pagos que dejó la anterior.
 
 | # | Etapa | Trabaja sobre | Deja el pago en |
 |---|-------|---------------|-----------------|
-| 1 | **Cargar Transferencia** | Tractores del Inventario en `Listo para Pagar`, con fecha confirmada | `CARGADO` · `Pend de Aprobar Transf` |
+| 1 | **Cargar Transferencia** | Tractores en `Listo para Pagar` **o** en `Pendiente de Pago`, con fecha confirmada | `CARGADO` · `Pend de Aprobar Transf` |
 | 2 | **Aprobar Transferencia** | Pagos en `Pend de Aprobar Transf` | `APROBADO` · `Pend de Confirmar Transf` |
 | 3 | **Confirmar Pago - SWIFT** | Pagos en `Pend de Confirmar Transf` **y** `APROBADO` | `CONFIRMADO` · `Pagado` |
 
@@ -310,8 +310,22 @@ Y en paralelo, cada tractor del pago avanza en **Inventario** (`color_mm6v6532`)
 
 ### Etapa 1 — Cargar Transferencia
 
-**Paso 1 · Selección.** La app trae del tablero de **Inventario** **todos** los tractores con
-`Estado Pago` = **Listo para Pagar**, sin importar el mes.
+**Paso 1 · Selección.** La app trae del **Inventario** dos poblaciones, y la pantalla obliga a
+elegir **una sola** por transferencia:
+
+- **Listo para Pagar** — el anticipado de siempre: se paga antes de despachar.
+- **Pendiente de Pago** — tractores que ya se despacharon a la vista y quedaron por cobrar contra el
+  BL. Recorren las mismas tres etapas, pero **no vuelven a generar despacho de aduana**.
+
+Los dos grupos no se pueden mezclar en un mismo pago: uno genera una OP en el Despachante y el otro
+ya la tiene, así que un pago mezclado dejaría a la mitad de los tractores sin OP o a la otra con una
+duplicada. Cambiar de grupo descarta lo que hubiera elegido.
+
+Un pago del grupo **Pendiente de Pago** se llama `PAGO VISTA (Contra BL) - <fecha>` y lleva
+`color_mm78170z` = `VISTA`: es lo que después hace que la etapa 3 **no** vuelva a crear el despacho
+ni pida elegir despachante. De esa etapa sólo salen los avisos por mail.
+
+Dentro del grupo elegido se ven **todos** los tractores, sin importar el mes.
 
 Para acotar, se eligen **meses de producción** (`Fecha Prod`, `date_mm6nymx`) desde un desplegable
 que ofrece desde 12 meses antes hasta 12 meses después del actual. Cada mes elegido queda como una
@@ -370,8 +384,14 @@ como datos en [`src/lib/flujos.ts`](src/lib/flujos.ts).
 El pedido se hace **sin pago previo**, en dos pasos.
 
 **Paso 1 · Selección.** Se eligen del Inventario los tractores con `Forma de Pago`
-(`dropdown_mm6v2sa0`) en **VISTA** y la fecha de producción confirmada, con el mismo detalle que en
-anticipado y el total del valor neto.
+(`dropdown_mm6v2sa0`) en **VISTA**, la fecha de producción confirmada y el `Estado Pago` en **Listo
+para Pagar** o **A Pagar Prox Mes**, con el mismo detalle que en anticipado y el total del valor
+neto. Tiene el **mismo filtro por mes de producción** que la etapa 1 del anticipado, con el aviso de
+cuántos tractores sin fecha quedan afuera.
+
+Los que ya están en **Pendiente de Pago** no aparecen: ésos ya se despacharon a la vista y lo que les
+falta es el pago, que se hace desde el circuito anticipado. Ofrecerlos acá sería despacharlos dos
+veces.
 
 **Paso 2 · Despachante.** A quién se le manda el despacho y qué se le manda.
 

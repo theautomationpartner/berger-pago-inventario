@@ -25,11 +25,21 @@ import { hoyISO } from '@/lib/format'
 import { paisesDePuertos } from '@/lib/puertos'
 import type { FlujoAvance, Pago, ResultadoAvance } from '@/types'
 import { puertosDeCatalogo } from './catalogo'
-import { COL_INV, COL_PAGO, EMAIL_ENVIAR, TABLEROS } from './columns'
+import { COL_INV, COL_PAGO, EMAIL_ENVIAR, TABLEROS, TIPO_PAGO } from './columns'
 import { crearDespachoDeAduana } from './despachante'
 import { mondayApi, subirArchivoAColumna } from './sdk'
 
 const motivo = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+/**
+ * ¿Esta etapa, sobre este pago, tiene que armar el despacho de aduana?
+ *
+ * Hacen falta las dos cosas: que la ETAPA sea la que cierra el circuito (la 3) y que el PAGO sea
+ * de los que generan despacho. Los de tipo VISTA no: pagan tractores que ya se despacharon, y su OP
+ * en el Despachante de aduana existe desde que se hizo el pedido.
+ */
+export const cierraDespacho = (pago: Pago, flujo: FlujoAvance): boolean =>
+  Boolean(flujo.cierraDespacho) && pago.tipoPago !== TIPO_PAGO.VISTA
 
 interface Entrada {
   pago: Pago
@@ -86,10 +96,15 @@ export async function avanzarPago({
     }
   }
 
-  /* 4. El despacho, sólo en la etapa que lo cierra. En ANTICIPADO es ésta: hasta que el pago no
-     está confirmado, la transferencia todavía puede caerse y no hay despacho que informar. */
+  /* 4. El despacho, sólo en la etapa que lo cierra Y sólo si el pago tiene que generarlo. En
+     ANTICIPADO es ésta: hasta que el pago no está confirmado, la transferencia todavía puede caerse
+     y no hay despacho que informar.
+
+     Un pago de tipo VISTA queda afuera: paga tractores que YA se despacharon, así que su OP en el
+     Despachante de aduana existe desde hace semanas. Crearla de nuevo sería duplicar el despacho y
+     mandar al despachante a trabajar dos veces sobre la misma carga. */
   let itemDespachante: string | null = null
-  if (flujo.cierraDespacho) {
+  if (cierraDespacho(pago, flujo)) {
     try {
       itemDespachante = await crearDespacho(pago, despachanteId, advertencias)
     } catch (e) {
@@ -102,7 +117,7 @@ export async function avanzarPago({
   const emails: Record<string, { label: string }> = {
     [flujo.columnaEmail]: { label: EMAIL_ENVIAR },
   }
-  if (flujo.cierraDespacho) emails[COL_PAGO.emailDespacho] = { label: EMAIL_ENVIAR }
+  if (cierraDespacho(pago, flujo)) emails[COL_PAGO.emailDespacho] = { label: EMAIL_ENVIAR }
   try {
     await mondayApi('actualizarColumnas', {
       tablero: TABLEROS.pagos,

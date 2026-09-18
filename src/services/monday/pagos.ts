@@ -29,6 +29,7 @@ interface PagoCrudo {
 }
 
 const COLUMNAS_PAGO = [
+  COL_PAGO.tipoPago,
   COL_PAGO.montoTransferencia,
   COL_PAGO.fechaEmision,
   COL_PAGO.estadoPago,
@@ -89,6 +90,7 @@ function aPago(item: PagoCrudo, datosTractores: Map<string, DatosTractor>): Pago
   return {
     id: item.id,
     nombre: item.name,
+    tipoPago: texto(c[COL_PAGO.tipoPago]),
     monto: aNumeroEspejo(texto(c[COL_PAGO.montoTransferencia])),
     fechaEmision: fechaISO(c[COL_PAGO.fechaEmision]),
     estadoPago: texto(c[COL_PAGO.estadoPago]),

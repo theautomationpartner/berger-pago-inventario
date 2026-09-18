@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { SelectorMeses } from '@/components/ui/SelectorMeses'
 import { Stepper } from '@/components/ui/Stepper'
 import { PasoDespachante } from '@/features/despachante/PasoDespachante'
 import { useDespachantes } from '@/features/despachante/useDespachantes'
@@ -8,11 +9,12 @@ import { ResumenSeleccion } from '@/features/tractores/ResumenSeleccion'
 import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
 import { reporteContenedores, seccionDespachante } from '@/lib/contenedores'
+import { claveMes, mesesDelFiltro } from '@/lib/meses'
 import { fechaCorta, hoyISO, importe } from '@/lib/format'
 import { puertosDeTractores } from '@/lib/puertos'
 import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
 import { crearPedidoVista, nombreDelPedidoVista } from '@/services/monday/crearPedidoVista'
-import { tractoresParaDespachoVista } from '@/services/monday/inventario'
+import { mesDeProduccion, tractoresParaDespachoVista } from '@/services/monday/inventario'
 import type { EtapaVista, ResultadoCarga } from '@/types'
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -20,9 +22,14 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
 /**
  * Despacho a la VISTA (contra BL): un único paso.
  *
- * Se eligen del Inventario los tractores con Forma de Pago en VISTA —y con la Fecha de Producción
- * confirmada—, se elige el despachante y se registra el pedido, que se hace SIN pago previo: cada
- * tractor queda en "Pendiente de Pago" y el pedido también.
+ * Se eligen del Inventario los tractores con Forma de Pago en VISTA, con la Fecha de Producción
+ * confirmada y con el Estado Pago en "Listo para Pagar" o "A Pagar Prox Mes"; se elige el
+ * despachante y se registra el pedido, que se hace SIN pago previo: cada tractor queda en
+ * "Pendiente de Pago" y el pedido también.
+ *
+ * Los que YA están en "Pendiente de Pago" no aparecen: ésos ya se despacharon a la vista y lo que
+ * les falta es el pago, que se hace desde el circuito anticipado. Ofrecerlos acá sería despacharlos
+ * dos veces.
  *
  * Son dos pasos y no uno solo porque el segundo cierra el despacho: de ahí sale el mail y el item
  * del Despachante de aduana, y eso merece una pantalla donde se vea a quién se le manda y qué se
@@ -34,9 +41,37 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  */
 export function DespachoVista() {
   const { tractores, cargando, error, recargar } = useTractores(tractoresParaDespachoVista)
+
+  /* Vacío = todos los meses. Igual que en anticipado, el filtro se aplica sobre la lista ya
+     cargada: combinar o quitar meses es instantáneo y no vuelve a consultar monday. */
+  const [mesesElegidos, setMesesElegidos] = useState<string[]>([])
+  const meses = useMemo(() => mesesDelFiltro(), [])
+
+  const conteos = useMemo(() => {
+    const cuenta = new Map<string, number>()
+    for (const t of tractores) {
+      const m = mesDeProduccion(t)
+      if (m) cuenta.set(claveMes(m), (cuenta.get(claveMes(m)) ?? 0) + 1)
+    }
+    return cuenta
+  }, [tractores])
+
+  const visibles = useMemo(() => {
+    if (mesesElegidos.length === 0) return tractores
+    const filtro = new Set(mesesElegidos)
+    return tractores.filter((t) => {
+      const m = mesDeProduccion(t)
+      return m != null && filtro.has(claveMes(m))
+    })
+  }, [tractores, mesesElegidos])
+
+  /* La selección se hace sobre TODOS los tractores y no sobre los visibles: un tractor ya elegido
+     sigue en el pedido aunque su mes salga del filtro, igual que en anticipado. */
   const { seleccionados, alternar, marcar, desmarcar, limpiar, elegidos, total } =
     useSeleccionTractores(tractores)
   const contenedores = useContenedores(elegidos, tractores)
+
+  const sinFecha = tractores.filter((t) => !t.fechaProd).length
 
   const [etapa, setEtapa] = useState<EtapaVista>('seleccion')
   const [despachanteId, setDespachanteId] = useState<string | null>(null)
@@ -94,7 +129,8 @@ export function DespachoVista() {
             <div className="aviso aviso--alerta">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <span>
-                <b>El pedido se registró, pero quedaron cosas sin completar.</b> Revisalas en monday:
+                <b>El pedido se registró, pero quedaron cosas sin completar.</b> Revisalas en
+                monday:
                 <ul style={{ margin: '6px 0 0 18px' }}>
                   {resultado.advertencias.map((a) => (
                     <li key={a}>{a}</li>
@@ -115,9 +151,9 @@ export function DespachoVista() {
               {conProblemas ? 'Pedido registrado con observaciones' : 'Pedido registrado'}
             </span>
             <span className="final-det">
-              Se creó <b>{nombreDelPedidoVista(hoyISO())}</b> en Pagos del Inventario, con el detalle
-              de los contenedores, y el despacho en <b>Despachante de aduana</b>, al que ya se le
-              avisó. Los tractores quedaron en <b>Pendiente de Pago</b>.
+              Se creó <b>{nombreDelPedidoVista(hoyISO())}</b> en Pagos del Inventario, con el
+              detalle de los contenedores, y el despacho en <b>Despachante de aduana</b>, al que ya
+              se le avisó. Los tractores quedaron en <b>Pendiente de Pago</b>.
             </span>
 
             <div className="final-datos">
@@ -200,82 +236,103 @@ export function DespachoVista() {
           )}
 
           {etapa === 'seleccion' && (
-          <>
-          <div className="sec-head">
-            <span className="sec-num">
-              <i className="fa-solid fa-paper-plane" aria-hidden="true" />
-            </span>
-            <span className="sec-txt">
-              <span className="sec-tit">Pedido a la vista</span>
-              <span className="sec-det">
-                Tractores del Inventario con Forma de Pago en <b>VISTA</b> y la Fecha de Producción
-                confirmada. El pedido se hace sin pago previo.
-              </span>
-            </span>
-          </div>
+            <>
+              <div className="sec-head">
+                <span className="sec-num">
+                  <i className="fa-solid fa-paper-plane" aria-hidden="true" />
+                </span>
+                <span className="sec-txt">
+                  <span className="sec-tit">Pedido a la vista</span>
+                  <span className="sec-det">
+                    Tractores del Inventario con Forma de Pago en <b>VISTA</b> y la Fecha de
+                    Producción confirmada. El pedido se hace sin pago previo.
+                  </span>
+                </span>
+              </div>
 
-          {errorEnvio && (
-            <div className="aviso aviso--error">
-              <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
-              <span>No se pudo registrar el pedido: {errorEnvio}</span>
-            </div>
-          )}
+              {errorEnvio && (
+                <div className="aviso aviso--error">
+                  <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
+                  <span>No se pudo registrar el pedido: {errorEnvio}</span>
+                </div>
+              )}
 
-          <div className="filtros">
-            <span className="filtros-nota filtros-nota--sola">
-              <i className="fa-solid fa-rotate" aria-hidden="true" />
-              Datos en vivo del Inventario
-              <button
-                type="button"
-                className="btn btn--borde btn--chico"
-                onClick={() => void recargar()}
-              >
-                Actualizar
-              </button>
-            </span>
-          </div>
+              <div className="filtros">
+                <div className="campo filtros-meses">
+                  <span className="campo-lbl">Mes de producción</span>
+                  <SelectorMeses
+                    meses={meses}
+                    elegidos={mesesElegidos}
+                    onCambiar={setMesesElegidos}
+                    conteos={conteos}
+                  />
+                </div>
+                <span className="filtros-nota">
+                  <i className="fa-solid fa-rotate" aria-hidden="true" />
+                  Datos en vivo del Inventario
+                  <button
+                    type="button"
+                    className="btn btn--borde btn--chico"
+                    onClick={() => void recargar()}
+                  >
+                    Actualizar
+                  </button>
+                </span>
+              </div>
 
-          <ListaTractores
-            tractores={tractores}
-            seleccionados={seleccionados}
-            onAlternar={alternar}
-            onMarcar={marcar}
-            onDesmarcar={desmarcar}
-            cargando={cargando}
-            error={error}
-            onReintentar={() => void recargar()}
-            vacioTitulo="No hay tractores para pedir a la vista"
-            vacioDetalle='Ningún tractor del Inventario tiene la Forma de Pago en "VISTA" con la Fecha de Producción confirmada.'
-            mostrarEstadoPago
-          />
+              {/* Un tractor sin Fecha de Prod no cae en ningún mes: con un filtro activo desaparece sin
+              explicación, así que se avisa cuántos quedan afuera. */}
+              {mesesElegidos.length > 0 && sinFecha > 0 && (
+                <div className="aviso aviso--alerta">
+                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                  <span>
+                    {sinFecha} tractor{sinFecha === 1 ? '' : 'es'} sin Fecha de Producción no
+                    {sinFecha === 1 ? ' aparece' : ' aparecen'} con el filtro puesto.
+                  </span>
+                </div>
+              )}
 
-          <ResumenSeleccion
-            tractores={elegidos}
-            onQuitar={alternar}
-            titulo="Tractores de este pedido"
-            detalleTotal="a la vista"
-          />
+              <ListaTractores
+                tractores={visibles}
+                seleccionados={seleccionados}
+                onAlternar={alternar}
+                onMarcar={marcar}
+                onDesmarcar={desmarcar}
+                cargando={cargando}
+                error={error}
+                onReintentar={() => void recargar()}
+                vacioTitulo="No hay tractores para pedir a la vista"
+                vacioDetalle='Ningún tractor del Inventario tiene la Forma de Pago en "VISTA", la Fecha de Producción confirmada y el Estado Pago en "Listo para Pagar" o "A Pagar Prox Mes".'
+                mostrarEstadoPago
+              />
 
-          <ResumenContenedores
-            resumen={contenedores.resumen}
-            cargando={contenedores.cargando}
-            error={contenedores.error}
-            onReintentar={() => void contenedores.recargar()}
-            seleccionados={elegidos.length}
-          />
+              <ResumenSeleccion
+                tractores={elegidos}
+                onQuitar={alternar}
+                titulo="Tractores de este pedido"
+                detalleTotal="a la vista"
+              />
 
-          {elegidos.length > 0 && (
-            <div className="aviso aviso--info" style={{ marginBottom: 0 }}>
-              <i className="fa-solid fa-circle-info" aria-hidden="true" />
-              <span>
-                En el paso siguiente elegís el despachante y ves la información que se le manda.
-                Después de registrar, los {elegidos.length} tractor
-                {elegidos.length === 1 ? '' : 'es'} pasan a <b>Pendiente de Pago</b> en el
-                Inventario.
-              </span>
-            </div>
-          )}
-          </>
+              <ResumenContenedores
+                resumen={contenedores.resumen}
+                cargando={contenedores.cargando}
+                error={contenedores.error}
+                onReintentar={() => void contenedores.recargar()}
+                seleccionados={elegidos.length}
+              />
+
+              {elegidos.length > 0 && (
+                <div className="aviso aviso--info" style={{ marginBottom: 0 }}>
+                  <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                  <span>
+                    En el paso siguiente elegís el despachante y ves la información que se le manda.
+                    Después de registrar, los {elegidos.length} tractor
+                    {elegidos.length === 1 ? '' : 'es'} pasan a <b>Pendiente de Pago</b> en el
+                    Inventario.
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -5,7 +5,7 @@ import { PasoDespachante } from '@/features/despachante/PasoDespachante'
 import { useDespachantes } from '@/features/despachante/useDespachantes'
 import { seccionDespachante } from '@/lib/contenedores'
 import { fechaCorta, importe } from '@/lib/format'
-import { avanzarPago } from '@/services/monday/avanzarPago'
+import { avanzarPago, cierraDespacho } from '@/services/monday/avanzarPago'
 import { URL_TABLERO_PAGOS } from '@/services/monday/columns'
 import { pagosPendientes } from '@/services/monday/pagos'
 import { SinAcceso } from '@/services/monday/sdk'
@@ -39,10 +39,6 @@ export function FlujoAvancePago({ flujo }: Props) {
   const [archivo, setArchivo] = useState<File | null>(null)
   const [despachanteId, setDespachanteId] = useState<string | null>(null)
 
-  /* El equipo se lee sólo en la operación que cierra el despacho: es la única que elige a quién
-     se le manda. */
-  const equipo = useDespachantes(Boolean(flujo.cierraDespacho))
-
   const [enviando, setEnviando] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoAvance | null>(null)
@@ -70,6 +66,11 @@ export function FlujoAvancePago({ flujo }: Props) {
   }, [buscar])
 
   const elegido = pagos.find((p) => p.id === elegidoId) ?? null
+
+  /* El equipo se lee sólo cuando el pago va a generar un despacho: es la única vez que hay que
+     elegir a quién mandárselo. Un pago VISTA paga tractores que ya se despacharon, así que no. */
+  const armaDespacho = elegido ? cierraDespacho(elegido, flujo) : Boolean(flujo.cierraDespacho)
+  const equipo = useDespachantes(armaDespacho)
 
   const reiniciar = () => {
     setElegidoId(null)
@@ -103,7 +104,7 @@ export function FlujoAvancePago({ flujo }: Props) {
       <div className="scroll">
         <div className="view">
           <Stepper
-            variante={flujo.cierraDespacho ? 'avanceDespacho' : 'avance'}
+            variante={armaDespacho ? 'avanceDespacho' : 'avance'}
             actual={etapa}
             onIr={etapa === 'listo' || enviando ? undefined : (e) => setEtapa(e as EtapaAvance)}
           />
@@ -224,11 +225,7 @@ export function FlujoAvancePago({ flujo }: Props) {
                   <i className="fa-solid fa-paperclip" aria-hidden="true" />
                   {flujo.tituloArchivo}
                 </div>
-                <ZonaArchivo
-                  archivo={archivo}
-                  onElegir={setArchivo}
-                  titulo={flujo.zonaTitulo}
-                />
+                <ZonaArchivo archivo={archivo} onElegir={setArchivo} titulo={flujo.zonaTitulo} />
               </div>
 
               <DetallePago pago={elegido} />
@@ -352,9 +349,7 @@ export function FlujoAvancePago({ flujo }: Props) {
       {etapa !== 'listo' && (
         <footer className="pie">
           <div className="pie-info">
-            <span className="font-b">
-              {elegido ? elegido.nombre : 'Ningún pago seleccionado'}
-            </span>
+            <span className="font-b">{elegido ? elegido.nombre : 'Ningún pago seleccionado'}</span>
             <span className="xs">
               {elegido
                 ? `${elegido.tractores.length} tractor${elegido.tractores.length === 1 ? '' : 'es'}`
@@ -382,7 +377,7 @@ export function FlujoAvancePago({ flujo }: Props) {
 
             {/* En la operación que cierra el despacho, el comprobante ya no confirma: lleva al
                 paso donde se elige el despachante. En la otra, confirma como siempre. */}
-            {etapa === 'seleccion' || (etapa === 'archivo' && flujo.cierraDespacho) ? (
+            {etapa === 'seleccion' || (etapa === 'archivo' && armaDespacho) ? (
               <button
                 type="button"
                 className="btn btn--primario"
@@ -403,7 +398,7 @@ export function FlujoAvancePago({ flujo }: Props) {
                 disabled={
                   !archivo ||
                   enviando ||
-                  (Boolean(flujo.cierraDespacho) &&
+                  (armaDespacho &&
                     (equipo.cargando || (equipo.despachantes.length > 0 && !despachanteId)))
                 }
                 onClick={() => void impactar()}

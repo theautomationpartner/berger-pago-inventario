@@ -30,9 +30,16 @@ import {
 } from './columns'
 import { mondayApi, subirArchivoAColumna } from './sdk'
 
-/** Nombre del item de pago: la modalidad y la fecha de emisión de la transferencia. */
-export const nombreDelPago = (fechaEmision: string): string =>
-  `PAGO ANTICIPADO - ${fechaCorta(fechaEmision)}`
+/**
+ * Nombre del item de pago: la modalidad y la fecha de emisión de la transferencia.
+ *
+ * Un pago de tractores que ya se despacharon a la vista NO es un anticipado —no se paga por
+ * adelantado, se paga contra el BL—, así que se nombra por lo que es. Si los dos se llamaran igual,
+ * en el tablero no habría forma de distinguir un pago que todavía tiene que generar despacho de uno
+ * que cierra uno que ya salió.
+ */
+export const nombreDelPago = (fechaEmision: string, esVista = false): string =>
+  `${esVista ? 'PAGO VISTA (Contra BL)' : 'PAGO ANTICIPADO'} - ${fechaCorta(fechaEmision)}`
 
 interface Entrada {
   tractores: Tractor[]
@@ -40,6 +47,13 @@ interface Entrada {
   monto: number
   /** ISO `YYYY-MM-DD`. */
   fechaEmision: string
+  /**
+   * Si la transferencia paga tractores que YA se despacharon a la vista (`Pendiente de Pago`).
+   *
+   * Cambia el nombre del item y el Tipo de Pago, y eso es lo que después hace que la etapa 3 no
+   * vuelva a crear un despacho de aduana para algo que ya pasó por el despachante.
+   */
+  esVista?: boolean
   /** Reporte de contenedores que queda guardado para el mail al proveedor. */
   reporteContenedores: string
 }
@@ -52,6 +66,7 @@ export async function cargarTransferencia({
   archivo,
   monto,
   fechaEmision,
+  esVista = false,
   reporteContenedores,
 }: Entrada): Promise<ResultadoCarga> {
   if (tractores.length === 0) throw new Error('No hay tractores seleccionados.')
@@ -63,7 +78,7 @@ export async function cargarTransferencia({
      `Fecha CARGADO` es la fecha en que se completó ESTA operación, que no tiene por qué coincidir
      con la fecha de emisión de la transferencia. */
   const valoresPago = {
-    [COL_PAGO.tipoPago]: { label: TIPO_PAGO.ANTICIPADO },
+    [COL_PAGO.tipoPago]: { label: esVista ? TIPO_PAGO.VISTA : TIPO_PAGO.ANTICIPADO },
     [COL_PAGO.montoTransferencia]: aTextoMonday(monto),
     [COL_PAGO.fechaEmision]: { date: fechaEmision },
     [COL_PAGO.estadoPago]: { label: PAGO_ESTADO.CARGADO },
@@ -72,7 +87,7 @@ export async function cargarTransferencia({
     [COL_PAGO.contenedores]: { text: reporteContenedores },
   }
   const creado = await mondayApi<{ create_item: { id: string } }>('crearPago', {
-    nombre: nombreDelPago(fechaEmision),
+    nombre: nombreDelPago(fechaEmision, esVista),
     valores: JSON.stringify(valoresPago),
   })
   const pagoId = creado.create_item.id

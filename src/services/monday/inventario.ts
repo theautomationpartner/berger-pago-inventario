@@ -15,7 +15,7 @@ import {
   FECHA_CONFIRMADA,
   FORMA_PAGO,
   INV_ESTADO,
-  INV_ESTADO_LISTO_INDEX,
+  INV_ESTADO_INDEX,
 } from './columns'
 import type { NombreOperacion } from './operaciones'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
@@ -143,20 +143,41 @@ async function conPuertos(tractores: Tractor[]): Promise<Tractor[]> {
 }
 
 /**
- * TODOS los tractores listos para pagar, sin importar el mes.
+ * Los tractores que el circuito de pago ANTICIPADO puede tomar, sin importar el mes.
  *
- * El filtro por mes de producción ya no vive acá: lo aplica la pantalla sobre esta lista, así
- * que combinar o quitar meses es instantáneo y no vuelve a consultar monday.
+ * Son DOS poblaciones distintas, y por eso la pantalla obliga a elegir una:
+ *
+ * - `Listo para Pagar`: se paga antes de despacharse, que es el anticipado de siempre.
+ * - `Pendiente de Pago`: ya se despachó a la vista y quedó por cobrar contra el BL. Pasa por las
+ *   mismas tres etapas —transferencia, aprobación, SWIFT— pero **no vuelve a generar despacho**:
+ *   ese tractor ya pasó por el despachante de aduana.
+ *
+ * El filtro por mes de producción no vive acá: lo aplica la pantalla sobre esta lista, así que
+ * combinar o quitar meses es instantáneo y no vuelve a consultar monday.
  *
  * El filtro por estado se manda a Monday por índice —que es lo único que entiende— para traer
  * menos filas, pero la decisión final se toma acá comparando la ETIQUETA: si mañana cambia el
  * orden de las etiquetas de la columna, la app trae de más y filtra bien, y nunca muestra un
  * tractor que no corresponde.
  */
+export const ESTADOS_DE_PAGO_ANTICIPADO: string[] = [INV_ESTADO.LISTO, INV_ESTADO.PENDIENTE_PAGO]
+
 export async function tractoresListosParaPagar(): Promise<Tractor[]> {
-  const tractores = await traerTodos('inventarioPorEstadoPago', { estado: [INV_ESTADO_LISTO_INDEX] })
-  return tractores.filter((t) => t.estadoPago === INV_ESTADO.LISTO && conFechaConfirmada(t))
+  const tractores = await traerTodos('inventarioPorEstadoPago', {
+    estado: ESTADOS_DE_PAGO_ANTICIPADO.map((e) => INV_ESTADO_INDEX[e]),
+  })
+  return tractores.filter(
+    (t) => ESTADOS_DE_PAGO_ANTICIPADO.includes(t.estadoPago) && conFechaConfirmada(t),
+  )
 }
+
+/**
+ * Los estados en los que un tractor todavía se puede pedir a la vista.
+ *
+ * `Pendiente de Pago` NO está: ese ya se despachó a la vista y lo que le falta es el pago, que se
+ * hace desde el circuito anticipado. Ofrecerlo acá sería despacharlo dos veces.
+ */
+export const ESTADOS_DE_DESPACHO_VISTA: string[] = [INV_ESTADO.LISTO, INV_ESTADO.A_PAGAR_PROX_MES]
 
 /**
  * Tractores con Forma de Pago en VISTA: los que se pueden pedir sin pago previo.
@@ -164,12 +185,16 @@ export async function tractoresListosParaPagar(): Promise<Tractor[]> {
  * Mismo criterio que arriba: se filtra por id en Monday y se vuelve a comprobar la etiqueta acá.
  * La columna es un `dropdown` y admite más de una opción, por eso se busca "VISTA" entre las
  * elegidas en vez de comparar el texto completo.
+ *
+ * El estado se comprueba sólo del lado del cliente: la consulta ya filtra por forma de pago, y
+ * agregarle una segunda regla sobre otra columna traería la misma cantidad de filas.
  */
 export async function tractoresParaDespachoVista(): Promise<Tractor[]> {
   const tractores = await traerTodos('inventarioPorFormaDePago', { forma: [FORMA_PAGO.VISTA.id] })
   return tractores.filter(
     (t) =>
       conFechaConfirmada(t) &&
+      ESTADOS_DE_DESPACHO_VISTA.includes(t.estadoPago) &&
       t.formaPago
         .split(',')
         .map((f) => f.trim())

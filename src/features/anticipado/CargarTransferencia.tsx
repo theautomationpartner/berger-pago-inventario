@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
 import { ResumenContenedores } from '@/features/tractores/ResumenContenedores'
 import { useContenedores } from '@/features/tractores/useContenedores'
 import { useSeleccionTractores, useTractores } from '@/features/tractores/useTractores'
 import { reporteContenedores } from '@/lib/contenedores'
-import { aNumero, fechaCorta, hoyISO, importe } from '@/lib/format'
+import { aNumero, hoyISO, importe } from '@/lib/format'
 import { puertosDeTractores } from '@/lib/puertos'
-import { cargarTransferencia } from '@/services/monday/crearPago'
-import { tractoresListosParaPagar } from '@/services/monday/inventario'
+import { INV_ESTADO } from '@/services/monday/columns'
+import { cargarTransferencia, nombreDelPago } from '@/services/monday/crearPago'
+import { ESTADOS_DE_PAGO_ANTICIPADO, tractoresListosParaPagar } from '@/services/monday/inventario'
 import type { DatosTransferencia, Etapa, ResultadoCarga } from '@/types'
 import { PantallaFinal } from './PantallaFinal'
 import { Paso1Seleccion } from './Paso1Seleccion'
@@ -26,10 +27,35 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  * que se desincronicen.
  */
 export function CargarTransferencia() {
-  const { tractores, cargando, error, recargar } = useTractores(tractoresListosParaPagar)
+  const { tractores: todos, cargando, error, recargar } = useTractores(tractoresListosParaPagar)
+
+  /* Una transferencia paga UN grupo: o lo que está listo para pagar, o lo que quedó pendiente de un
+     despacho a la vista. No se pueden mezclar porque el segundo no genera despacho de aduana, y un
+     pago mezclado dejaría a la mitad de los tractores sin OP o a la otra mitad con una duplicada. */
+  const [grupo, setGrupo] = useState<string>(INV_ESTADO.LISTO)
+
+  const conteoGrupos = useMemo(() => {
+    const cuenta = new Map<string, number>()
+    for (const estado of ESTADOS_DE_PAGO_ANTICIPADO) {
+      cuenta.set(estado, todos.filter((t) => t.estadoPago === estado).length)
+    }
+    return cuenta
+  }, [todos])
+
+  const tractores = useMemo(() => todos.filter((t) => t.estadoPago === grupo), [todos, grupo])
+
   const { seleccionados, alternar, marcar, desmarcar, limpiar, elegidos, total } =
     useSeleccionTractores(tractores)
   const contenedores = useContenedores(elegidos, tractores)
+
+  const esVista = grupo === INV_ESTADO.PENDIENTE_PAGO
+
+  /** Cambiar de grupo descarta lo elegido: lo de un grupo no puede entrar en el pago del otro. */
+  const cambiarGrupo = (nuevo: string) => {
+    if (nuevo === grupo) return
+    limpiar()
+    setGrupo(nuevo)
+  }
 
   /* Vacío = todos los meses. Se conserva al cargar otra transferencia: quien trabaja con los
      tractores de ciertos meses suele seguir con esos mismos. */
@@ -61,7 +87,10 @@ export function CargarTransferencia() {
 
   const montoNumero = aNumero(datos.monto)
   const listoParaCargar =
-    elegidos.length > 0 && datos.archivo != null && montoNumero != null && Boolean(datos.fechaEmision)
+    elegidos.length > 0 &&
+    datos.archivo != null &&
+    montoNumero != null &&
+    Boolean(datos.fechaEmision)
 
   const impactar = async () => {
     if (!datos.archivo || montoNumero == null) return
@@ -73,9 +102,10 @@ export function CargarTransferencia() {
         archivo: datos.archivo,
         monto: montoNumero,
         fechaEmision: datos.fechaEmision,
+        esVista,
         reporteContenedores: reporteContenedores(
           contenedores.resumen,
-          `PAGO ANTICIPADO - ${fechaCorta(datos.fechaEmision)}`,
+          nombreDelPago(datos.fechaEmision, esVista),
           puertosDeTractores(elegidos),
         ),
       })
@@ -111,6 +141,9 @@ export function CargarTransferencia() {
           {etapa === 'seleccion' && (
             <Paso1Seleccion
               tractores={tractores}
+              grupo={grupo}
+              onCambiarGrupo={cambiarGrupo}
+              conteoGrupos={conteoGrupos}
               mesesElegidos={mesesElegidos}
               onCambiarMeses={setMesesElegidos}
               seleccionados={seleccionados}

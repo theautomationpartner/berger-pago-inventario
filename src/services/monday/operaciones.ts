@@ -523,7 +523,12 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     validar: (v) => ({
       tablero: TABLEROS.inventario,
       columnas: idsDeColumnas(v.columnas),
-      estado: [entero(Array.isArray(v.estado) ? v.estado[0] : v.estado, 'estado', 0, 999)],
+      /* Varios estados a la vez: el ANTICIPADO ahora trabaja sobre dos poblaciones —lo que está
+         listo para pagar y lo que quedó pendiente de un despacho a la vista— y monday las filtra
+         en una sola consulta con `any_of`. */
+      estado: (Array.isArray(v.estado) ? v.estado : [v.estado])
+        .slice(0, 8)
+        .map((e) => entero(e, 'estado', 0, 999)),
       limite: entero(v.limite, 'limite', 1, 500),
     }),
   },
