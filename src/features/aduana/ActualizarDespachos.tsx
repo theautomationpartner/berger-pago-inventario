@@ -132,6 +132,12 @@ export function ActualizarDespachos() {
   const opDeContenedores = elegidas[0] ?? null
   const puedeArmar = elegidas.length === 1 && Boolean(opDeContenedores?.nroOp.trim())
 
+  /* Los dos requisitos del paso 2, calculados una sola vez para poder mostrarlos en las DOS
+     tarjetas: cada una tiene que decir qué le falta a ella y qué habilita en la otra. */
+  const faltaNroOp = elegidas.length === 1 && !opDeContenedores?.nroOp.trim()
+  /** Tractores sin contenedor sumando TODAS las OP elegidas: son las que no van a poder arribar. */
+  const pendientesDeContenedor = elegidas.reduce((n, op) => n + sinContenedor(op.id), 0)
+
   const alternar = (op: DespachoOP) => {
     setSeleccion((actual) =>
       actual.includes(op.id) ? actual.filter((id) => id !== op.id) : [...actual, op.id],
@@ -547,7 +553,7 @@ export function ActualizarDespachos() {
               )}
 
               {!cargandoOp && (
-                <div className="decision">
+                <div className="decision decision--grande">
                   <button
                     type="button"
                     className="opcion opcion--confirmar"
@@ -564,6 +570,20 @@ export function ActualizarDespachos() {
                       <span className="opcion-det">
                         Estado de carga, ETA, buque, documentación y comprobantes
                       </span>
+                      {/* El requisito de la OTRA tarjeta, dicho acá: el estado de carga se edita
+                          en esta pantalla, así que es acá donde hay que enterarse de que
+                          ese estado necesita los contenedores hechos. */}
+                      {pendientesDeContenedor > 0 ? (
+                        <span className="opcion-req opcion-req--aviso">
+                          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                          Para poner "{PROXIMA_A_ARRIBAR}" hay que armar los contenedores antes
+                        </span>
+                      ) : (
+                        <span className="opcion-req opcion-req--ok">
+                          <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                          Contenedores listos: ya puede pasar a "{PROXIMA_A_ARRIBAR}"
+                        </span>
+                      )}
                     </span>
                   </button>
 
@@ -582,20 +602,40 @@ export function ActualizarDespachos() {
                     <span className="opcion-txt">
                       <span className="opcion-tit">Armar contenedores</span>
                       <span className="opcion-det">
-                        {elegidas.length !== 1
-                          ? 'Se arman de a una OP por vez: elegí una sola'
-                          : !opDeContenedores?.nroOp.trim()
-                            ? 'Falta cargarle el N° de OP del despachante'
-                            : `${sinContenedor(opDeContenedores.id)} de ${
-                                (tractores[opDeContenedores.id] ?? []).length
-                              } tractores sin contenedor`}
+                        Decir qué tractor viaja en cada contenedor
+                        {elegidas.length === 1 && opDeContenedores?.nroOp.trim()
+                          ? `: ${sinContenedor(opDeContenedores.id)} de ${
+                              (tractores[opDeContenedores.id] ?? []).length
+                            } sin ubicar`
+                          : ''}
                       </span>
+                      {elegidas.length !== 1 ? (
+                        <span className="opcion-req opcion-req--falta">
+                          <i className="fa-solid fa-lock" aria-hidden="true" />
+                          Se arman de a una OP por vez: elegí una sola
+                        </span>
+                      ) : faltaNroOp ? (
+                        <span className="opcion-req opcion-req--falta">
+                          <i className="fa-solid fa-lock" aria-hidden="true" />
+                          Requiere el N° Op Despachante cargado en la OP
+                        </span>
+                      ) : sinContenedor(opDeContenedores.id) === 0 ? (
+                        <span className="opcion-req opcion-req--ok">
+                          <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                          Todos los tractores ya tienen contenedor
+                        </span>
+                      ) : (
+                        <span className="opcion-req opcion-req--aviso">
+                          <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                          Hacelo antes de pasar la OP a "{PROXIMA_A_ARRIBAR}"
+                        </span>
+                      )}
                     </span>
                   </button>
                 </div>
               )}
 
-              {!cargandoOp && elegidas.length === 1 && !opDeContenedores?.nroOp.trim() && (
+              {!cargandoOp && faltaNroOp && (
                 <div className="aviso aviso--alerta" style={{ marginTop: 14 }}>
                   <i className="fa-solid fa-hashtag" aria-hidden="true" />
                   <span>

@@ -738,6 +738,18 @@ nombre.
 que usa la app al crear el despacho: la conexión al pago, el proveedor y el importador no se pueden
 cambiar desde este módulo.
 
+**El paso 2 · ¿qué vas a hacer?** Después de elegir la OP se decide entre *Actualizar datos* y
+*Armar contenedores*. Cada tarjeta muestra al pie **su requisito**:
+
+| Tarjeta | Requisito que muestra |
+|---|---|
+| Actualizar datos | con tractores sueltos: *"Para poner «Próxima a Arribar» hay que armar los contenedores antes"*. Sin tractores sueltos, lo confirma en verde |
+| Armar contenedores | una sola OP elegida, y el **N° Op Despachante** (`text_mm78qbvc`) cargado. Si ya está todo ubicado, lo dice |
+
+**Consideración · el requisito se dice donde se toma la decisión.** El estado de carga se edita en
+*Actualizar datos*, no en *Armar contenedores*; por eso la advertencia sobre el arribo va en la
+primera tarjeta aunque hable de la segunda.
+
 ### 5.2 Armar contenedores
 
 **Qué hace.** Dice qué tractor viaja en qué contenedor, y crea esos contenedores en monday.
@@ -792,10 +804,20 @@ destacado: dos unidades del mismo modelo tienen el mismo nombre y el mismo model
 
 Ese estado es la bisagra entre el despachante y BERGER, y tiene dos reglas.
 
-**1. Exige los contenedores armados.** Si algún tractor de la OP quedó sin contenedor, ese estado no
-se puede guardar: la pantalla lo bloquea y ofrece ir a armarlos. El motivo es concreto: el aviso a
-BERGER lleva los links de los contenedores para que carguen transportista y entrega, así que sin
-contenedores ese aviso no sirve.
+**1. Exige los contenedores armados.** El motivo es concreto: el aviso a BERGER lleva los links de
+los contenedores para que carguen transportista y entrega, así que sin contenedores ese aviso no
+sirve. La exigencia se avisa **tres veces**, cada una más temprano que la anterior:
+
+| Momento | Qué se ve |
+|---|---|
+| Paso 2, "¿qué vas a hacer?" | la tarjeta de *Actualizar datos* avisa que sin contenedores no va a poder ponerse "Próxima a Arribar"; la de *Armar contenedores* dice qué le falta para habilitarse |
+| Al abrir el desplegable del estado de carga | la opción "Próxima a Arribar" está **deshabilitada** y rotulada *— faltan contenedores*; debajo del campo se dice cuántos tractores quedan sueltos, y el formulario muestra el aviso con el botón para ir a armarlos |
+| Al guardar | el botón queda bloqueado y se listan las OP que no pueden pasar |
+
+**Consideración · no alcanza con rechazar al final.** Dejar elegir un estado que después el guardado
+rechaza obliga a completar el formulario entero para recibir un no. Por eso la opción directamente
+no se puede seleccionar, y el aviso del formulario aparece **aunque el estado elegido todavía no
+sea** "Próxima a Arribar": lo que importa es que se entere quien está por elegirlo.
 
 **2. Dispara el aviso a BERGER**, y sólo cuando la OP **recién entra** a ese estado: volver a guardar
 una que ya estaba ahí no vuelve a avisar.

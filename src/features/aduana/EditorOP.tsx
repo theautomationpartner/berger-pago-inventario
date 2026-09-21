@@ -66,6 +66,10 @@ export function EditorOP({
   /* El bloqueo se muestra acá, pegado al campo que lo provoca, y no sólo al pie: el que elige el
      estado tiene que enterarse en el momento, no al apretar guardar. */
   const faltanContenedores = edicion.estadoCarga === PROXIMA_A_ARRIBAR && sinContenedor > 0
+  /* Con tractores sueltos, "Próxima a Arribar" directamente NO se puede elegir: la opción queda
+     deshabilitada en el desplegable. Dejar elegir algo que después el guardado rechaza es hacerle
+     completar el formulario entero a alguien para decirle que no al final. */
+  const bloqueaProxima = sinContenedor > 0 && edicion.estadoCarga !== PROXIMA_A_ARRIBAR
   const cambiado = (campo: keyof EdicionDespacho) => cambios.some((c) => c.campo === campo)
   const set = (campo: keyof EdicionDespacho, valor: string) =>
     onCambiar({ ...edicion, [campo]: valor })
@@ -109,13 +113,24 @@ export function EditorOP({
               onChange={(e) => set('estadoCarga', e.target.value)}
             >
               <option value="">(sin estado)</option>
-              {ESTADO_CARGA.map((estado) => (
-                <option key={estado} value={estado}>
-                  {estado}
-                </option>
-              ))}
+              {ESTADO_CARGA.map((estado) => {
+                const vedado = estado === PROXIMA_A_ARRIBAR && bloqueaProxima
+                return (
+                  <option key={estado} value={estado} disabled={vedado}>
+                    {estado}
+                    {vedado ? ' — faltan contenedores' : ''}
+                  </option>
+                )
+              })}
             </select>
             {ayuda('estadoCarga')}
+            {bloqueaProxima && (
+              <span className="campo-ayuda campo-ayuda--falta">
+                <i className="fa-solid fa-lock" aria-hidden="true" /> "{PROXIMA_A_ARRIBAR}" no se
+                puede elegir: quedan {sinContenedor} tractor{sinContenedor === 1 ? '' : 'es'} sin
+                contenedor.
+              </span>
+            )}
           </label>
 
           <label className="campo">
@@ -188,8 +203,11 @@ export function EditorOP({
           </label>
         </div>
 
-        {faltanContenedores && (
-          <div className="aviso aviso--error" style={{ marginTop: 12, marginBottom: 0 }}>
+        {sinContenedor > 0 && (
+          <div
+            className={`aviso ${faltanContenedores ? 'aviso--error' : 'aviso--alerta'}`}
+            style={{ marginTop: 12, marginBottom: 0 }}
+          >
             <i className="fa-solid fa-boxes-packing" aria-hidden="true" />
             <span>
               <b>Para pasar a "{PROXIMA_A_ARRIBAR}" hay que armar los contenedores primero.</b>{' '}

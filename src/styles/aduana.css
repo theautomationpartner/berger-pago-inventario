@@ -572,6 +572,160 @@
 .opcion--proponer.opcion--elegida .opcion-tit {
   color: #8a5a00;
 }
+/* Variante grande de la decisión, para el paso "¿qué vas a hacer?" del despachante.
+   Ahí la elección es lo ÚNICO de la pantalla, y con el tamaño chico quedaba más discreta que las
+   tarjetas del panel de operaciones que se acaban de dejar atrás. Se toma de referencia
+   `.panel-opcion`: mismo peso visual, misma escala de texto, mismo ícono en baldosa de color. */
+.decision--grande {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+.decision--grande .opcion {
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 112px;
+  padding: 18px 20px;
+  border-width: 1.5px;
+  border-radius: 14px;
+  box-shadow: var(--sombra);
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease,
+    transform 0.14s ease;
+}
+.decision--grande .opcion:active:not(:disabled) {
+  transform: scale(0.99);
+}
+.decision--grande .opcion-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  font-size: 22px;
+  color: #fff;
+}
+.decision--grande .opcion-txt {
+  gap: 5px;
+  padding-top: 2px;
+}
+.decision--grande .opcion-tit {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.decision--grande .opcion-det {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-mid);
+}
+
+/* Un color por acción: actualizar datos es azul (la tarea de todos los días) y armar contenedores
+   es ámbar (el paso que habilita el arribo). Que no compartan color es lo que hace que se elija
+   por reconocimiento y no leyendo las dos. */
+.decision--grande .opcion--confirmar {
+  background: var(--tint-input);
+  border-color: var(--tint-input-bd);
+}
+.decision--grande .opcion--confirmar .opcion-ic {
+  background: var(--primary-blue);
+}
+.decision--grande .opcion--confirmar .opcion-tit {
+  color: #0a4f9e;
+}
+.decision--grande .opcion--confirmar:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--primary-blue);
+  box-shadow:
+    0 0 0 3px rgba(0, 115, 234, 0.12),
+    var(--sombra-alta);
+}
+.decision--grande .opcion--proponer {
+  background: #fff8e6;
+  border-color: #f2d795;
+}
+.decision--grande .opcion--proponer .opcion-ic {
+  background: var(--orange);
+}
+.decision--grande .opcion--proponer .opcion-tit {
+  color: #8a5a00;
+}
+.decision--grande .opcion--proponer:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--orange);
+  box-shadow:
+    0 0 0 3px rgba(253, 171, 61, 0.2),
+    var(--sombra-alta);
+}
+
+/* Deshabilitada: se apaga el color en vez de bajar la opacidad de todo. Atenuar una tarjeta de
+   color la deja ilegible, y justo ahí es donde el detalle explica QUÉ falta para habilitarla. */
+.decision--grande .opcion:disabled {
+  opacity: 1;
+  background: var(--tint-neutral);
+  border-color: var(--tint-neutral-bd);
+  box-shadow: none;
+}
+.decision--grande .opcion:disabled .opcion-ic {
+  background: #c3c8d4;
+}
+.decision--grande .opcion:disabled .opcion-tit {
+  color: var(--text-gray);
+}
+.decision--grande .opcion:disabled .opcion-det {
+  color: var(--text-gray);
+}
+
+/* El requisito de cada tarjeta, al pie de su propio texto: por qué no se puede todavía, o qué
+   conviene dejar hecho antes de ir a la otra. */
+.opcion-req {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  color: var(--text-mid);
+}
+.opcion-req--falta {
+  background: var(--berger-red-soft);
+  border-color: var(--berger-red-bd);
+  color: var(--berger-red-dark);
+}
+.opcion-req--aviso {
+  background: #fff8e6;
+  border-color: #f2d795;
+  color: #8a5a00;
+}
+.opcion-req--ok {
+  background: var(--green-soft);
+  border-color: var(--green-bd);
+  color: var(--green-dark);
+}
+
+@media (max-width: 560px) {
+  .decision--grande .opcion {
+    min-height: 0;
+    padding: 14px 15px;
+  }
+  .decision--grande .opcion-ic {
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+  .decision--grande .opcion-tit {
+    font-size: 15.5px;
+  }
+}
+
 .campo--propuesta {
   margin-top: 12px;
   max-width: 280px;
@@ -651,7 +805,9 @@
   background: #fff;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 .combo-boton:hover {
   border-color: var(--primary-blue);
@@ -944,7 +1100,9 @@
 .tarjeta--boton {
   cursor: pointer;
   text-align: left;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
 }
 .tarjeta--boton:hover {
   transform: translateY(-1px);
