@@ -735,6 +735,13 @@ equivocada se nota mucho más leyendo `ETA: 12/10 → 12/11` que releyendo siete
 modificados. Si la quinta falla, las cuatro anteriores ya quedaron bien; lo que falle se informa con
 nombre.
 
+**Regla · "Nacionalizado" exige el N° de despacho.** Para poner ese estado hace falta el
+**N° Despacho Importación** (`text_mm7756c6`), que la app agrega a los campos editables del
+despachante. Es el número del trámite ante la aduana: nacionalizar sin él deja un estado que no se
+puede respaldar con nada. El aviso aparece **al elegir el estado**, no al guardar —el rótulo pasa a
+decir *obligatorio* y el campo se pinta—, y el botón de guardar queda bloqueado listando las OP que
+faltan.
+
 **Restricción de permisos.** La lista de columnas editables del despachante es **más chica** que la
 que usa la app al crear el despacho: la conexión al pago, el proveedor y el importador no se pueden
 cambiar desde este módulo.
@@ -941,22 +948,16 @@ Un tractor sin rodado se descarga distinto, así que un vacío no puede confundi
 **Consideración · por qué en el contenedor.** Cada contenedor puede ir a un lugar distinto y con un
 transportista distinto, así que esos dos datos viven ahí y no en la OP.
 
-**Consideración · los campos arrancan con lo que hay.** Incluido el transportista ya asignado —la
-conexión devuelve el id, que se resuelve contra la lista de contactos— y las coordenadas de la
-dirección, que la columna expone en campos propios (`lat`/`lng`) y no en su texto. Arrancar en
-blanco hacía que un contenedor ya completo se viera como pendiente y que la advertencia de "sin
-ubicar" saliera sobre una dirección perfectamente cargada.
+**Consideración · acá los contenedores no se editan.** La ubicación de entrega y el transportista
+se cargan **sólo** en 5.6, Actualizar Contenedores. Estaban en las dos pantallas: dos lugares
+escribiendo el mismo dato con reglas distintas, y la primera vez que difieran no hay manera de
+saber cuál vale. En esta operación se muestran para poder leer la OP completa —qué viaja, adónde
+va, con quién—, y el botón **Actualizar** relee la sección porque el despachante y las
+automatizaciones tocan esos items mientras la pantalla está abierta.
 
-**Consideración · botón Actualizar.** La sección de contenedores tiene el suyo: el despachante y
-las automatizaciones tocan esos items mientras la pantalla está abierta, y sin el botón había que
-salir de la OP y volver a entrar.
-
-**Consideración · un contenedor coordinado no se toca.** Con fecha de turno (`date_mm7a8jds`) **y**
-el aviso ya enviado (`color_mm7dzv11` = `Enviado`), el transportista recibió un correo diciéndole
-dónde y cuándo. La entrega y el transportista pasan a sólo lectura con el motivo escrito:
-cambiarlos después deja al tablero diciendo una cosa y al mail otra, y el que maneja leyó el mail.
-Se corrige en monday, avisando a mano. Hacen falta **las dos** condiciones: con turno pero sin
-aviso enviado todavía se edita.
+**Consideración · el transportista se resuelve del id.** La conexión devuelve el id del contacto,
+nunca su nombre, así que se busca en la lista de contactos ya cargada. Sin eso, un contenedor con
+transportista asignado se mostraba como "sin asignar".
 
 **Consideración · se puede completar a medias.** Nada obliga a llenar todo de una vez: el banco suele
 definirse antes que el transporte, y sólo viaja lo que se cambió.
@@ -1045,7 +1046,16 @@ dejara en duda a los otros cinco.
 
 **Consideración · la ubicación y el transportista.** Igual que en 5.5: la dirección se elige del
 buscador para que viaje con coordenadas, y el desplegable de transportistas está filtrado por la
-categoría del tablero de Contactos.
+categoría del tablero de Contactos. **Ésta es la única pantalla donde se editan.**
+
+**Consideración · el aviso de "sin ubicar" sale sólo sobre lo que se acaba de escribir.** Una
+dirección que vino de monday se muestra tal cual aunque no tenga coordenadas: muchas se cargaron
+antes de que existiera el buscador, y marcarlas como problema cada vez que se abre la pantalla
+convierte el aviso en ruido. En cuanto alguien cambia el texto y no elige de la lista, vuelve.
+
+**Consideración · las coordenadas no están en el texto.** La columna de ubicación las expone en
+campos propios (`lat`/`lng`), y la consulta los pide aparte. Leyéndolas del texto volvían siempre
+vacías, y toda dirección parecía sin ubicar.
 
 ### 5.7 Operación · DASHBOARD DE DESPACHOS
 
@@ -1156,7 +1166,7 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 💸 Pagos | item completo, estados, fechas, archivos, reporte, avisos | — | Pagos Despacho |
 | 💸 Subelementos de Pagos | un subitem por tractor | — | Etapa 1 y Pago Vista |
 | 👮 Despachante | item completo + subitems | — | Etapa 3 y Pago Vista |
-| 👮 Despachante | los 8 campos del despachante | lo que cargue | Actualizar Despacho OP - DESPACHANTE |
+| 👮 Despachante | los 9 campos del despachante, incluido `text_mm7756c6` | lo que cargue | Actualizar Despacho OP - DESPACHANTE |
 | 👮 Despachante | los 4 comprobantes del trámite **más el VEP** (`file_mm7d41zn`) | archivos | Actualizar Despacho OP - DESPACHANTE |
 | 👮 Despachante | `file_mm7d3jvj` | comprobante de pago del VEP | Actualizar OP - BERGER |
 | 👮 Despachante | `color_mm793phx` | lo que defina BERGER (la app NO lo toca al crear) | Actualizar OP - BERGER |

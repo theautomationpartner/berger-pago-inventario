@@ -242,6 +242,7 @@ const COLUMNAS_DEL_DESPACHANTE = new Set<string>([
   COL_DESPACHANTE.nroOp,
   COL_DESPACHANTE.viaTransporte,
   COL_DESPACHANTE.nroDocTransporte,
+  COL_DESPACHANTE.nroDespachoImpo,
   COL_DESPACHANTE.contenedorRef,
   COL_DESPACHANTE.eta,
   COL_DESPACHANTE.buque,

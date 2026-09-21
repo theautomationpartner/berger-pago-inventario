@@ -57,6 +57,7 @@ const COLUMNAS = [
   COL_DESPACHANTE.estadoCarga,
   COL_DESPACHANTE.viaTransporte,
   COL_DESPACHANTE.nroDocTransporte,
+  COL_DESPACHANTE.nroDespachoImpo,
   COL_DESPACHANTE.contenedorRef,
   COL_DESPACHANTE.eta,
   COL_DESPACHANTE.buque,
@@ -92,6 +93,7 @@ function aDespacho(item: ItemCrudo): DespachoOP {
     estadoCarga: texto(c[COL_DESPACHANTE.estadoCarga]),
     viaTransporte: texto(c[COL_DESPACHANTE.viaTransporte]),
     nroDocTransporte: texto(c[COL_DESPACHANTE.nroDocTransporte]),
+    nroDespachoImpo: texto(c[COL_DESPACHANTE.nroDespachoImpo]),
     contenedorRef: texto(c[COL_DESPACHANTE.contenedorRef]),
     eta: fechaISO(c[COL_DESPACHANTE.eta]),
     buque: texto(c[COL_DESPACHANTE.buque]),
@@ -156,6 +158,9 @@ export function valoresDeEdicion(cambios: Partial<EdicionDespacho>): Record<stri
   if (cambios.nroOp !== undefined) valores[COL_DESPACHANTE.nroOp] = cambios.nroOp
   if (cambios.nroDocTransporte !== undefined) {
     valores[COL_DESPACHANTE.nroDocTransporte] = cambios.nroDocTransporte
+  }
+  if (cambios.nroDespachoImpo !== undefined) {
+    valores[COL_DESPACHANTE.nroDespachoImpo] = cambios.nroDespachoImpo
   }
   if (cambios.contenedorRef !== undefined) {
     valores[COL_DESPACHANTE.contenedorRef] = cambios.contenedorRef

@@ -424,6 +424,7 @@ export function ActualizarContenedores() {
                       <SelectorUbicacion
                         valor={e.ubicacion}
                         coordenadas={e.coordenadas}
+                        direccionGuardada={c.ubicacion}
                         onCambiar={(direccion, coordenadas) =>
                           cambiar(c, { ubicacion: direccion, coordenadas })
                         }

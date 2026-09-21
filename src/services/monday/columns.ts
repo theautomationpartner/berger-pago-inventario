@@ -321,6 +321,11 @@ export const COL_DESPACHANTE = {
   nroOp: 'text_mm78qbvc',
   viaTransporte: 'dropdown_mm78f6fn',
   nroDocTransporte: 'text_mm77wxd4',
+  /**
+   * N° del despacho de importación. Es EL número del trámite ante la aduana: sin él una OP no
+   * puede darse por nacionalizada, así que ese estado lo exige.
+   */
+  nroDespachoImpo: 'text_mm7756c6',
   contenedorRef: 'text_mm772j1r',
   eta: 'date4',
   buque: 'text_mm77pw8d',

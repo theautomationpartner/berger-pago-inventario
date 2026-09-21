@@ -15,6 +15,7 @@ export const ROTULOS: Record<keyof EdicionDespacho, string> = {
   nroOp: 'N° Op Despachante',
   viaTransporte: 'Vía de transporte',
   nroDocTransporte: 'Nro doc de transporte',
+  nroDespachoImpo: 'N° Despacho Importación',
   contenedorRef: 'Contenedor de referencia',
   eta: 'ETA',
   buque: 'Buque',
@@ -30,15 +31,29 @@ export const CAMPOS_EDITABLES: (keyof EdicionDespacho)[] = [
   'viaTransporte',
   'buque',
   'nroDocTransporte',
+  'nroDespachoImpo',
   'contenedorRef',
   'observaciones',
 ]
+
+/**
+ * Nacionalizar una OP exige su N° de Despacho de Importación.
+ *
+ * Ese número ES el trámite ante la aduana: una OP nacionalizada sin él es un estado que no se
+ * puede respaldar con nada, y después nadie sabe de dónde sacarlo. Se pide en el momento de
+ * elegir el estado, no al guardar.
+ */
+export const NACIONALIZADO = 'Nacionalizado'
+
+export const faltaNroDespacho = (edicion: EdicionDespacho): boolean =>
+  edicion.estadoCarga === NACIONALIZADO && !edicion.nroDespachoImpo.trim()
 
 /** Los valores actuales de una OP, como los recibe el formulario. */
 export const valoresActuales = (op: DespachoOP): EdicionDespacho => ({
   nroOp: op.nroOp,
   viaTransporte: op.viaTransporte,
   nroDocTransporte: op.nroDocTransporte,
+  nroDespachoImpo: op.nroDespachoImpo,
   contenedorRef: op.contenedorRef,
   eta: op.eta,
   buque: op.buque,

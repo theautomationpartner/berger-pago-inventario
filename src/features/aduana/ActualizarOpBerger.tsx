@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
 import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
 import { Stepper } from '@/components/ui/Stepper'
 import { fechaCorta } from '@/lib/format'
@@ -16,7 +15,6 @@ import {
   VEP_POR_DONDE,
 } from '@/services/monday/columns'
 import {
-  actualizarContenedor,
   contenedoresDeOp,
   listarTransportistas,
   tractoresDeOps,
@@ -28,7 +26,6 @@ import type {
   ContenedorDespacho,
   DespachoOP,
   EdicionBerger,
-  EdicionContenedor,
   EtapaBerger,
   TractorDeOp,
 } from '@/types'
@@ -142,7 +139,6 @@ export function ActualizarOpBerger() {
   const [edicion, setEdicion] = useState<EdicionBerger | null>(null)
   const [contenedores, setContenedores] = useState<ContenedorDespacho[]>([])
   const [tractores, setTractores] = useState<TractorDeOp[]>([])
-  const [ediciones, setEdiciones] = useState<Record<string, EdicionContenedor>>({})
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
 
@@ -197,22 +193,6 @@ export function ActualizarOpBerger() {
       setTractores(lista)
       const conts = await contenedoresDeOp(lista)
       setContenedores(conts)
-      /* Cada campo arranca con LO QUE HAY en monday, incluido el transportista ya asignado y las
-         coordenadas de la dirección. Arrancar en blanco hacía que un contenedor ya completo se
-         viera como pendiente, y que la advertencia de "sin ubicar" saliera sobre una dirección
-         que estaba perfectamente cargada. */
-      setEdiciones(
-        Object.fromEntries(
-          conts.map((c) => [
-            c.id,
-            {
-              ubicacion: c.ubicacion,
-              coordenadas: c.coordenadas,
-              transportistaId: c.transportistaId,
-            },
-          ]),
-        ),
-      )
     } catch (e) {
       setErrorEnvio(`No se pudieron leer los contenedores: ${mensaje(e)}`)
     } finally {
@@ -242,7 +222,6 @@ export function ActualizarOpBerger() {
     setComprobanteVep(null)
     setContenedores([])
     setTractores([])
-    setEdiciones({})
     setResultado(null)
     setErrorEnvio(null)
     setEtapa('seleccion')
@@ -289,26 +268,7 @@ export function ActualizarOpBerger() {
     return parcial
   }
 
-  /** Lo que cambió de cada contenedor. */
-  const cambiosDeContenedor = (c: ContenedorDespacho): Partial<EdicionContenedor> => {
-    const e = ediciones[c.id]
-    if (!e) return {}
-    const parcial: Partial<EdicionContenedor> = {}
-    if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) {
-      parcial.ubicacion = e.ubicacion
-      parcial.coordenadas = e.coordenadas ?? null
-    }
-    // Se compara contra el transportista que YA tiene: si no cambió, no se reescribe.
-    if ((e.transportistaId ?? null) !== (c.transportistaId ?? null)) {
-      parcial.transportistaId = e.transportistaId ?? null
-    }
-    return parcial
-  }
-
-  const hayCambios =
-    Object.keys(cambiosDeOp()).length > 0 ||
-    Boolean(comprobanteVep) ||
-    contenedores.some((c) => Object.keys(cambiosDeContenedor(c)).length > 0)
+  const hayCambios = Object.keys(cambiosDeOp()).length > 0 || Boolean(comprobanteVep)
 
   const guardar = async () => {
     if (!elegida) return
@@ -322,19 +282,6 @@ export function ActualizarOpBerger() {
         await actualizarOpBerger(elegida.id, cambios)
       } catch (e) {
         advertencias.push(`No se pudo actualizar la OP: ${mensaje(e)}`)
-      }
-    }
-
-    /* Los contenedores, uno por uno: si el tercero falla, los dos anteriores ya quedaron bien. */
-    for (const c of contenedores) {
-      const cambio = cambiosDeContenedor(c)
-      if (Object.keys(cambio).length === 0) continue
-      try {
-        await actualizarContenedor(c.id, cambio)
-      } catch (e) {
-        advertencias.push(
-          `No se pudo actualizar el contenedor ${c.numero || c.nombre}: ${mensaje(e)}`,
-        )
       }
     }
 
@@ -714,8 +661,10 @@ export function ActualizarOpBerger() {
                 <span className="sec-txt">
                   <span className="sec-tit">Contenedores de esta OP</span>
                   <span className="sec-det">
-                    Cada contenedor puede ir a un lugar distinto y con un transportista distinto,
-                    así que se cargan de a uno.
+                    Para ver qué viaja y cómo quedó cada entrega. La <b>ubicación</b> y el{' '}
+                    <b>transportista</b> se cargan en <b>Actualizar Contenedores</b>: se editan en
+                    un solo lugar para que no haya dos pantallas escribiendo el mismo dato con
+                    reglas distintas.
                   </span>
                 </span>
                 {/* Los contenedores los toca también el despachante —y monday, con sus
@@ -755,11 +704,6 @@ export function ActualizarOpBerger() {
 
               <div className="op-editores">
                 {contenedores.map((c) => {
-                  const e = ediciones[c.id] ?? {
-                    ubicacion: c.ubicacion,
-                    coordenadas: c.coordenadas,
-                    transportistaId: c.transportistaId,
-                  }
                   const dentro = tractores.filter((t) => t.contenedorId === c.id)
                   const cerrado = coordinado(c)
                   return (
@@ -813,78 +757,32 @@ export function ActualizarOpBerger() {
                           </div>
                         )}
 
-                        {cerrado && (
-                          <div className="aviso aviso--ok" style={{ marginBottom: 12 }}>
-                            <i className="fa-solid fa-lock" aria-hidden="true" />
-                            <span>
-                              <b>Ya se le avisó al transportista.</b> El turno quedó para el{' '}
-                              {fechaCorta(c.fechaTurno)}
-                              {c.horaTurno ? ` a las ${c.horaTurno}` : ''} y el correo salió, así
-                              que la entrega y el transportista no se editan desde acá: el mail que
-                              recibió diría una cosa y el tablero otra. Si hay que cambiarlos, se
-                              corrige en monday y se le avisa.
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="datos datos--form">
+                        <div className="datos datos--lectura">
                           <div className="campo">
                             <span className="campo-lbl">Ubicación de entrega</span>
-                            {cerrado ? (
-                              <span className="campo-fijo">
-                                <i className="fa-solid fa-location-dot" aria-hidden="true" />{' '}
-                                {c.ubicacion || 'Sin cargar'}
-                              </span>
-                            ) : (
-                              <SelectorUbicacion
-                                valor={e.ubicacion}
-                                coordenadas={e.coordenadas}
-                                onCambiar={(direccion, coordenadas) =>
-                                  setEdiciones((a) => ({
-                                    ...a,
-                                    [c.id]: { ...e, ubicacion: direccion, coordenadas },
-                                  }))
-                                }
-                              />
-                            )}
+                            <span className="campo-fijo">
+                              <i className="fa-solid fa-location-dot" aria-hidden="true" />{' '}
+                              {c.ubicacion || 'Sin cargar'}
+                            </span>
                           </div>
-
-                          <label className="campo">
+                          <div className="campo">
                             <span className="campo-lbl">Transportista</span>
-                            {cerrado ? (
-                              <span className="campo-fijo">
-                                <i className="fa-solid fa-truck-fast" aria-hidden="true" />{' '}
-                                {nombreDelContacto(c.transportistaId, contactos) || 'Sin asignar'}
-                              </span>
-                            ) : (
-                              <>
-                                <select
-                                  className="select"
-                                  value={e.transportistaId ?? ''}
-                                  onChange={(ev) =>
-                                    setEdiciones((a) => ({
-                                      ...a,
-                                      [c.id]: { ...e, transportistaId: ev.target.value || null },
-                                    }))
-                                  }
-                                >
-                                  <option value="">(sin asignar)</option>
-                                  {contactos.map((x) => (
-                                    <option key={x.id} value={x.id}>
-                                      {x.nombre}
-                                    </option>
-                                  ))}
-                                </select>
-                                {contactos.length === 0 && (
-                                  <span className="campo-ayuda">
-                                    No se pudieron leer los contactos. Podés cargarlo desde el
-                                    tablero.
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </label>
+                            <span className="campo-fijo">
+                              <i className="fa-solid fa-truck-fast" aria-hidden="true" />{' '}
+                              {c.transportista ||
+                                nombreDelContacto(c.transportistaId, contactos) ||
+                                'Sin asignar'}
+                            </span>
+                          </div>
                         </div>
+
+                        {cerrado && (
+                          <span className="campo-ayuda campo-ayuda--ok">
+                            <i className="fa-solid fa-lock" aria-hidden="true" /> Ya se le avisó al
+                            transportista: turno del {fechaCorta(c.fechaTurno)}
+                            {c.horaTurno ? ` a las ${c.horaTurno}` : ''}.
+                          </span>
+                        )}
                       </div>
                     </div>
                   )

@@ -290,6 +290,7 @@ export interface DespachoOP {
   estadoCarga: string
   viaTransporte: string
   nroDocTransporte: string
+  nroDespachoImpo: string
   contenedorRef: string
   /** ETA en ISO (`AAAA-MM-DD`), o `''`. */
   eta: string
@@ -429,6 +430,7 @@ export interface EdicionDespacho {
   nroOp: string
   viaTransporte: string
   nroDocTransporte: string
+  nroDespachoImpo: string
   contenedorRef: string
   eta: string
   buque: string

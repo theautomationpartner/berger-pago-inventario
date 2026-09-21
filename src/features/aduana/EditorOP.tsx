@@ -1,5 +1,5 @@
 import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
-import { ROTULOS } from '@/lib/despachos'
+import { NACIONALIZADO, ROTULOS, faltaNroDespacho } from '@/lib/despachos'
 import { fechaCorta } from '@/lib/format'
 import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, VIA_TRANSPORTE } from '@/services/monday/columns'
 import { ARCHIVOS_OP, ROTULO_ARCHIVO } from '@/services/monday/despachos'
@@ -76,6 +76,9 @@ export function EditorOP({
      deshabilitada en el desplegable. Dejar elegir algo que después el guardado rechaza es hacerle
      completar el formulario entero a alguien para decirle que no al final. */
   const bloqueaProxima = sinContenedor > 0 && edicion.estadoCarga !== PROXIMA_A_ARRIBAR
+  /* Nacionalizar sin el número del despacho deja un estado que no se puede respaldar con nada.
+     Se avisa apenas se elige el estado, no al guardar: el campo está en la misma pantalla. */
+  const faltaDespacho = faltaNroDespacho(edicion)
   const cambiado = (campo: keyof EdicionDespacho) => cambios.some((c) => c.campo === campo)
   const set = (campo: keyof EdicionDespacho, valor: string) =>
     onCambiar({ ...edicion, [campo]: valor })
@@ -199,6 +202,22 @@ export function EditorOP({
           </label>
 
           <label className="campo">
+            <span className="campo-lbl">
+              {ROTULOS.nroDespachoImpo}
+              {edicion.estadoCarga === NACIONALIZADO && (
+                <span className="campo-req"> · obligatorio</span>
+              )}
+            </span>
+            <input
+              className={`input${faltaDespacho ? ' input--error' : ''}`}
+              value={edicion.nroDespachoImpo}
+              placeholder="Ej: 26 001 IC04 000123 A"
+              onChange={(e) => set('nroDespachoImpo', e.target.value)}
+            />
+            {ayuda('nroDespachoImpo')}
+          </label>
+
+          <label className="campo">
             <span className="campo-lbl">{ROTULOS.contenedorRef}</span>
             <input
               className="input"
@@ -208,6 +227,19 @@ export function EditorOP({
             {ayuda('contenedorRef')}
           </label>
         </div>
+
+        {faltaDespacho && (
+          <div className="aviso aviso--error" style={{ marginTop: 12, marginBottom: 0 }}>
+            <i className="fa-solid fa-file-circle-exclamation" aria-hidden="true" />
+            <span>
+              <b>
+                Para pasar a "{NACIONALIZADO}" hace falta el {ROTULOS.nroDespachoImpo}.
+              </b>{' '}
+              Es el número del trámite ante la aduana: una OP nacionalizada sin él es un estado que
+              no se puede respaldar con nada, y después nadie sabe de dónde sacarlo. Cargalo arriba.
+            </span>
+          </div>
+        )}
 
         {sinContenedor > 0 && (
           <div

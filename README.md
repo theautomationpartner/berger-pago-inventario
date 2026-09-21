@@ -735,6 +735,16 @@ operación del catálogo tiene una lista de columnas escribibles de **una sola**
 ubicación de entrega, el transportista y el arribo quedan fuera de su alcance aunque conozca el id
 del item.
 
+### "Nacionalizado": exige el N° de despacho
+
+Para poner ese estado hace falta el **N° Despacho Importación** (`text_mm7756c6`), que es el
+número del trámite ante la aduana. Una OP nacionalizada sin él es un estado que no se puede
+respaldar con nada, y después nadie sabe de dónde sacarlo.
+
+El campo está en el mismo formulario, y el aviso aparece **al elegir el estado**, no al guardar:
+el rótulo pasa a decir *obligatorio*, el campo se pinta en rojo y el botón de guardar queda
+bloqueado listando las OP que faltan.
+
 ### "Próxima a Arribar": el cruce entre los dos
 
 Ese estado es la bisagra del circuito, y por eso tiene dos reglas:
@@ -811,17 +821,12 @@ Dos cosas en la misma pantalla, porque se deciden juntas:
 Van en el contenedor y no en la OP porque cada uno puede ir a un lugar distinto y con un
 transportista distinto.
 
-**Cada campo arranca con lo que hay en monday**, incluidos el transportista ya asignado —que se
-resuelve del id de la conexión contra la lista de contactos— y las coordenadas de la dirección.
-Arrancar en blanco hacía que un contenedor ya completo se viera como pendiente. La sección tiene
-su propio botón **Actualizar**: el despachante y las automatizaciones tocan esos contenedores
-mientras la pantalla está abierta.
-
-**Un contenedor ya coordinado no se toca.** Cuando tiene fecha de turno **y** el aviso salió
-(`color_mm7dzv11` = `Enviado`), el transportista ya recibió un correo diciéndole dónde y cuándo.
-La entrega y el transportista pasan a sólo lectura, con el motivo escrito: cambiarlos después deja
-al tablero diciendo una cosa y al mail otra, y el que maneja leyó el mail. Se corrige en monday,
-avisando a mano. Se puede completar sólo una parte: el banco suele definirse antes que el
+**Acá los contenedores son de sólo lectura.** La ubicación de entrega y el transportista se
+cargan **únicamente** en ACTUALIZAR CONTENEDORES. Estaban en las dos pantallas, y eso significaba
+dos lugares escribiendo el mismo dato con reglas distintas: la primera vez que las dos digan cosas
+distintas, no hay forma de saber cuál vale. Acá se muestran para poder mirar la OP completa —qué
+viaja, adónde va, con quién— y el botón **Actualizar** relee la sección, porque el despachante y
+las automatizaciones tocan esos contenedores mientras la pantalla está abierta. Se puede completar sólo una parte: el banco suele definirse antes que el
 transporte.
 
 > **La ubicación se elige, no se escribe.** Una columna de tipo location de monday rechaza la
@@ -832,6 +837,12 @@ transporte.
 > Escribir libre sigue permitido, porque hay entregas en establecimientos que ningún mapa conoce:
 > en ese caso las coordenadas van en 0 —la dirección se lee bien igual— y el campo lo avisa con un
 > *"Sin ubicar en el mapa"* antes de guardar, para que sea una decisión y no un descuido.
+>
+> **El aviso sale sólo sobre lo que se acaba de escribir.** Una dirección que vino de monday se
+> muestra tal cual, sin cartel, aunque no tenga coordenadas: muchas se cargaron antes de que
+> existiera el buscador, y marcarlas como problema cada vez que se abre la pantalla convierte el
+> aviso en ruido —y el ruido se ignora—. En cuanto alguien cambia el texto y no elige de la
+> lista, el aviso vuelve.
 
 **El transportista sale de Contactos, filtrado.** Ese tablero es la agenda entera de BERGER
 —clientes, proveedores, despachantes—, así que el desplegable muestra **sólo** los que tienen

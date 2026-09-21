@@ -8,6 +8,16 @@ interface Props {
   /** Coordenadas de la dirección actual, o `null` si se escribió a mano. */
   coordenadas: { lat: string; lng: string } | null | undefined
   onCambiar: (direccion: string, coordenadas: { lat: string; lng: string } | null) => void
+  /**
+   * La dirección que hay guardada en monday.
+   *
+   * Sirve para una sola cosa, pero importante: **no avisar sobre lo que no se tocó**. Muchas
+   * direcciones se cargaron antes de que existiera el buscador y no tienen coordenadas; marcarlas
+   * como problema cada vez que se abre la pantalla convierte el aviso en ruido, y el ruido se
+   * ignora. Se avisa cuando la dirección de ahora NO es la guardada: ahí sí la escribió alguien
+   * en este momento y puede elegir una de la lista.
+   */
+  direccionGuardada?: string
   id?: string
 }
 
@@ -34,7 +44,7 @@ const partir = (direccion: string): { titulo: string; resto: string } => {
  * La búsqueda espera a que se deje de tipear: el servicio de mapas es gratuito y su política pide
  * no abusar, así que no se consulta letra por letra.
  */
-export function SelectorUbicacion({ valor, coordenadas, onCambiar, id }: Props) {
+export function SelectorUbicacion({ valor, coordenadas, onCambiar, direccionGuardada, id }: Props) {
   const [texto, setTexto] = useState(valor)
   const [abierto, setAbierto] = useState(false)
   const [sugerencias, setSugerencias] = useState<Ubicacion[]>([])
@@ -89,7 +99,12 @@ export function SelectorUbicacion({ valor, coordenadas, onCambiar, id }: Props) 
   }
 
   const ubicada = Boolean(coordenadas && valor.trim())
-  const sinUbicar = Boolean(!coordenadas && valor.trim())
+  /* Sólo si la dirección cambió respecto de la guardada. Lo que ya estaba en monday se muestra
+     tal cual, sin cartel: es un dato cargado, no un error. */
+  const tocada = direccionGuardada !== undefined && valor.trim() !== direccionGuardada.trim()
+  const sinUbicar = Boolean(
+    !coordenadas && valor.trim() && (tocada || direccionGuardada === undefined),
+  )
 
   return (
     <div className="ubicacion" ref={caja}>

@@ -1404,3 +1404,13 @@
 .chip--link:hover {
   text-decoration: underline;
 }
+
+/* Un campo que el estado actual vuelve obligatorio. */
+.campo-req {
+  font-weight: 700;
+  color: var(--berger-red-dark);
+}
+.input--error {
+  border-color: var(--berger-red);
+  background: var(--berger-red-soft);
+}

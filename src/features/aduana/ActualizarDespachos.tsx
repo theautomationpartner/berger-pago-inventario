@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
 import { tonoEstadoCarga } from '@/lib/chips'
-import { cambiosDe, coincide, soloLoCambiado, valoresActuales } from '@/lib/despachos'
+import {
+  cambiosDe,
+  coincide,
+  faltaNroDespacho,
+  soloLoCambiado,
+  valoresActuales,
+} from '@/lib/despachos'
 import { avisarProximaArribar } from '@/services/monday/avisos'
 import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, URL_TABLERO_DESPACHANTE } from '@/services/monday/columns'
 import { contenedoresDeOp, tractoresDeOps } from '@/services/monday/contenedoresDespacho'
@@ -128,6 +134,11 @@ export function ActualizarDespachos() {
     (op) =>
       (ediciones[op.id] ?? valoresActuales(op)).estadoCarga === PROXIMA_A_ARRIBAR &&
       sinContenedor(op.id) > 0,
+  )
+
+  /** Las que quieren nacionalizarse sin el N° del despacho de importación. */
+  const sinNroDespacho = elegidas.filter((op) =>
+    faltaNroDespacho(ediciones[op.id] ?? valoresActuales(op)),
   )
 
   /** La OP sobre la que se arman contenedores: el modo trabaja sobre UNA. */
@@ -732,6 +743,26 @@ export function ActualizarDespachos() {
                 </span>
               </div>
 
+              {sinNroDespacho.length > 0 && (
+                <div className="aviso aviso--error">
+                  <i className="fa-solid fa-file-circle-exclamation" aria-hidden="true" />
+                  <span>
+                    <b>
+                      {sinNroDespacho.length === 1
+                        ? 'Hay 1 OP que pasa a "Nacionalizado" sin N° Despacho Importación.'
+                        : `Hay ${sinNroDespacho.length} OP que pasan a "Nacionalizado" sin N° Despacho Importación.`}
+                    </b>{' '}
+                    Es el número del trámite ante la aduana, y sin él ese estado no se puede
+                    respaldar con nada.
+                    <ul style={{ margin: '6px 0 0 18px' }}>
+                      {sinNroDespacho.map((op) => (
+                        <li key={op.id}>{op.nombre}</li>
+                      ))}
+                    </ul>
+                  </span>
+                </div>
+              )}
+
               {bloqueadas.length > 0 && (
                 <div className="aviso aviso--error">
                   <i className="fa-solid fa-boxes-packing" aria-hidden="true" />
@@ -871,7 +902,9 @@ export function ActualizarDespachos() {
             <button
               type="button"
               className="btn btn--marca"
-              disabled={enviando || totalCambios === 0 || bloqueadas.length > 0}
+              disabled={
+                enviando || totalCambios === 0 || bloqueadas.length > 0 || sinNroDespacho.length > 0
+              }
               onClick={() => void guardar()}
             >
               {enviando ? (
