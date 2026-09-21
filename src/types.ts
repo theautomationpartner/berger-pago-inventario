@@ -22,7 +22,7 @@ export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts' | 'fechas'
 export type OperacionFechas = 'confirmar' | 'enviar'
 
 /** Operaciones dentro de "Despacho de Aduana". */
-export type OperacionAduana = 'actualizar' | 'berger' | 'contenedores' | 'dashboard'
+export type OperacionAduana = 'actualizar' | 'turnos' | 'berger' | 'contenedores' | 'dashboard'
 
 /** Operaciones dentro de "Planificación de Drafts". */
 export type OperacionDrafts = 'planificar' | 'enviar' | 'dashboard'
@@ -342,7 +342,16 @@ export interface ContenedorDespacho {
   patente: string
   fechaTurno: string
   fechaCreacion: string
+  /** La hora del turno, separada: monday la guarda en UTC y la muestra en la zona de la cuenta. */
+  horaTurno: string
+  /** Si el aviso del turno al transportista ya salió, el contenedor queda congelado para BERGER. */
+  estadoEnvioTurno: string
   estadoArribo: string
+  fechaArribo: string
+  /** Id del contacto asignado como transportista, para poder dejarlo elegido en el desplegable. */
+  transportistaId: string | null
+  /** Coordenadas guardadas de la ubicación. En 0 cuando la dirección se escribió a mano. */
+  coordenadas: { lat: string; lng: string } | null
   /** Ids de los subitems (tractores) que van adentro. */
   tractorIds: string[]
   /** OP a la que pertenece, conectada a nivel item. */
@@ -399,6 +408,14 @@ export interface EdicionContenedor {
   transportistaId: string | null
   /** Si ya llegó. Se marca desde "Actualizar Contenedores". */
   estadoArribo?: string
+  /** Cuándo llegó. Por defecto hoy, pero se puede corregir si el arribo se marcó tarde. */
+  fechaArribo?: string
+}
+
+/** El turno de carga que le asigna el despachante a un contenedor. */
+export interface EdicionTurno {
+  fecha: string
+  hora: string
 }
 
 /** Etapa del asistente de "Actualizar OP - BERGER SA". */

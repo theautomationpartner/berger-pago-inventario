@@ -448,6 +448,12 @@ export const COL_CONT_DESPACHO = {
   fechaTurno: 'date_mm7a8jds',
   patente: 'text_mm7a8ngn',
   estadoArribo: 'color_mm7ar9rc',
+  /** Cuándo llegó. La app la escribe al marcar el arribo. */
+  fechaArribo: 'date_mm7dqnek',
+  /** Estado del aviso del turno al transportista. En "Enviado" ya se le escribió. */
+  estadoEnvioTurno: 'color_mm7dzv11',
+  /** ID legible del contenedor ("CONTENED-004"). Sólo lectura: lo numera monday. */
+  idContenedor: 'pulse_id_mm7da57j',
   /** Tractores que van adentro: subitems del Despachante de aduana. */
   tractores: 'board_relation_mm7abg4',
   /**
@@ -468,6 +474,20 @@ export const COL_CONT_DESPACHO = {
 } as const
 
 /** Etiquetas de "Estado de Arribo" (`color_mm7ar9rc`). */
+/**
+ * Estados del aviso del turno de carga al transportista (`color_mm7dzv11`).
+ *
+ * El circuito lo mueve una automatización de monday: se pone en `Enviar`, ella manda el correo y
+ * lo deja en `Enviado`. Para la app, `Enviado` significa "ya se le avisó a esta persona a esta
+ * hora", y por eso a partir de ahí no se toca ni el transportista ni el lugar de entrega.
+ */
+export const ESTADO_ENVIO_TURNO = {
+  ENVIAR: 'Enviar',
+  ENVIANDO: 'Enviando',
+  ENVIADO: 'Enviado',
+  ERROR: 'Error - Ver Update',
+} as const
+
 export const ESTADO_ARRIBO = {
   PENDIENTE: 'Pendientes de Arribar',
   ARRIBADO: 'Arribado',

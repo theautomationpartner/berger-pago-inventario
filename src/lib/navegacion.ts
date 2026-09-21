@@ -78,6 +78,14 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
     icono: 'fa-solid fa-pen-to-square',
   },
   {
+    id: 'turnos',
+    modulo: 'aduana',
+    titulo: 'ACTUALIZAR FECHA DE CARGA CONTENEDOR - DESPACHANTE',
+    corto: 'Fecha de carga · Despachante',
+    detalle: 'Citar el camión de cada contenedor: día y hora del turno de carga en la terminal.',
+    icono: 'fa-solid fa-calendar-day',
+  },
+  {
     id: 'berger',
     modulo: 'aduanaBerger',
     titulo: 'ACTUALIZAR OP - BERGER S.A.',

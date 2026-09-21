@@ -45,7 +45,8 @@ app.
 | Pago Vista | Tractor `VISTA` **y** `Fecha Confirmada` | `Pendiente de Pago` + despacho creado |
 | Actualizar Despacho OP - DESPACHANTE | OP creada por cualquiera de los dos pagos | estado de carga actualizado y contenedores armados |
 | Actualizar OP - BERGER S.A. | OP en `Próxima a Arribar` | pago, banco, VEP y entrega definidos |
-| Actualizar Contenedores - BERGER S.A. | Contenedor de una OP `Próxima a Arribar` o `Nacionalizado` | `Arribado` + ubicación de entrega |
+| Actualizar Fecha de Carga - DESPACHANTE | Contenedor sin `date_mm7a8jds` | turno de carga con día y hora |
+| Actualizar Contenedores - BERGER S.A. | Contenedor de una OP `Próxima a Arribar` o `Nacionalizado` | `Arribado` + fecha de arribo + entrega |
 
 ### 1.2 Tableros que intervienen
 
@@ -77,7 +78,7 @@ El acceso tiene **dos capas** y las dos son obligatorias:
 | Quién | Condiciones | Qué ve |
 |---|---|---|
 | Administración | Team = `Administracion` en la Lista Blanca **y** estar en el equipo Administración de monday (`1504155`) | **Todo** |
-| Despachante de aduana | Tipo = `INVITADO`, Team = `Despachantes` **y** estar en el equipo Despachantes de monday (`1504184`) | **Sólo** Actualizar Despacho OP - DESPACHANTE |
+| Despachante de aduana | Tipo = `INVITADO`, Team = `Despachantes` **y** estar en el equipo Despachantes de monday (`1504184`) | **Sólo** sus dos operaciones: Actualizar Despacho OP y Actualizar Fecha de Carga Contenedor |
 | Fila sin equipo cargado | — | Sólo Pagos Despacho |
 
 Internamente hay **seis módulos**: `drafts`, `fechas`, `despacho`, `aduana` (lo del despachante
@@ -775,16 +776,17 @@ antes de eso el trámite no arrancó. Un tractor está pendiente cuando su subit
 
 | Dato | Columna | Qué lleva |
 |---|---|---|
-| Nombre del item | `name` | la cuenta por modelo: `2 x 6205 G AGROTRON · 1 x 6175 G` |
+| Nombre del item | `name` | `N° de OP - N° de contenedor - cuenta por modelo` |
 | N° de contenedor | `text_mm7aye5e` | lo que cargó el despachante |
 | Fecha de Creación Contenedor | `date_mm7dxh72` | el día en que se armó |
 | Tractores que lleva | `board_relation_mm7abg4` | los subitems marcados |
 | OP de despacho | `board_relation_mm7d8kr1` | el **item** de la OP |
 
-**Consideración · el nombre dice qué lleva.** No repite el número de contenedor: en el tablero se
-lee primero el nombre, y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula.
-El número sigue estando, en su columna. Si un tractor no tiene modelo cargado se cuenta como
-"Sin modelo", para que la cuenta cierre igual.
+**Consideración · el nombre contesta tres preguntas.** De qué OP es, cuál de los contenedores es y
+qué lleva adentro, en ese orden: `2026-0143 - MSKU1234567 - 2 x 6205 G AGROTRON`. Los tres datos
+viven además en sus columnas; en el nombre están porque es lo único que se ve en una notificación,
+en un link o en la columna de conexión de otro tablero. Si un tractor no tiene modelo cargado se
+cuenta como "Sin modelo", para que la cuenta cierre igual.
 
 **Consideración · la conexión al item de la OP.** Va **además** de la de los subitems, y no es
 redundante: es la que le trae al contenedor, espejados, el N° de OP del despachante
@@ -804,7 +806,42 @@ despachante**. La estimación se muestra al lado, nada más, para que se vea la 
 destacado: dos unidades del mismo modelo tienen el mismo nombre y el mismo modelo, y el chasis es lo
 único que las distingue cuando hay que decir cuál va en cuál.
 
-### 5.3 El cruce: "Próxima a Arribar"
+### 5.3 Operación · ACTUALIZAR FECHA DE CARGA CONTENEDOR - DESPACHANTE
+
+**Qué hace.** Le asigna a cada contenedor su turno de carga en la terminal: día y hora. **Sólo el
+despachante** (módulo `aduana`), junto a su otra operación.
+
+**Por qué es suya.** El turno lo consigue él; BERGER se entera, no lo decide.
+
+**De dónde toma los datos.** 🚚 Contenedores completo, con los espejos de la OP.
+
+**Qué verifica antes de mostrar.** Por defecto sólo los que **no tienen turno** (`date_mm7a8jds`
+vacío): ésa es su lista de pendientes, un contenedor sin turno es un camión que nadie citó. "Todos"
+está a un clic. Busca por N° de contenedor, N° de OP, ID de la OP, chasis y estado de carga.
+
+**Sobre qué impacta.** Una sola columna: `date_mm7a8jds`, con día y hora.
+
+**Consideración · fecha y hora, juntas.** Son el mismo dato y viajan en una sola escritura. Un
+turno "el jueves" sin hora no le sirve al transportista, y en dos pasos se podía guardar la mitad;
+el botón no se habilita hasta que están las dos.
+
+**Consideración · la hora se guarda en UTC.** Una columna de fecha con hora almacena la hora en UTC
+y la muestra en la zona de la cuenta: las **09:00** se escriben **12:00:00** —comprobado leyendo un
+turno cargado a mano—. La conversión puede correr el DÍA (las 22:30 caen al día siguiente en UTC),
+así que se calcula con una fecha real y no sumando tres horas. El huso va fijo en `-03:00`, no el
+del navegador: el turno es en el puerto, no donde esté abierta la app.
+
+**Consideración · lo único que puede escribir es el turno.** Su operación del catálogo tiene una
+lista de columnas escribibles de **una sola**. La ubicación de entrega, el transportista y el
+arribo son de BERGER y quedan fuera de su alcance aunque conozca el id del item. Por la misma
+razón la lectura del tablero de contenedores existe **dos veces** en el catálogo, una por módulo:
+cada operación pertenece a uno solo, y esa simpleza es lo que permite auditar de un vistazo quién
+puede pedir qué.
+
+**Qué más muestra.** El detalle de la OP de cada contenedor —N° de OP, ID, estado de carga, chasis,
+arribo, entrega, patente— plegado por defecto.
+
+### 5.4 El cruce: "Próxima a Arribar"
 
 Ese estado es la bisagra entre el despachante y BERGER, y tiene dos reglas.
 
@@ -845,7 +882,7 @@ admite una versión por operación justamente para esto.
 Ninguna de las dos aborta nada: para cuando se llega ahí la OP ya está actualizada, así que un fallo
 del aviso se informa como advertencia.
 
-### 5.4 Operación · ACTUALIZAR OP - BERGER S.A.
+### 5.5 Operación · ACTUALIZAR OP - BERGER S.A.
 
 **Qué hace.** Define cómo se paga y cómo se entrega una carga que está por llegar. **Sólo
 Administración.**
@@ -904,6 +941,23 @@ Un tractor sin rodado se descarga distinto, así que un vacío no puede confundi
 **Consideración · por qué en el contenedor.** Cada contenedor puede ir a un lugar distinto y con un
 transportista distinto, así que esos dos datos viven ahí y no en la OP.
 
+**Consideración · los campos arrancan con lo que hay.** Incluido el transportista ya asignado —la
+conexión devuelve el id, que se resuelve contra la lista de contactos— y las coordenadas de la
+dirección, que la columna expone en campos propios (`lat`/`lng`) y no en su texto. Arrancar en
+blanco hacía que un contenedor ya completo se viera como pendiente y que la advertencia de "sin
+ubicar" saliera sobre una dirección perfectamente cargada.
+
+**Consideración · botón Actualizar.** La sección de contenedores tiene el suyo: el despachante y
+las automatizaciones tocan esos items mientras la pantalla está abierta, y sin el botón había que
+salir de la OP y volver a entrar.
+
+**Consideración · un contenedor coordinado no se toca.** Con fecha de turno (`date_mm7a8jds`) **y**
+el aviso ya enviado (`color_mm7dzv11` = `Enviado`), el transportista recibió un correo diciéndole
+dónde y cuándo. La entrega y el transportista pasan a sólo lectura con el motivo escrito:
+cambiarlos después deja al tablero diciendo una cosa y al mail otra, y el que maneja leyó el mail.
+Se corrige en monday, avisando a mano. Hacen falta **las dos** condiciones: con turno pero sin
+aviso enviado todavía se edita.
+
 **Consideración · se puede completar a medias.** Nada obliga a llenar todo de una vez: el banco suele
 definirse antes que el transporte, y sólo viaja lo que se cambió.
 
@@ -932,6 +986,10 @@ desde esta operación, cuando BERGER lo pasa a `PAGADO`.
 pantalla muestra su nombre con link y habilita las dos cosas **juntas**, porque marcar el pago sin
 adjuntar el comprobante deja media operación registrada.
 
+**Consideración · un pago no se deshace desde acá.** Con el estado ya en `PAGADO`, el desplegable
+queda fijo y no se ofrece subir otro comprobante: se muestra el que hay, con link. Si el pago se
+registró mal, se corrige en monday, donde queda asentado quién lo cambió.
+
 **Consideración · cada archivo, de su módulo.** El VEP pertenece al módulo `aduana` y el
 comprobante de pago a `aduanaBerger`. Así el despachante no puede subir el comprobante de pago ni
 BERGER el VEP, y eso lo verifica el servidor por la pertenencia de la columna, no la pantalla.
@@ -941,7 +999,7 @@ BERGER el VEP, y eso lo verifica el servidor por la pertenencia de la columna, n
 | VEP | `file_mm7d41zn` | el despachante | `aduana` |
 | Comprobante de pago del VEP | `file_mm7d3jvj` | BERGER | `aduanaBerger` |
 
-### 5.5 Operación · ACTUALIZAR CONTENEDORES - BERGER S.A.
+### 5.6 Operación · ACTUALIZAR CONTENEDORES - BERGER S.A.
 
 **Qué hace.** Marca los contenedores que ya llegaron y les carga la ubicación de entrega. **Sólo
 Administración** (módulo `aduanaBerger`).
@@ -966,6 +1024,7 @@ consulta—, con sus espejos de la OP, más el tablero de Contactos para elegir 
 | Dato | Columna |
 |---|---|
 | Estado de arribo | `color_mm7ar9rc` (*Arribado* / *Pendientes de Arribar*) |
+| Fecha de arribo | `date_mm7dqnek` |
 | Ubicación de entrega | `location_mm7a16dx` |
 | Transportista | `board_relation_mm7axy2m` |
 
@@ -974,15 +1033,21 @@ nombre del item, el N° de OP del despachante (`lookup_mm7d50jj`), el ID de la O
 (`lookup_mm7dq99y`) y el **chasis** de los tractores que lleva (`lookup_mm7ds57v`). Quien recibe el
 camión tiene a mano la matrícula o el remito, casi nunca el número de trámite.
 
+**Consideración · la fecha de arribo se propone, no se impone.** Al marcar el arribo la app carga
+**hoy** y lo dice con todas las letras antes de guardar, porque es lo que pasa casi siempre: se
+marca el día que llega. El campo queda editable justo abajo para el caso contrario —llegó el
+viernes y se marca el lunes—, con tope en hoy: un arribo futuro no existe. Destildar el arribo
+borra la fecha, para que no quede una fecha de algo que no pasó.
+
 **Consideración · se guarda de a uno.** Cada tarjeta tiene su botón. Son decisiones independientes
 —cada contenedor va a un lugar distinto— y guardar en bloque haría que un error en el tercero
 dejara en duda a los otros cinco.
 
-**Consideración · la ubicación y el transportista.** Igual que en 5.4: la dirección se elige del
+**Consideración · la ubicación y el transportista.** Igual que en 5.5: la dirección se elige del
 buscador para que viaje con coordenadas, y el desplegable de transportistas está filtrado por la
 categoría del tablero de Contactos.
 
-### 5.6 Operación · DASHBOARD DE DESPACHOS
+### 5.7 Operación · DASHBOARD DE DESPACHOS
 
 **Qué hace.** Lectura de conjunto del tablero del despachante. No escribe nada. **Sólo Administración
 lo ve.**
@@ -1099,7 +1164,8 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 👮 Despachante | update + notificaciones | aviso a Sofía y Micaela | al pasar a "Próxima a Arribar" |
 | 🚚 Contenedores | item completo: nombre por modelo, N°, `date_mm7dxh72`, tractores y OP | — | Armar contenedores |
 | 🚚 Contenedores | `location_mm7a16dx` y `board_relation_mm7axy2m` | entrega y transportista | Actualizar OP - BERGER · Actualizar Contenedores |
-| 🚚 Contenedores | `color_mm7ar9rc` | `Arribado` | Actualizar Contenedores - BERGER |
+| 🚚 Contenedores | `color_mm7ar9rc` y `date_mm7dqnek` | `Arribado` + fecha de arribo | Actualizar Contenedores - BERGER |
+| 🚚 Contenedores | `date_mm7a8jds` | turno de carga (día y hora) | Actualizar Fecha de Carga - DESPACHANTE |
 
 **Lo que la app NUNCA escribe:** importes y datos leídos del PDF de los drafts, el Catálogo de
 Productos, el tablero de Contenedores, y cualquier columna fuera de las listas de arriba.

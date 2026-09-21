@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
-import { fechaCorta } from '@/lib/format'
+import { fechaCorta, hoyISO } from '@/lib/format'
 import {
   ESTADO_ARRIBO,
   ESTADOS_CON_ARRIBO,
@@ -112,8 +112,10 @@ export function ActualizarContenedores() {
   const edicionDe = (c: ContenedorDespacho): EdicionContenedor =>
     ediciones[c.id] ?? {
       ubicacion: c.ubicacion,
-      transportistaId: null,
+      coordenadas: c.coordenadas,
+      transportistaId: c.transportistaId,
       estadoArribo: c.estadoArribo,
+      fechaArribo: c.fechaArribo,
     }
 
   const cambiar = (c: ContenedorDespacho, cambio: Partial<EdicionContenedor>) =>
@@ -124,9 +126,15 @@ export function ActualizarContenedores() {
     const e = ediciones[c.id]
     if (!e) return {}
     const parcial: Partial<EdicionContenedor> = {}
-    if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) parcial.ubicacion = e.ubicacion
-    if (e.transportistaId) parcial.transportistaId = e.transportistaId
+    if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) {
+      parcial.ubicacion = e.ubicacion
+      parcial.coordenadas = e.coordenadas ?? null
+    }
+    if ((e.transportistaId ?? null) !== (c.transportistaId ?? null)) {
+      parcial.transportistaId = e.transportistaId ?? null
+    }
     if ((e.estadoArribo ?? '') !== (c.estadoArribo ?? '')) parcial.estadoArribo = e.estadoArribo
+    if ((e.fechaArribo ?? '') !== (c.fechaArribo ?? '')) parcial.fechaArribo = e.fechaArribo
     return parcial
   }
 
@@ -148,7 +156,14 @@ export function ActualizarContenedores() {
             ? {
                 ...x,
                 ubicacion: cambios.ubicacion ?? x.ubicacion,
+                coordenadas:
+                  cambios.ubicacion !== undefined ? (cambios.coordenadas ?? null) : x.coordenadas,
                 estadoArribo: cambios.estadoArribo ?? x.estadoArribo,
+                fechaArribo: cambios.fechaArribo ?? x.fechaArribo,
+                transportistaId:
+                  cambios.transportistaId !== undefined
+                    ? cambios.transportistaId
+                    : x.transportistaId,
                 transportista: cambios.transportistaId
                   ? (contactos.find((k) => k.id === cambios.transportistaId)?.nombre ??
                     x.transportista)
@@ -334,9 +349,18 @@ export function ActualizarContenedores() {
                       aria-pressed={arribado}
                       className={`opcion opcion--confirmar${arribado ? ' opcion--elegida' : ''}`}
                       onClick={() =>
-                        cambiar(c, {
-                          estadoArribo: arribado ? ESTADO_ARRIBO.PENDIENTE : ESTADO_ARRIBO.ARRIBADO,
-                        })
+                        /* Al marcar el arribo se propone HOY, que es lo que pasa el 95% de las
+                           veces: se marca el día que llega. Queda editable justo abajo para el
+                           otro 5%, el contenedor que llegó el viernes y se marca el lunes. */
+                        cambiar(
+                          c,
+                          arribado
+                            ? { estadoArribo: ESTADO_ARRIBO.PENDIENTE, fechaArribo: '' }
+                            : {
+                                estadoArribo: ESTADO_ARRIBO.ARRIBADO,
+                                fechaArribo: e.fechaArribo || hoyISO(),
+                              },
+                        )
                       }
                     >
                       <span className="opcion-ic">
@@ -357,6 +381,40 @@ export function ActualizarContenedores() {
                       </span>
                     </button>
                   </div>
+
+                  {arribado && (
+                    <div className="arribo-fecha">
+                      <label className="campo campo--chico">
+                        <span className="campo-lbl">Fecha de arribo</span>
+                        <input
+                          className="input"
+                          type="date"
+                          value={e.fechaArribo ?? ''}
+                          max={hoyISO()}
+                          onChange={(ev) => cambiar(c, { fechaArribo: ev.target.value })}
+                        />
+                      </label>
+                      <span className="arribo-nota">
+                        {(e.fechaArribo ?? '') === hoyISO() ? (
+                          <>
+                            <i className="fa-solid fa-circle-info" aria-hidden="true" /> Se va a
+                            guardar con la fecha de <b>hoy</b>. Si llegó antes y recién ahora lo
+                            marcás, cambiála.
+                          </>
+                        ) : e.fechaArribo ? (
+                          <>
+                            <i className="fa-solid fa-calendar-check" aria-hidden="true" /> Llegó el{' '}
+                            <b>{fechaCorta(e.fechaArribo)}</b>, no hoy.
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Va
+                            a quedar arribado sin fecha.
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="datos datos--form" style={{ marginTop: 12 }}>
                     <div className="campo">

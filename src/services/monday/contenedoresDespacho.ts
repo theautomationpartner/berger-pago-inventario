@@ -7,7 +7,7 @@
  * la estimación que hizo la app al crear el despacho.
  */
 import { nombreDeContenedor } from '@/lib/despachos'
-import { hoyISO } from '@/lib/format'
+import { aFechaHoraMonday, horaDelTexto, hoyISO } from '@/lib/format'
 import type { Contacto, ContenedorDespacho, TractorDeOp } from '@/types'
 import {
   CATEGORIA_CONTACTO,
@@ -20,6 +20,9 @@ import { mondayApi } from './sdk'
 
 interface ColumnaRica extends ColumnaCruda {
   linked_item_ids?: string[] | null
+  /** Sólo en las columnas de ubicación: el punto del mapa, aparte de la dirección. */
+  lat?: string | null
+  lng?: string | null
 }
 
 interface SubitemCrudo {
@@ -46,6 +49,8 @@ const COLUMNAS_CONTENEDOR = [
   COL_CONT_DESPACHO.patente,
   COL_CONT_DESPACHO.fechaTurno,
   COL_CONT_DESPACHO.estadoArribo,
+  COL_CONT_DESPACHO.fechaArribo,
+  COL_CONT_DESPACHO.estadoEnvioTurno,
   COL_CONT_DESPACHO.tractores,
   COL_CONT_DESPACHO.opDespacho,
   COL_CONT_DESPACHO.nroOpDespachante,
@@ -53,6 +58,20 @@ const COLUMNAS_CONTENEDOR = [
   COL_CONT_DESPACHO.estadoCargaOp,
   COL_CONT_DESPACHO.chasis,
 ]
+
+/**
+ * Las coordenadas guardadas de una ubicación.
+ *
+ * NO están en `text`, que es sólo la dirección escrita: la columna las expone en campos propios
+ * (`lat`/`lng`) y por eso la consulta los pide aparte. Las de una dirección tipeada a mano son
+ * "0"/"0", y eso hay que distinguirlo de una bien ubicada: es lo que decide si la pantalla avisa
+ * que el punto del mapa quedó sin definir.
+ */
+function coordenadasDe(c: ColumnaRica | undefined): { lat: string; lng: string } | null {
+  if (!c?.lat || !c?.lng) return null
+  if (Number(c.lat) === 0 && Number(c.lng) === 0) return null
+  return { lat: String(c.lat), lng: String(c.lng) }
+}
 
 /** Un item del tablero de contenedores, ya normalizado. */
 function aContenedor(item: {
@@ -70,7 +89,14 @@ function aContenedor(item: {
     transportista: texto(c[COL_CONT_DESPACHO.transportista]),
     patente: texto(c[COL_CONT_DESPACHO.patente]),
     fechaTurno: fechaISO(c[COL_CONT_DESPACHO.fechaTurno]),
+    /* La hora sale del TEXTO y no del valor crudo: el texto ya viene en la zona horaria de la
+       cuenta, que es la que le importa a quien va a cargar el camión. */
+    horaTurno: horaDelTexto(texto(c[COL_CONT_DESPACHO.fechaTurno])),
+    estadoEnvioTurno: texto(c[COL_CONT_DESPACHO.estadoEnvioTurno]),
     estadoArribo: texto(c[COL_CONT_DESPACHO.estadoArribo]),
+    fechaArribo: fechaISO(c[COL_CONT_DESPACHO.fechaArribo]),
+    transportistaId: c[COL_CONT_DESPACHO.transportista]?.linked_item_ids?.[0] ?? null,
+    coordenadas: coordenadasDe(c[COL_CONT_DESPACHO.ubicacion]),
     tractorIds: c[COL_CONT_DESPACHO.tractores]?.linked_item_ids ?? [],
     opId: c[COL_CONT_DESPACHO.opDespacho]?.linked_item_ids?.[0] ?? null,
     // Los espejos traen su valor en `display_value`, nunca en `text`.
@@ -133,12 +159,15 @@ export async function contenedoresPorIds(ids: string[]): Promise<ContenedorDespa
  * contenedor, porque un camión llega y se descarga de a uno. El filtro por estado lo hace la
  * pantalla, que es instantáneo: el tablero crece de a un puñado de filas por despacho.
  */
-export async function contenedoresDelTablero(): Promise<ContenedorDespacho[]> {
+export async function contenedoresDelTablero(
+  operacion:
+    'contenedoresDelTablero' | 'contenedoresDelTableroDespachante' = 'contenedoresDelTablero',
+): Promise<ContenedorDespacho[]> {
   const r = await mondayApi<{
     boards: {
       items_page: { items: { id: string; name: string; column_values: ColumnaRica[] }[] }
     }[]
-  }>('contenedoresDelTablero', { columnas: COLUMNAS_CONTENEDOR, limite: 500 })
+  }>(operacion, { columnas: COLUMNAS_CONTENEDOR, limite: 500 })
 
   return (
     (r.boards?.[0]?.items_page.items ?? [])
@@ -168,11 +197,16 @@ export async function crearContenedor(
   numero: string,
   tractores: TractorDeOp[],
   opId: string,
+  nroOp: string,
 ): Promise<string> {
   const r = await mondayApi<{ create_item: { id: string } }>('crearContenedorDespacho', {
-    // El nombre dice QUÉ lleva; el número va en su columna. En el tablero se ve primero el nombre,
-    // y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula de contenedor.
-    nombre: nombreDeContenedor(tractores),
+    /* El nombre contesta las tres preguntas que se hacen mirando el tablero, en ese orden: de qué
+       OP es, cuál de los contenedores es, y qué lleva adentro. El número y la OP también viven en
+       sus columnas; acá están porque el nombre es lo único que se ve en una notificación, en un
+       link o en la columna de conexión de otro tablero. */
+    nombre: [nroOp.trim(), numero.trim(), nombreDeContenedor(tractores)]
+      .filter(Boolean)
+      .join(' - '),
     valores: JSON.stringify({
       [COL_CONT_DESPACHO.numero]: numero,
       [COL_CONT_DESPACHO.fechaCreacion]: { date: hoyISO() },
@@ -193,6 +227,7 @@ export async function actualizarContenedor(
     coordenadas?: { lat: string; lng: string } | null
     transportistaId?: string | null
     estadoArribo?: string
+    fechaArribo?: string
   },
 ): Promise<string> {
   const valores: Record<string, unknown> = {}
@@ -221,9 +256,37 @@ export async function actualizarContenedor(
       ? { label: cambios.estadoArribo }
       : {}
   }
+  if (cambios.fechaArribo !== undefined) {
+    valores[COL_CONT_DESPACHO.fechaArribo] = cambios.fechaArribo
+      ? { date: cambios.fechaArribo }
+      : {}
+  }
   if (Object.keys(valores).length === 0) throw new Error('No hay cambios para guardar.')
 
   await mondayApi('actualizarContenedorDespacho', { item: id, valores: JSON.stringify(valores) })
+  return id
+}
+
+/**
+ * El turno de carga que le asigna el despachante a un contenedor.
+ *
+ * Fecha y hora van juntas en la misma columna y en una sola escritura: son el mismo dato, y
+ * dejarlas en dos pasos permitía guardar un día sin hora, que para el transportista no sirve.
+ */
+export async function asignarTurnoDeCarga(
+  id: string,
+  fecha: string,
+  hora: string,
+): Promise<string> {
+  if (!fecha) throw new Error('Falta la fecha del turno.')
+  if (!hora) throw new Error('Falta la hora del turno.')
+
+  /* Va por su propia operación y no por la de BERGER: esa admite escribir la ubicación, el
+     transportista y el arribo, y el despachante no tiene por qué poder tocar nada de eso. */
+  await mondayApi('asignarTurnoContenedor', {
+    item: id,
+    valores: JSON.stringify({ [COL_CONT_DESPACHO.fechaTurno]: aFechaHoraMonday(fecha, hora) }),
+  })
   return id
 }
 

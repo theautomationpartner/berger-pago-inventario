@@ -36,6 +36,8 @@ DESPACHO DE ADUANA       →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
                             - DESPACHANTE               2. Qué hacer
                                                         3a. Actualización + resumen
                                                         3b. Armar contenedores
+                         →  ACTUALIZAR FECHA DE      →  pantalla única
+                            CARGA - DESPACHANTE
                          →  ACTUALIZAR OP - BERGER   →  1. OP próximas a arribar
                                                         2. Pago y entrega
                          →  ACTUALIZAR CONTENEDORES  →  pantalla única
@@ -688,15 +690,16 @@ guardar se crea un item en 🚚**Contenedores** (`18431711942`) con:
 
 | Qué | Columna | De dónde sale |
 |---|---|---|
-| Nombre del item | *(el nombre)* | `2 x 6205 G AGROTRON · 1 x 6175 G` — la cuenta por modelo |
+| Nombre del item | *(el nombre)* | `2026-0143 - MSKU1234567 - 2 x 6205 G AGROTRON` |
 | N° de contenedor | `text_mm7aye5e` | lo que cargó el despachante |
 | Fecha de creación | `date_mm7dxh72` | el día en que se armó |
 | Tractores | `board_relation_mm7abg4` | los subitems marcados |
 | OP | `board_relation_mm7d8kr1` | el **item** de la OP |
 
-El **nombre dice qué lleva**, no cómo se llama el contenedor: en el tablero se lee primero el
-nombre, y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula. El número sigue
-estando, en su columna.
+El nombre contesta las **tres preguntas** que se hacen mirando el tablero, en ese orden: de qué OP
+es, cuál de los contenedores es, y qué lleva adentro. Los tres datos viven además en sus columnas;
+en el nombre están porque es lo único que se ve en una notificación, en un link o en la columna de
+conexión de otro tablero.
 
 La conexión al **item** de la OP va además de la de los subitems, y no es redundante: es la que le
 trae al contenedor el N° de OP del despachante (`lookup_mm7d50jj`), el ID de la OP
@@ -705,6 +708,32 @@ sabría de qué despacho es, y es con esos espejos con lo que después se lo bus
 
 **La conexión es de doble vía**, así que monday completa solo el lado del subitem —probado contra
 la API—.
+
+### ACTUALIZAR FECHA DE CARGA CONTENEDOR - DESPACHANTE
+
+La segunda operación del despachante. Él es quien consigue el turno en la terminal, así que es
+quien lo carga.
+
+Arranca mostrando **los contenedores sin turno** (`date_mm7a8jds` vacío), que es exactamente su
+lista de pendientes: cada uno es un camión que nadie citó todavía. "Todos" está a un clic. El
+buscador cubre N° de contenedor, N° de OP, ID de la OP, chasis y estado de carga.
+
+**Fecha y hora se cargan juntas, en una sola escritura.** Son el mismo dato: un turno "el jueves"
+sin hora no le sirve al transportista, y en dos pasos se podía guardar la mitad. El botón no se
+habilita hasta que están las dos.
+
+> **La hora se guarda en UTC.** Una columna de fecha con hora de monday almacena la hora en UTC y
+> la muestra en la zona de la cuenta: un turno de las **09:00** se escribe como **12:00:00**
+> —comprobado leyendo uno cargado a mano—. La conversión puede correr el día (las 22:30 caen al
+> día siguiente en UTC), así que se calcula con una fecha real y no sumando tres horas. Argentina
+> no tiene horario de verano desde 2009, y el huso va fijo en `-03:00` porque el turno es en el
+> puerto, no donde esté abierta la app.
+
+Cada contenedor despliega el detalle de su OP —N° de OP, ID, estado de carga, chasis, arribo,
+entrega, patente—, plegado por defecto. **Lo único que el despachante escribe es el turno:** su
+operación del catálogo tiene una lista de columnas escribibles de **una sola**, así que la
+ubicación de entrega, el transportista y el arribo quedan fuera de su alcance aunque conozca el id
+del item.
 
 ### "Próxima a Arribar": el cruce entre los dos
 
@@ -780,7 +809,19 @@ Dos cosas en la misma pantalla, porque se deciden juntas:
 | Transportista | `board_relation_mm7axy2m` (del tablero de Contactos) |
 
 Van en el contenedor y no en la OP porque cada uno puede ir a un lugar distinto y con un
-transportista distinto. Se puede completar sólo una parte: el banco suele definirse antes que el
+transportista distinto.
+
+**Cada campo arranca con lo que hay en monday**, incluidos el transportista ya asignado —que se
+resuelve del id de la conexión contra la lista de contactos— y las coordenadas de la dirección.
+Arrancar en blanco hacía que un contenedor ya completo se viera como pendiente. La sección tiene
+su propio botón **Actualizar**: el despachante y las automatizaciones tocan esos contenedores
+mientras la pantalla está abierta.
+
+**Un contenedor ya coordinado no se toca.** Cuando tiene fecha de turno **y** el aviso salió
+(`color_mm7dzv11` = `Enviado`), el transportista ya recibió un correo diciéndole dónde y cuándo.
+La entrega y el transportista pasan a sólo lectura, con el motivo escrito: cambiarlos después deja
+al tablero diciendo una cosa y al mail otra, y el que maneja leyó el mail. Se corrige en monday,
+avisando a mano. Se puede completar sólo una parte: el banco suele definirse antes que el
 transporte.
 
 > **La ubicación se elige, no se escribe.** Una columna de tipo location de monday rechaza la
@@ -827,6 +868,11 @@ por el tablero de 🚚**Contenedores** y no por la OP. Es del módulo `aduanaBer
 | Arribado / Pendiente de Arribar | `color_mm7ar9rc` |
 | Ubicación de entrega | `location_mm7a16dx` |
 | Transportista | `board_relation_mm7axy2m` |
+
+**Al marcar el arribo se guarda la fecha.** Se propone **hoy**, que es lo que pasa casi siempre,
+y la pantalla lo dice antes de guardar. Queda editable ahí mismo para el caso contrario: el
+contenedor que llegó el viernes y se marca el lunes. Va a `date_mm7dqnek`, y destildar el arribo
+la borra.
 
 **Sólo se marca arribo de lo que puede haber llegado.** El estado de carga de la OP se lee del
 espejo `lookup_mm7d9537`, y el toggle de arribo aparece únicamente si esa OP está en **Próxima a

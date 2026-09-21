@@ -106,6 +106,7 @@ export function ArmarContenedores({ op, tractores, armados, onVolver, onListo }:
           c.numero.trim(),
           pendientes.filter((t) => c.tractorIds.includes(t.id)),
           op.id,
+          op.nroOp,
         )
         creados.push(c.numero.trim())
       } catch (e) {

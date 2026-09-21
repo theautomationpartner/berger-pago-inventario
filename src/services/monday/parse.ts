@@ -65,6 +65,9 @@ export function aNumeroEspejo(valor: string): number | null {
 
 /** Fecha ISO (`YYYY-MM-DD`) de una columna `date`, o `''` si el item no la tiene cargada. */
 export function fechaISO(c: ColumnaCruda | undefined): string {
+  /* Una columna de fecha CON HORA devuelve "2026-09-01 09:00", así que no alcanza con exigir que
+     el texto entero sea una fecha: hay que quedarse con la parte del día. */
   const t = texto(c)
-  return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ''
+  const dia = t.slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : ''
 }

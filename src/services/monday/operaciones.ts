@@ -76,6 +76,8 @@ export type NombreOperacion =
   | 'tractoresDeOp'
   | 'contenedoresDeDespacho'
   | 'contenedoresDelTablero'
+  | 'contenedoresDelTableroDespachante'
+  | 'asignarTurnoContenedor'
   | 'crearContenedorDespacho'
   | 'actualizarContenedorDespacho'
   | 'contactos'
@@ -203,6 +205,15 @@ const COLUMNAS_DE_BERGER = new Set<string>([
   COL_DESPACHANTE.estadoPagoVep,
 ])
 
+/**
+ * Lo único que el DESPACHANTE escribe de un contenedor: el turno de carga.
+ *
+ * Una sola columna. La ubicación de entrega y el transportista los define BERGER, y el arribo se
+ * marca cuando la carga llega; que la lista sea de uno es lo que garantiza que no pueda tocar lo
+ * demás aunque sepa el id del item.
+ */
+const COLUMNAS_DE_TURNO = new Set<string>([COL_CONT_DESPACHO.fechaTurno])
+
 /** Lo que se puede escribir de un contenedor del despacho. */
 const COLUMNAS_DE_CONTENEDOR = new Set<string>([
   COL_CONT_DESPACHO.numero,
@@ -212,6 +223,8 @@ const COLUMNAS_DE_CONTENEDOR = new Set<string>([
   COL_CONT_DESPACHO.ubicacion,
   COL_CONT_DESPACHO.transportista,
   COL_CONT_DESPACHO.estadoArribo,
+  COL_CONT_DESPACHO.fechaArribo,
+  COL_CONT_DESPACHO.fechaTurno,
 ])
 
 /** Lo único que la app escribe de una confirmación: el disparador del envío. */
@@ -424,7 +437,25 @@ const CAMPOS_COLUMNA = `
   text
   ... on MirrorValue { display_value }
   ... on BoardRelationValue { linked_item_ids }
+  ... on LocationValue { lat lng }
 `
+
+/** Todos los contenedores del tablero. La usan BERGER y el despachante, cada uno con su módulo. */
+const CONSULTA_CONTENEDORES = `
+  query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
+    boards(ids: [$tablero]) {
+      items_page(limit: $limite) {
+        items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+      }
+    }
+  }
+`
+
+const validarTablero = (v: Record<string, unknown>) => ({
+  tablero: TABLEROS.contenedoresDespacho,
+  columnas: idsDeColumnas(v.columnas),
+  limite: entero(v.limite, 'limite', 1, 500),
+})
 
 /* ------------------------------------------------------------------ *
  * El catálogo
@@ -1088,19 +1119,40 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
    */
   contenedoresDelTablero: {
     modulo: 'aduanaBerger',
+    query: CONSULTA_CONTENEDORES,
+    validar: validarTablero,
+  },
+
+  /**
+   * Lo mismo, para el DESPACHANTE.
+   *
+   * Es una entrada aparte y no la misma con dos módulos porque el catálogo asocia cada operación
+   * a UN módulo, y esa simpleza es lo que hace que se pueda auditar de un vistazo quién puede
+   * pedir qué. La consulta es la misma; lo que cambia es quién la ejecuta.
+   */
+  contenedoresDelTableroDespachante: {
+    modulo: 'aduana',
+    query: CONSULTA_CONTENEDORES,
+    validar: validarTablero,
+  },
+
+  /**
+   * El turno de carga: lo único que el despachante escribe en un contenedor.
+   *
+   * Comparte la mutation con la de BERGER pero NO su lista de columnas: acá la única escribible
+   * es la fecha del turno.
+   */
+  asignarTurnoContenedor: {
+    modulo: 'aduana',
     query: `
-      query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
-        boards(ids: [$tablero]) {
-          items_page(limit: $limite) {
-            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
-          }
-        }
+      mutation ($tablero: ID!, $item: ID!, $valores: JSON!) {
+        change_multiple_column_values(board_id: $tablero, item_id: $item, column_values: $valores) { id }
       }
     `,
     validar: (v) => ({
       tablero: TABLEROS.contenedoresDespacho,
-      columnas: idsDeColumnas(v.columnas),
-      limite: entero(v.limite, 'limite', 1, 500),
+      item: idMonday(v.item, 'item'),
+      valores: valoresAcotados(v.valores, COLUMNAS_DE_TURNO, 'el turno de carga'),
     }),
   },
 

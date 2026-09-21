@@ -6,6 +6,7 @@ import { fechaCorta } from '@/lib/format'
 import {
   BANCO_DECLARAR,
   COL_DESPACHANTE,
+  ESTADO_ENVIO_TURNO,
   ESTADO_PAGO_VEP,
   FONDEO,
   FORMA_PAGO_OP,
@@ -43,6 +44,15 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
  * Una columna de archivo de monday devuelve la URL completa del recurso, que es larguísima y no
  * dice nada; lo que importa en pantalla es cómo se llama el PDF.
  */
+/**
+ * El nombre del transportista asignado.
+ *
+ * Una columna de conexión devuelve el id del item, nunca su nombre, así que se resuelve contra la
+ * lista de contactos que la pantalla ya tiene cargada.
+ */
+const nombreDelContacto = (id: string | null, contactos: Contacto[]): string =>
+  contactos.find((x) => x.id === id)?.nombre ?? ''
+
 const nombreDeArchivo = (valor: string): string => {
   const ultimo = valor.split('/').pop() ?? valor
   try {
@@ -187,9 +197,20 @@ export function ActualizarOpBerger() {
       setTractores(lista)
       const conts = await contenedoresDeOp(lista)
       setContenedores(conts)
+      /* Cada campo arranca con LO QUE HAY en monday, incluido el transportista ya asignado y las
+         coordenadas de la dirección. Arrancar en blanco hacía que un contenedor ya completo se
+         viera como pendiente, y que la advertencia de "sin ubicar" saliera sobre una dirección
+         que estaba perfectamente cargada. */
       setEdiciones(
         Object.fromEntries(
-          conts.map((c) => [c.id, { ubicacion: c.ubicacion, transportistaId: null }]),
+          conts.map((c) => [
+            c.id,
+            {
+              ubicacion: c.ubicacion,
+              coordenadas: c.coordenadas,
+              transportistaId: c.transportistaId,
+            },
+          ]),
         ),
       )
     } catch (e) {
@@ -229,6 +250,17 @@ export function ActualizarOpBerger() {
   }
 
   /**
+   * ¿Este contenedor ya está coordinado con el transportista?
+   *
+   * Cuando tiene fecha de turno **y** el aviso salió (`Enviado`), el transportista ya recibió un
+   * correo diciéndole dónde y cuándo. Cambiarle el lugar de entrega o la empresa después de eso
+   * deja al tablero diciendo una cosa y al mail otra, y el que va a manejar leyó el mail. Por eso
+   * esos dos campos quedan en modo lectura, y se corrigen desde monday avisando a mano.
+   */
+  const coordinado = (c: ContenedorDespacho): boolean =>
+    Boolean(c.fechaTurno) && c.estadoEnvioTurno === ESTADO_ENVIO_TURNO.ENVIADO
+
+  /**
    * ¿El despachante ya emitió el VEP?
    *
    * Es la condición para que BERGER pueda pagarlo: mientras esa columna esté vacía no hay VEP que
@@ -236,6 +268,15 @@ export function ActualizarOpBerger() {
    * la OP, no un estado: el archivo es el hecho.
    */
   const hayVep = Boolean(elegida?.archivos[COL_DESPACHANTE.vepDespachante]?.trim())
+
+  /**
+   * ¿El VEP ya está pagado?
+   *
+   * Un pago no se deshace desde una pantalla de carga. Una vez marcado `PAGADO` el estado queda
+   * fijo y no se ofrece subir otro comprobante: si el pago se hizo mal, eso se arregla en monday
+   * —donde queda registro de quién lo cambió— y no volviendo atrás desde acá.
+   */
+  const vepPagado = elegida?.estadoPagoVep === ESTADO_PAGO_VEP.PAGADO
 
   /** Lo que cambió de la OP respecto de lo que hay en monday. */
   const cambiosDeOp = (): Partial<EdicionBerger> => {
@@ -253,8 +294,14 @@ export function ActualizarOpBerger() {
     const e = ediciones[c.id]
     if (!e) return {}
     const parcial: Partial<EdicionContenedor> = {}
-    if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) parcial.ubicacion = e.ubicacion
-    if (e.transportistaId) parcial.transportistaId = e.transportistaId
+    if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) {
+      parcial.ubicacion = e.ubicacion
+      parcial.coordenadas = e.coordenadas ?? null
+    }
+    // Se compara contra el transportista que YA tiene: si no cambió, no se reescribe.
+    if ((e.transportistaId ?? null) !== (c.transportistaId ?? null)) {
+      parcial.transportistaId = e.transportistaId ?? null
+    }
     return parcial
   }
 
@@ -567,8 +614,12 @@ export function ActualizarOpBerger() {
                       valor={edicion.estadoPagoVep}
                       opciones={[ESTADO_PAGO_VEP.NO_PAGADO, ESTADO_PAGO_VEP.PAGADO]}
                       onCambiar={(v) => setEdicion({ ...edicion, estadoPagoVep: v })}
-                      bloqueado={!hayVep}
-                      motivo="El despachante todavía no subió el VEP"
+                      bloqueado={!hayVep || vepPagado}
+                      motivo={
+                        !hayVep
+                          ? 'El despachante todavía no subió el VEP'
+                          : 'Ya está pagado: para revertirlo, se cambia en monday'
+                      }
                     />
                   </div>
 
@@ -592,22 +643,54 @@ export function ActualizarOpBerger() {
                             {nombreDeArchivo(elegida.archivos[COL_DESPACHANTE.vepDespachante])}
                           </a>
                         </div>
-                        <span className="vep-det">
-                          Ya se puede pagar. Marcá el estado como <b>{ESTADO_PAGO_VEP.PAGADO}</b> y
-                          adjuntá el comprobante del pago.
-                        </span>
-                        <ZonaArchivo
-                          archivo={comprobanteVep}
-                          onElegir={setComprobanteVep}
-                          acepta=".pdf,.jpg,.jpeg,.png"
-                          titulo={
-                            elegida.archivos[COL_DESPACHANTE.comprobanteVep]
-                              ? `Ya hay un comprobante cargado (${nombreDeArchivo(
-                                  elegida.archivos[COL_DESPACHANTE.comprobanteVep],
-                                )}) · subir otro`
-                              : 'Comprobante de pago del VEP'
-                          }
-                        />
+                        {vepPagado ? (
+                          <>
+                            <span className="vep-det">
+                              Este VEP ya figura como <b>{ESTADO_PAGO_VEP.PAGADO}</b>. El estado y
+                              el comprobante quedan cerrados: un pago registrado no se deshace desde
+                              acá.
+                            </span>
+                            {elegida.archivos[COL_DESPACHANTE.comprobanteVep] ? (
+                              <a
+                                className="chip chip--verde chip--link"
+                                href={elegida.archivos[COL_DESPACHANTE.comprobanteVep]}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <i className="fa-solid fa-paperclip" aria-hidden="true" />{' '}
+                                {nombreDeArchivo(elegida.archivos[COL_DESPACHANTE.comprobanteVep])}
+                              </a>
+                            ) : (
+                              <span className="campo-ayuda campo-ayuda--aviso">
+                                <i
+                                  className="fa-solid fa-triangle-exclamation"
+                                  aria-hidden="true"
+                                />{' '}
+                                Quedó marcado como pagado sin comprobante adjunto. Se sube desde
+                                monday.
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="vep-det">
+                              Ya se puede pagar. Marcá el estado como{' '}
+                              <b>{ESTADO_PAGO_VEP.PAGADO}</b> y adjuntá el comprobante del pago.
+                            </span>
+                            <ZonaArchivo
+                              archivo={comprobanteVep}
+                              onElegir={setComprobanteVep}
+                              acepta=".pdf,.jpg,.jpeg,.png"
+                              titulo={
+                                elegida.archivos[COL_DESPACHANTE.comprobanteVep]
+                                  ? `Ya hay un comprobante cargado (${nombreDeArchivo(
+                                      elegida.archivos[COL_DESPACHANTE.comprobanteVep],
+                                    )}) · subir otro`
+                                  : 'Comprobante de pago del VEP'
+                              }
+                            />
+                          </>
+                        )}
                       </>
                     ) : (
                       <div className="aviso aviso--alerta" style={{ margin: 0 }}>
@@ -635,6 +718,22 @@ export function ActualizarOpBerger() {
                     así que se cargan de a uno.
                   </span>
                 </span>
+                {/* Los contenedores los toca también el despachante —y monday, con sus
+                    automatizaciones— mientras esta pantalla está abierta. El botón evita tener
+                    que salir y volver a entrar a la OP para ver lo último. */}
+                <button
+                  type="button"
+                  className="btn btn--borde btn--chico"
+                  style={{ marginLeft: 'auto' }}
+                  disabled={cargandoDetalle || !elegida}
+                  onClick={() => elegida && void cargarDetalle(elegida)}
+                >
+                  <i
+                    className={`fa-solid fa-rotate${cargandoDetalle ? ' fa-spin' : ''}`}
+                    aria-hidden="true"
+                  />{' '}
+                  Actualizar
+                </button>
               </div>
 
               {cargandoDetalle && (
@@ -656,8 +755,13 @@ export function ActualizarOpBerger() {
 
               <div className="op-editores">
                 {contenedores.map((c) => {
-                  const e = ediciones[c.id] ?? { ubicacion: c.ubicacion, transportistaId: null }
+                  const e = ediciones[c.id] ?? {
+                    ubicacion: c.ubicacion,
+                    coordenadas: c.coordenadas,
+                    transportistaId: c.transportistaId,
+                  }
                   const dentro = tractores.filter((t) => t.contenedorId === c.id)
+                  const cerrado = coordinado(c)
                   return (
                     <div key={c.id} className="card card--flush op-editor">
                       <div className="ctitle op-editor-head">
@@ -675,7 +779,11 @@ export function ActualizarOpBerger() {
                           {c.fechaTurno && (
                             <span className="chip chip--azul">
                               Turno {fechaCorta(c.fechaTurno)}
+                              {c.horaTurno ? ` ${c.horaTurno}` : ''}
                             </span>
+                          )}
+                          {c.estadoEnvioTurno === ESTADO_ENVIO_TURNO.ENVIADO && (
+                            <span className="chip chip--verde">Aviso enviado</span>
                           )}
                           <a
                             className="btn btn--texto btn--chico"
@@ -705,46 +813,75 @@ export function ActualizarOpBerger() {
                           </div>
                         )}
 
+                        {cerrado && (
+                          <div className="aviso aviso--ok" style={{ marginBottom: 12 }}>
+                            <i className="fa-solid fa-lock" aria-hidden="true" />
+                            <span>
+                              <b>Ya se le avisó al transportista.</b> El turno quedó para el{' '}
+                              {fechaCorta(c.fechaTurno)}
+                              {c.horaTurno ? ` a las ${c.horaTurno}` : ''} y el correo salió, así
+                              que la entrega y el transportista no se editan desde acá: el mail que
+                              recibió diría una cosa y el tablero otra. Si hay que cambiarlos, se
+                              corrige en monday y se le avisa.
+                            </span>
+                          </div>
+                        )}
+
                         <div className="datos datos--form">
                           <div className="campo">
                             <span className="campo-lbl">Ubicación de entrega</span>
-                            <SelectorUbicacion
-                              valor={e.ubicacion}
-                              coordenadas={e.coordenadas}
-                              onCambiar={(direccion, coordenadas) =>
-                                setEdiciones((a) => ({
-                                  ...a,
-                                  [c.id]: { ...e, ubicacion: direccion, coordenadas },
-                                }))
-                              }
-                            />
+                            {cerrado ? (
+                              <span className="campo-fijo">
+                                <i className="fa-solid fa-location-dot" aria-hidden="true" />{' '}
+                                {c.ubicacion || 'Sin cargar'}
+                              </span>
+                            ) : (
+                              <SelectorUbicacion
+                                valor={e.ubicacion}
+                                coordenadas={e.coordenadas}
+                                onCambiar={(direccion, coordenadas) =>
+                                  setEdiciones((a) => ({
+                                    ...a,
+                                    [c.id]: { ...e, ubicacion: direccion, coordenadas },
+                                  }))
+                                }
+                              />
+                            )}
                           </div>
 
                           <label className="campo">
                             <span className="campo-lbl">Transportista</span>
-                            <select
-                              className="select"
-                              value={e.transportistaId ?? ''}
-                              onChange={(ev) =>
-                                setEdiciones((a) => ({
-                                  ...a,
-                                  [c.id]: { ...e, transportistaId: ev.target.value || null },
-                                }))
-                              }
-                            >
-                              <option value="">
-                                {c.transportista ? `Actual: ${c.transportista}` : '(sin asignar)'}
-                              </option>
-                              {contactos.map((x) => (
-                                <option key={x.id} value={x.id}>
-                                  {x.nombre}
-                                </option>
-                              ))}
-                            </select>
-                            {contactos.length === 0 && (
-                              <span className="campo-ayuda">
-                                No se pudieron leer los contactos. Podés cargarlo desde el tablero.
+                            {cerrado ? (
+                              <span className="campo-fijo">
+                                <i className="fa-solid fa-truck-fast" aria-hidden="true" />{' '}
+                                {nombreDelContacto(c.transportistaId, contactos) || 'Sin asignar'}
                               </span>
+                            ) : (
+                              <>
+                                <select
+                                  className="select"
+                                  value={e.transportistaId ?? ''}
+                                  onChange={(ev) =>
+                                    setEdiciones((a) => ({
+                                      ...a,
+                                      [c.id]: { ...e, transportistaId: ev.target.value || null },
+                                    }))
+                                  }
+                                >
+                                  <option value="">(sin asignar)</option>
+                                  {contactos.map((x) => (
+                                    <option key={x.id} value={x.id}>
+                                      {x.nombre}
+                                    </option>
+                                  ))}
+                                </select>
+                                {contactos.length === 0 && (
+                                  <span className="campo-ayuda">
+                                    No se pudieron leer los contactos. Podés cargarlo desde el
+                                    tablero.
+                                  </span>
+                                )}
+                              </>
                             )}
                           </label>
                         </div>

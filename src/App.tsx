@@ -6,6 +6,7 @@ import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
 import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
 import { ActualizarContenedores } from '@/features/aduana/ActualizarContenedores'
 import { ActualizarOpBerger } from '@/features/aduana/ActualizarOpBerger'
+import { ActualizarTurnos } from '@/features/aduana/ActualizarTurnos'
 import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
 import { ConfirmarProponerFecha } from '@/features/fechas/ConfirmarProponerFecha'
@@ -251,6 +252,9 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
       {principal === 'aduana' &&
         operacionAduana === 'berger' &&
         puedeEnAduana(sesion.modulos, 'berger') && <ActualizarOpBerger />}
+      {principal === 'aduana' &&
+        operacionAduana === 'turnos' &&
+        puedeEnAduana(sesion.modulos, 'turnos') && <ActualizarTurnos />}
       {principal === 'aduana' &&
         operacionAduana === 'contenedores' &&
         puedeEnAduana(sesion.modulos, 'contenedores') && <ActualizarContenedores />}
