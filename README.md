@@ -718,6 +718,13 @@ Arranca mostrando **los contenedores sin turno** (`date_mm7a8jds` vacío), que e
 lista de pendientes: cada uno es un camión que nadie citó todavía. "Todos" está a un clic. El
 buscador cubre N° de contenedor, N° de OP, ID de la OP, chasis y estado de carga.
 
+**Sin transportista no hay turno.** Un turno es una cita **con alguien**: se coordina con la
+empresa que va a mandar el camión. Si el contenedor no tiene transportista en
+`board_relation_mm7axy2m`, los dos campos quedan deshabilitados y la tarjeta muestra un aviso en
+rojo pidiendo que **Administración de BERGER S.A.** lo asocie —ese dato lo cargan ellos, no el
+despachante, así que desde acá lo único que se puede hacer es avisar—. En el encabezado va una
+etiqueta *Sin transportista* para verlo sin abrir la tarjeta.
+
 **Fecha y hora se cargan juntas, en una sola escritura.** Son el mismo dato: un turno "el jueves"
 sin hora no le sirve al transportista, y en dos pasos se podía guardar la mitad. El botón no se
 habilita hasta que están las dos.
@@ -885,11 +892,19 @@ y la pantalla lo dice antes de guardar. Queda editable ahí mismo para el caso c
 contenedor que llegó el viernes y se marca el lunes. Va a `date_mm7dqnek`, y destildar el arribo
 la borra.
 
-**Sólo se marca arribo de lo que puede haber llegado.** El estado de carga de la OP se lee del
-espejo `lookup_mm7d9537`, y el toggle de arribo aparece únicamente si esa OP está en **Próxima a
-Arribar** o **Nacionalizado**. Antes de eso la mercadería todavía está navegando: marcar un arribo
-ahí sería anotar un hecho que no pasó. La ubicación, en cambio, se puede cargar siempre —se define
-antes de que el barco llegue—.
+**Se listan dos etapas, pero se arriba en una sola.** El estado de carga de la OP se lee del
+espejo `lookup_mm7d9537`:
+
+| Estado de la OP | Aparece en la lista | Se puede marcar arribado |
+|---|---|---|
+| Próxima a Arribar | sí | **no** |
+| Nacionalizado | sí | sí |
+| cualquier otro | no | no |
+
+Las próximas a arribar se listan porque **su entrega y su transportista se cargan antes** —esa es
+justamente la preparación—, pero el arribo queda deshabilitado con el motivo escrito: hasta que la
+carga no pasó la aduana no se retira, y marcarla arribada sería anotar una entrega que no pudo
+ocurrir.
 
 Por defecto lista los **pendientes**: los de una OP ya en etapa de arribo a los que les falta el
 arribo o la entrega. "Todos" está a un clic, porque corregir algo ya cargado es tan legítimo como

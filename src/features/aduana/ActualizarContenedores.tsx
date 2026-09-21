@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
+import { NACIONALIZADO } from '@/lib/despachos'
 import { fechaCorta, hoyISO } from '@/lib/format'
 import {
   ESTADO_ARRIBO,
@@ -30,6 +31,16 @@ const sinUbicacion = (c: ContenedorDespacho): boolean => !c.ubicacion.trim()
  */
 const enEtapaDeArribo = (c: ContenedorDespacho): boolean =>
   ESTADOS_CON_ARRIBO.some((estado) => c.estadoCargaOp.includes(estado))
+
+/**
+ * ¿Se puede dar por arribado?
+ *
+ * Sólo con la OP **nacionalizada**. En "Próxima a Arribar" la carga está llegando pero todavía no
+ * pasó la aduana, y un contenedor no se retira antes de eso: marcarlo arribado sería anotar una
+ * entrega que no pudo ocurrir. Las de esa etapa igual se listan, porque su ubicación y su
+ * transportista **sí** se cargan antes —justamente para que el día que salga esté todo listo—.
+ */
+const puedeArribar = (c: ContenedorDespacho): boolean => c.estadoCargaOp.includes(NACIONALIZADO)
 
 /** Busca por cualquiera de los nombres con los que se llama a un contenedor. */
 const coincide = (c: ContenedorDespacho, busqueda: string): boolean => {
@@ -229,9 +240,12 @@ export function ActualizarContenedores() {
               <input
                 className="input"
                 value={busqueda}
-                placeholder="N° de contenedor, N° de OP, ID del despacho o chasis…"
+                placeholder="Buscar un contenedor…"
                 onChange={(e) => setBusqueda(e.target.value)}
               />
+              <span className="campo-ayuda campo-ayuda--ejemplo">
+                N° de contenedor, N° de OP, ID del despacho o chasis
+              </span>
             </label>
           </div>
 
@@ -295,6 +309,7 @@ export function ActualizarContenedores() {
             const e = edicionDe(c)
             const cambios = Object.keys(cambiosDe(c)).length > 0
             const arribado = e.estadoArribo === ESTADO_ARRIBO.ARRIBADO
+            const habilitaArribo = puedeArribar(c)
             const guardado = guardados.includes(c.id)
             return (
               <div key={c.id} className="card card--flush op-editor">
@@ -347,6 +362,7 @@ export function ActualizarContenedores() {
                     <button
                       type="button"
                       aria-pressed={arribado}
+                      disabled={!habilitaArribo}
                       className={`opcion opcion--confirmar${arribado ? ' opcion--elegida' : ''}`}
                       onClick={() =>
                         /* Al marcar el arribo se propone HOY, que es lo que pasa el 95% de las
@@ -374,13 +390,23 @@ export function ActualizarContenedores() {
                           {arribado ? 'Arribado' : 'Marcar como arribado'}
                         </span>
                         <span className="opcion-det">
-                          {arribado
-                            ? 'Tocá de nuevo si te equivocaste'
-                            : 'El contenedor ya llegó a destino'}
+                          {!habilitaArribo
+                            ? `La OP todavía está en "${c.estadoCargaOp || 'sin estado'}"`
+                            : arribado
+                              ? 'Tocá de nuevo si te equivocaste'
+                              : 'El contenedor ya llegó a destino'}
                         </span>
                       </span>
                     </button>
                   </div>
+
+                  {!habilitaArribo && (
+                    <span className="campo-ayuda campo-ayuda--falta" style={{ marginTop: 8 }}>
+                      <i className="fa-solid fa-lock" aria-hidden="true" /> El arribo se marca
+                      recién con la OP en <b>{NACIONALIZADO}</b>. Mientras tanto podés dejar cargada
+                      la entrega y el transportista.
+                    </span>
+                  )}
 
                   {arribado && (
                     <div className="arribo-fecha">

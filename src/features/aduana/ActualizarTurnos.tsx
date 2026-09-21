@@ -10,6 +10,16 @@ const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String
 /** Un contenedor sin turno es uno que todavía no tiene camión citado. */
 const sinTurno = (c: ContenedorDespacho): boolean => !c.fechaTurno
 
+/**
+ * ¿Hay a quién citar?
+ *
+ * El turno es una cita **con alguien**: se coordina con la empresa que va a mandar el camión. Sin
+ * transportista asignado (`board_relation_mm7axy2m`) no hay con quién coordinar, y una fecha
+ * cargada ahí es una fecha que nadie va a cumplir. Ese dato lo carga BERGER, no el despachante,
+ * así que acá sólo se puede avisar.
+ */
+const tieneTransportista = (c: ContenedorDespacho): boolean => Boolean(c.transportistaId)
+
 /** Busca por cualquiera de los nombres con los que se llama a un contenedor. */
 const coincide = (c: ContenedorDespacho, busqueda: string): boolean => {
   const texto = busqueda.trim().toLowerCase()
@@ -136,9 +146,12 @@ export function ActualizarTurnos() {
               <input
                 className="input"
                 value={busqueda}
-                placeholder="N° de contenedor, N° de OP, chasis o estado…"
+                placeholder="Buscar un contenedor…"
                 onChange={(e) => setBusqueda(e.target.value)}
               />
+              <span className="campo-ayuda campo-ayuda--ejemplo">
+                N° de contenedor, N° de OP, chasis o estado de carga
+              </span>
             </label>
           </div>
           <div className="filtros-fila">
@@ -204,6 +217,7 @@ export function ActualizarTurnos() {
               const t = turnoDe(c)
               const cambio = t.fecha !== c.fechaTurno || t.hora !== c.horaTurno
               const completo = Boolean(t.fecha && t.hora)
+              const conTransportista = tieneTransportista(c)
               const guardado = guardados.includes(c.id)
               const desplegado = abierto === c.id
 
@@ -219,6 +233,9 @@ export function ActualizarTurnos() {
                       )}
                       {c.estadoCargaOp && (
                         <span className="chip chip--teal">{c.estadoCargaOp}</span>
+                      )}
+                      {!conTransportista && (
+                        <span className="chip chip--rojo">Sin transportista</span>
                       )}
                       {c.fechaTurno ? (
                         <span className="chip chip--verde">
@@ -249,6 +266,18 @@ export function ActualizarTurnos() {
                         ))}
                     </div>
 
+                    {!conTransportista && (
+                      <div className="aviso aviso--error" style={{ marginBottom: 10 }}>
+                        <i className="fa-solid fa-truck-fast" aria-hidden="true" />
+                        <span>
+                          <b>Este contenedor todavía no tiene transportista asignado.</b> El turno
+                          es una cita con alguien: hasta que Administración de BERGER S.A. no le
+                          asocie el transportista, no hay con quién coordinar la carga. Pediles que
+                          lo carguen y volvé a entrar.
+                        </span>
+                      </div>
+                    )}
+
                     <div className="datos datos--form">
                       <label className="campo campo--chico">
                         <span className="campo-lbl">Fecha del turno</span>
@@ -256,6 +285,7 @@ export function ActualizarTurnos() {
                           className="input"
                           type="date"
                           value={t.fecha}
+                          disabled={!conTransportista}
                           onChange={(e) => cambiar(c, { fecha: e.target.value })}
                         />
                       </label>
@@ -265,6 +295,7 @@ export function ActualizarTurnos() {
                           className="input"
                           type="time"
                           value={t.hora}
+                          disabled={!conTransportista}
                           onChange={(e) => cambiar(c, { hora: e.target.value })}
                         />
                       </label>
@@ -324,7 +355,7 @@ export function ActualizarTurnos() {
                       <button
                         type="button"
                         className="btn btn--primario btn--chico"
-                        disabled={!cambio || !completo || guardando === c.id}
+                        disabled={!cambio || !completo || !conTransportista || guardando === c.id}
                         onClick={() => void guardar(c)}
                       >
                         {guardando === c.id ? (

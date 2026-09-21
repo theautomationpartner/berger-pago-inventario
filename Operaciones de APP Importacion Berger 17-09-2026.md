@@ -828,6 +828,12 @@ está a un clic. Busca por N° de contenedor, N° de OP, ID de la OP, chasis y e
 
 **Sobre qué impacta.** Una sola columna: `date_mm7a8jds`, con día y hora.
 
+**Consideración · sin transportista no hay turno.** El turno es una cita con alguien. Si el
+contenedor no tiene transportista (`board_relation_mm7axy2m`), los campos quedan deshabilitados y
+la tarjeta muestra un aviso en rojo pidiendo que Administración de BERGER S.A. lo asocie: ese dato
+lo cargan ellos —desde 5.6—, no el despachante, así que desde esta pantalla lo único posible es
+avisar. El encabezado lleva una etiqueta *Sin transportista* para verlo sin desplegar.
+
 **Consideración · fecha y hora, juntas.** Son el mismo dato y viajan en una sola escritura. Un
 turno "el jueves" sin hora no le sirve al transportista, y en dos pasos se podía guardar la mitad;
 el botón no se habilita hasta que están las dos.
@@ -1015,10 +1021,18 @@ consulta—, con sus espejos de la OP, más el tablero de Contactos para elegir 
 **Qué verifica antes de mostrar.**
 - Por defecto, sólo los **pendientes**: los de una OP en etapa de arribo a los que les falta el
   arribo o la entrega. "Todos" está a un clic.
-- El **arribo sólo se puede marcar** si la OP está en **Próxima a Arribar** o **Nacionalizado**
-  (espejo `lookup_mm7d9537`). Antes de eso la mercadería está navegando: marcar un arribo ahí sería
-  anotar un hecho que no pasó. La ubicación, en cambio, se puede cargar siempre —se define antes de
-  que el barco llegue—.
+- Se **listan** los contenedores de OP en **Próxima a Arribar** o **Nacionalizado** (espejo
+  `lookup_mm7d9537`), pero el **arribo sólo se puede marcar con la OP Nacionalizada**.
+
+| Estado de la OP | Se lista | Arribo |
+|---|---|---|
+| Próxima a Arribar | sí | bloqueado, con el motivo escrito |
+| Nacionalizado | sí | habilitado |
+| cualquier otro | no | — |
+
+  Las próximas a arribar se listan porque su entrega y su transportista se cargan **antes**: esa es
+  la preparación. Lo que no puede pasar antes es el arribo: hasta que la carga no salió de aduana
+  no se retira, y marcarla arribada sería anotar una entrega que no pudo ocurrir.
 
 **Sobre qué impacta.** 🚚 Contenedores:
 
@@ -1146,7 +1160,10 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
    cantidad y se calla el importe.
 9. **Las listas se traen enteras y se filtran en el navegador.** Son tableros que crecen de a una
    fila por operación: filtrar localmente es instantáneo y no cuesta un viaje a monday por tecla.
-10. **Todo funciona en el celular**, porque la app se usa desde la aplicación móvil de monday.
+10. **El buscador se dimensiona por lo que se escribe adentro.** El ejemplo del campo tiene que
+    entrar entero: cortado a la mitad deja de ser un ejemplo. Cuando ni con el ancho máximo entra,
+    el ejemplo sale del campo y va debajo como ayuda, y adentro queda un texto corto.
+11. **Todo funciona en el celular**, porque la app se usa desde la aplicación móvil de monday.
 
 ---
 

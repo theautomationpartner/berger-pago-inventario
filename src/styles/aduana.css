@@ -13,8 +13,23 @@
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
+/* El buscador se dimensiona por lo que se escribe adentro, no por lo que sobra al lado: con 260px
+   el ejemplo se cortaba a la mitad y dejaba de servir de ejemplo. Cuando ni así entra, el ejemplo
+   sale del campo y va debajo, como ayuda. */
 .campo--busqueda {
-  flex: 1 1 260px;
+  flex: 1 1 380px;
+  max-width: 520px;
+}
+@media (max-width: 480px) {
+  .campo--busqueda {
+    flex-basis: 100%;
+  }
+}
+
+/* El ejemplo de búsqueda, cuando no entra adentro del campo. */
+.campo-ayuda--ejemplo {
+  color: var(--text-gray);
+  font-weight: 500;
 }
 .filtros-tags {
   display: flex;
