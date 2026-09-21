@@ -6,12 +6,18 @@ import { ARCHIVOS_OP, ROTULO_ARCHIVO } from '@/services/monday/despachos'
 import type { ArchivosDespacho, CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
 import { EtiquetasOP } from './EtiquetasOP'
 
-/** Los cuatro comprobantes, en el orden en que el despachante los consigue. */
+/**
+ * Los comprobantes, en el orden en que el despachante los consigue.
+ *
+ * El VEP va último y es el que más peso tiene: hasta que no está subido, BERGER no puede marcar
+ * el pago ni adjuntar su comprobante. Es la llave de esa parte del circuito.
+ */
 const CAMPOS_ARCHIVO: { columna: string; campo: keyof ArchivosDespacho }[] = [
   { columna: ARCHIVOS_OP[0], campo: 'fcTransporteImpo' },
   { columna: ARCHIVOS_OP[1], campo: 'despachoImpo' },
   { columna: ARCHIVOS_OP[2], campo: 'fcTerminal' },
   { columna: ARCHIVOS_OP[3], campo: 'gastosVarios' },
+  { columna: ARCHIVOS_OP[4], campo: 'vepDespachante' },
 ]
 
 interface Props {

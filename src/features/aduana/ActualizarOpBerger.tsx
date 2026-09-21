@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
+import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
 import { Stepper } from '@/components/ui/Stepper'
 import { fechaCorta } from '@/lib/format'
 import {
   BANCO_DECLARAR,
+  COL_DESPACHANTE,
   ESTADO_PAGO_VEP,
   FONDEO,
   FORMA_PAGO_OP,
@@ -18,7 +20,8 @@ import {
   listarTransportistas,
   tractoresDeOps,
 } from '@/services/monday/contenedoresDespacho'
-import { actualizarOpBerger } from '@/services/monday/despachos'
+import { ARCHIVOS_BERGER, actualizarOpBerger } from '@/services/monday/despachos'
+import { subirArchivoAColumna } from '@/services/monday/sdk'
 import type {
   Contacto,
   ContenedorDespacho,
@@ -34,6 +37,21 @@ import { useDespachos } from './useDespachos'
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+/**
+ * El nombre del archivo adjunto.
+ *
+ * Una columna de archivo de monday devuelve la URL completa del recurso, que es larguísima y no
+ * dice nada; lo que importa en pantalla es cómo se llama el PDF.
+ */
+const nombreDeArchivo = (valor: string): string => {
+  const ultimo = valor.split('/').pop() ?? valor
+  try {
+    return decodeURIComponent(ultimo) || 'archivo adjunto'
+  } catch {
+    return ultimo || 'archivo adjunto'
+  }
+}
+
 const valoresBerger = (op: DespachoOP): EdicionBerger => ({
   formaPago: op.formaPago,
   fondeo: op.fondeo,
@@ -48,16 +66,27 @@ function Selector({
   valor,
   opciones,
   onCambiar,
+  bloqueado,
+  motivo,
 }: {
   rotulo: string
   valor: string
   opciones: readonly string[]
   onCambiar: (v: string) => void
+  /** Deshabilita el campo. Se usa para el Estado Pago VEP mientras no haya VEP emitido. */
+  bloqueado?: boolean
+  /** Por qué está bloqueado. Sin esto, un campo gris es un misterio. */
+  motivo?: string
 }) {
   return (
     <label className="campo">
       <span className="campo-lbl">{rotulo}</span>
-      <select className="select" value={valor} onChange={(e) => onCambiar(e.target.value)}>
+      <select
+        className="select"
+        value={valor}
+        disabled={bloqueado}
+        onChange={(e) => onCambiar(e.target.value)}
+      >
         <option value="">(sin definir)</option>
         {opciones.map((o) => (
           <option key={o} value={o}>
@@ -65,6 +94,11 @@ function Selector({
           </option>
         ))}
       </select>
+      {bloqueado && motivo && (
+        <span className="campo-ayuda campo-ayuda--falta">
+          <i className="fa-solid fa-lock" aria-hidden="true" /> {motivo}
+        </span>
+      )}
     </label>
   )
 }
@@ -101,6 +135,9 @@ export function ActualizarOpBerger() {
   const [ediciones, setEdiciones] = useState<Record<string, EdicionContenedor>>({})
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
+
+  /** El comprobante del pago del VEP, si se adjuntó uno en esta edición. */
+  const [comprobanteVep, setComprobanteVep] = useState<File | null>(null)
 
   const [enviando, setEnviando] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
@@ -172,6 +209,7 @@ export function ActualizarOpBerger() {
   const abrir = (op: DespachoOP) => {
     setElegidaId(op.id)
     setEdicion(valoresBerger(op))
+    setComprobanteVep(null)
     setErrorEnvio(null)
     setEtapa('edicion')
     void cargarDetalle(op)
@@ -180,6 +218,7 @@ export function ActualizarOpBerger() {
   const reiniciar = () => {
     setElegidaId(null)
     setEdicion(null)
+    setComprobanteVep(null)
     setContenedores([])
     setTractores([])
     setEdiciones({})
@@ -188,6 +227,15 @@ export function ActualizarOpBerger() {
     setEtapa('seleccion')
     void recargar()
   }
+
+  /**
+   * ¿El despachante ya emitió el VEP?
+   *
+   * Es la condición para que BERGER pueda pagarlo: mientras esa columna esté vacía no hay VEP que
+   * pagar, así que marcar "PAGADO" sería anotar un pago que no existe. Se mira el archivo real de
+   * la OP, no un estado: el archivo es el hecho.
+   */
+  const hayVep = Boolean(elegida?.archivos[COL_DESPACHANTE.vepDespachante]?.trim())
 
   /** Lo que cambió de la OP respecto de lo que hay en monday. */
   const cambiosDeOp = (): Partial<EdicionBerger> => {
@@ -212,6 +260,7 @@ export function ActualizarOpBerger() {
 
   const hayCambios =
     Object.keys(cambiosDeOp()).length > 0 ||
+    Boolean(comprobanteVep) ||
     contenedores.some((c) => Object.keys(cambiosDeContenedor(c)).length > 0)
 
   const guardar = async () => {
@@ -239,6 +288,16 @@ export function ActualizarOpBerger() {
         advertencias.push(
           `No se pudo actualizar el contenedor ${c.numero || c.nombre}: ${mensaje(e)}`,
         )
+      }
+    }
+
+    /* El comprobante va DESPUÉS de los datos: si la subida falla, lo que ya se decidió quedó
+       igualmente guardado y sólo hay que volver a adjuntar el archivo. */
+    if (comprobanteVep) {
+      try {
+        await subirArchivoAColumna(elegida.id, ARCHIVOS_BERGER[0], comprobanteVep)
+      } catch (e) {
+        advertencias.push(`No se pudo subir el comprobante del VEP: ${mensaje(e)}`)
       }
     }
 
@@ -508,7 +567,59 @@ export function ActualizarOpBerger() {
                       valor={edicion.estadoPagoVep}
                       opciones={[ESTADO_PAGO_VEP.NO_PAGADO, ESTADO_PAGO_VEP.PAGADO]}
                       onCambiar={(v) => setEdicion({ ...edicion, estadoPagoVep: v })}
+                      bloqueado={!hayVep}
+                      motivo="El despachante todavía no subió el VEP"
                     />
+                  </div>
+
+                  {/* El pago del VEP: el estado y el comprobante van juntos, y los dos dependen
+                      de que el VEP exista. Por eso se muestran como un bloque y no sueltos. */}
+                  <div className="vep">
+                    {hayVep ? (
+                      <>
+                        <div className="vep-head">
+                          <span className="vep-tit">
+                            <i className="fa-solid fa-file-circle-check" aria-hidden="true" /> VEP
+                            emitido por el despachante
+                          </span>
+                          <a
+                            className="chip chip--verde chip--link"
+                            href={elegida.archivos[COL_DESPACHANTE.vepDespachante]}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <i className="fa-solid fa-paperclip" aria-hidden="true" />{' '}
+                            {nombreDeArchivo(elegida.archivos[COL_DESPACHANTE.vepDespachante])}
+                          </a>
+                        </div>
+                        <span className="vep-det">
+                          Ya se puede pagar. Marcá el estado como <b>{ESTADO_PAGO_VEP.PAGADO}</b> y
+                          adjuntá el comprobante del pago.
+                        </span>
+                        <ZonaArchivo
+                          archivo={comprobanteVep}
+                          onElegir={setComprobanteVep}
+                          acepta=".pdf,.jpg,.jpeg,.png"
+                          titulo={
+                            elegida.archivos[COL_DESPACHANTE.comprobanteVep]
+                              ? `Ya hay un comprobante cargado (${nombreDeArchivo(
+                                  elegida.archivos[COL_DESPACHANTE.comprobanteVep],
+                                )}) · subir otro`
+                              : 'Comprobante de pago del VEP'
+                          }
+                        />
+                      </>
+                    ) : (
+                      <div className="aviso aviso--alerta" style={{ margin: 0 }}>
+                        <i className="fa-solid fa-file-circle-xmark" aria-hidden="true" />
+                        <span>
+                          <b>Todavía no hay VEP para pagar.</b> El despachante lo sube desde su
+                          operación, en el comprobante <b>VEP</b> de la OP. Hasta entonces no se
+                          puede marcar el pago ni adjuntar el comprobante: sin VEP emitido, un pago
+                          marcado es un pago que no existe.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

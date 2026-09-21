@@ -433,6 +433,8 @@ export interface ArchivosDespacho {
   despachoImpo: File | null
   fcTerminal: File | null
   gastosVarios: File | null
+  /** El VEP que emite el despachante: sin este archivo, BERGER no puede pagarlo. */
+  vepDespachante: File | null
 }
 
 /** Resultado de guardar las ediciones de un lote de OP. */

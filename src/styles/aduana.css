@@ -91,6 +91,41 @@
   margin-left: auto;
   flex: 0 0 auto;
 }
+/* El pago del VEP. El estado y el comprobante van juntos porque los dos dependen de lo mismo:
+   que el despachante haya emitido el VEP. Sueltos, se podía marcar el pago sin adjuntar nada. */
+.vep {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: 12px;
+  background: var(--tint-neutral);
+}
+.vep-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vep-tit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+.vep-tit > i {
+  color: var(--green-dark);
+}
+.vep-det {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-mid);
+}
+
 /* Campo de dirección con sugerencias. La columna de monday exige coordenadas, así que la
    dirección se ELIGE de una lista real en vez de escribirse suelta. */
 .ubicacion {
@@ -1355,4 +1390,17 @@
   .chasis {
     font-size: 12px;
   }
+}
+
+/* Un chip que además es link: el adjunto del VEP se abre desde acá. */
+.chip--link {
+  text-decoration: none;
+  cursor: pointer;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip--link:hover {
+  text-decoration: underline;
 }

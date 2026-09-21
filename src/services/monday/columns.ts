@@ -308,6 +308,13 @@ export const COL_DESPACHANTE = {
   despachoImpo: 'file_mm77dbsc',
   fcTerminal: 'file_mm77qde5',
   gastosVarios: 'file_mm774a1r',
+  /**
+   * El VEP que emite el DESPACHANTE. Es la llave del pago: hasta que este archivo no está, no hay
+   * VEP que pagar, y BERGER no puede ni marcarlo pagado ni subir su comprobante.
+   */
+  vepDespachante: 'file_mm7d41zn',
+  /** El comprobante del pago del VEP, que sube BERGER una vez que lo pagó. */
+  comprobanteVep: 'file_mm7d3jvj',
 
   /* Lo que carga el DESPACHANTE, ya con la OP en la calle. La app no lo escribe al crear el
      despacho: lo completa él desde el módulo de Aduana, a medida que la carga avanza. */

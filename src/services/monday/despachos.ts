@@ -30,7 +30,16 @@ export const ARCHIVOS_OP = [
   COL_DESPACHANTE.despachoImpo,
   COL_DESPACHANTE.fcTerminal,
   COL_DESPACHANTE.gastosVarios,
+  COL_DESPACHANTE.vepDespachante,
 ]
+
+/**
+ * Los archivos que sube BERGER. Hoy es uno solo: el comprobante del pago del VEP.
+ *
+ * Va en una lista aparte de la del despachante porque son módulos distintos, y el servidor decide
+ * quién puede escribir cada columna de archivo por esa pertenencia.
+ */
+export const ARCHIVOS_BERGER = [COL_DESPACHANTE.comprobanteVep]
 
 /** Cómo se llama cada comprobante en pantalla. */
 export const ROTULO_ARCHIVO: Record<string, string> = {
@@ -38,6 +47,8 @@ export const ROTULO_ARCHIVO: Record<string, string> = {
   [COL_DESPACHANTE.despachoImpo]: 'Despacho de importación',
   [COL_DESPACHANTE.fcTerminal]: 'FC terminal',
   [COL_DESPACHANTE.gastosVarios]: 'Gastos varios · rendición',
+  [COL_DESPACHANTE.vepDespachante]: 'VEP',
+  [COL_DESPACHANTE.comprobanteVep]: 'Comprobante de pago del VEP',
 }
 
 const COLUMNAS = [
@@ -65,6 +76,7 @@ const COLUMNAS = [
   COL_DESPACHANTE.vepPorDonde,
   COL_DESPACHANTE.estadoPagoVep,
   ...ARCHIVOS_OP,
+  ...ARCHIVOS_BERGER,
 ]
 
 const PAGINA = 200
@@ -96,7 +108,9 @@ function aDespacho(item: ItemCrudo): DespachoOP {
     vepPorDonde: texto(c[COL_DESPACHANTE.vepPorDonde]),
     estadoPagoVep: texto(c[COL_DESPACHANTE.estadoPagoVep]),
     // De una columna de archivo, el texto son los nombres de lo que ya está adjunto.
-    archivos: Object.fromEntries(ARCHIVOS_OP.map((id) => [id, texto(c[id])])),
+    archivos: Object.fromEntries(
+      [...ARCHIVOS_OP, ...ARCHIVOS_BERGER].map((id) => [id, texto(c[id])]),
+    ),
   }
 }
 

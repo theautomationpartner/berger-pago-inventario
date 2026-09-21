@@ -765,13 +765,14 @@ el tractor viene sin rodado eso cambia cómo se descarga.
 
 Dos cosas en la misma pantalla, porque se deciden juntas:
 
-| De la **OP** | Columna |
-|---|---|
-| Forma de pago | `dropdown_mm77scb3` |
-| Fondeo | `dropdown_mm77t4vd` |
-| Banco a declarar | `dropdown_mm77yeb2` |
-| VEP por dónde | `dropdown_mm77tkx3` |
-| Estado Pago VEP | `color_mm793phx` |
+| De la **OP** | Columna | Condición |
+|---|---|---|
+| Forma de pago | `dropdown_mm77scb3` | |
+| Fondeo | `dropdown_mm77t4vd` | |
+| Banco a declarar | `dropdown_mm77yeb2` | |
+| VEP por dónde | `dropdown_mm77tkx3` | |
+| Estado Pago VEP | `color_mm793phx` | **bloqueado** hasta que haya VEP |
+| Comprobante de pago del VEP | `file_mm7d3jvj` | **bloqueado** hasta que haya VEP |
 
 | De **cada contenedor** | Columna |
 |---|---|
@@ -796,6 +797,18 @@ transporte.
 `Transportista` en su 🤚Categoria (`dropdown_mm7acm6r`). Un contacto puede tener varias categorías
 a la vez y aparece igual. El filtro es por el dato del tablero y no por una lista en el código: se
 da de alta un transportista nuevo y aparece, sin tocar la app.
+
+**El VEP no se puede pagar antes de que exista.** El despachante sube el VEP a `file_mm7d41zn`
+desde su propia operación, y **hasta que ese archivo no está**, BERGER no puede ni marcar el pago
+ni adjuntar el comprobante: el desplegable de Estado Pago VEP queda deshabilitado con el motivo
+escrito al lado, y en lugar del recuadro para adjuntar aparece el aviso de que todavía no hay nada
+que pagar. Se mira **el archivo**, no un estado: el archivo es el hecho. Cuando está, la pantalla
+muestra su nombre —con link para abrirlo— y habilita las dos cosas juntas, porque marcar el pago
+sin el comprobante deja media operación registrada.
+
+Las dos columnas de archivo pertenecen a **módulos distintos** a propósito: el VEP es del módulo
+`aduana` (lo sube el despachante) y el comprobante es de `aduanaBerger`. Así ninguno de los dos
+puede escribir el archivo del otro, y eso lo verifica el servidor, no la pantalla.
 
 **El Estado Pago VEP no lo toca la app al crear el despacho.** Su valor inicial lo pone la propia
 columna en monday; la app lo escribe únicamente desde esta operación, cuando BERGER lo pasa a

@@ -738,6 +738,10 @@ nombre.
 que usa la app al crear el despacho: la conexión al pago, el proveedor y el importador no se pueden
 cambiar desde este módulo.
 
+**Comprobantes que sube el despachante.** A los cuatro del trámite se suma el **VEP**
+(`file_mm7d41zn`), y no es uno más: es la llave del pago. Mientras esa columna esté vacía, BERGER
+no puede marcar el VEP como pagado ni subir su comprobante.
+
 **El paso 2 · ¿qué vas a hacer?** Después de elegir la OP se decide entre *Actualizar datos* y
 *Armar contenedores*. Cada tarjeta muestra al pie **su requisito**:
 
@@ -922,6 +926,21 @@ transportista nuevo y aparece sin tocar la app.
 `color_mm793phx`: su valor inicial lo pone la propia columna en monday. La app sólo lo escribe
 desde esta operación, cuando BERGER lo pasa a `PAGADO`.
 
+**Consideración · no se puede pagar un VEP que no existe.** El estado del pago y el comprobante
+(`file_mm7d3jvj`) están **bloqueados** mientras el despachante no haya subido el VEP
+(`file_mm7d41zn`). Se mira el archivo, no un estado: el archivo es el hecho. Con el VEP subido, la
+pantalla muestra su nombre con link y habilita las dos cosas **juntas**, porque marcar el pago sin
+adjuntar el comprobante deja media operación registrada.
+
+**Consideración · cada archivo, de su módulo.** El VEP pertenece al módulo `aduana` y el
+comprobante de pago a `aduanaBerger`. Así el despachante no puede subir el comprobante de pago ni
+BERGER el VEP, y eso lo verifica el servidor por la pertenencia de la columna, no la pantalla.
+
+| Archivo | Columna | Quién lo sube | Módulo |
+|---|---|---|---|
+| VEP | `file_mm7d41zn` | el despachante | `aduana` |
+| Comprobante de pago del VEP | `file_mm7d3jvj` | BERGER | `aduanaBerger` |
+
 ### 5.5 Operación · ACTUALIZAR CONTENEDORES - BERGER S.A.
 
 **Qué hace.** Marca los contenedores que ya llegaron y les carga la ubicación de entrega. **Sólo
@@ -1073,7 +1092,8 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 💸 Subelementos de Pagos | un subitem por tractor | — | Etapa 1 y Pago Vista |
 | 👮 Despachante | item completo + subitems | — | Etapa 3 y Pago Vista |
 | 👮 Despachante | los 8 campos del despachante | lo que cargue | Actualizar Despacho OP - DESPACHANTE |
-| 👮 Despachante | los 4 comprobantes del trámite | archivos | Actualizar Despacho OP - DESPACHANTE |
+| 👮 Despachante | los 4 comprobantes del trámite **más el VEP** (`file_mm7d41zn`) | archivos | Actualizar Despacho OP - DESPACHANTE |
+| 👮 Despachante | `file_mm7d3jvj` | comprobante de pago del VEP | Actualizar OP - BERGER |
 | 👮 Despachante | `color_mm793phx` | lo que defina BERGER (la app NO lo toca al crear) | Actualizar OP - BERGER |
 | 👮 Despachante | pago, fondeo, banco y VEP | lo que defina BERGER | Actualizar OP - BERGER |
 | 👮 Despachante | update + notificaciones | aviso a Sofía y Micaela | al pasar a "Próxima a Arribar" |

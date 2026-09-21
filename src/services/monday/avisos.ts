@@ -23,7 +23,7 @@ const rotuloOp = (op: DespachoOP): string => (op.nroOp ? `${op.nombre} - (${op.n
 
 /** Lo que BERGER tiene que completar en el item de la OP. */
 const PENDIENTES_BERGER =
-  'forma de pago, fondeo, banco de origen del pago de la mercadería, forma de pago del WEB ' +
+  'forma de pago, fondeo, banco de origen del pago de la mercadería, forma de pago del VEP ' +
   '(interbanking u otro), banco para declarar en el despacho, transporte a utilizar, ' +
   'lugar/ubicación de entrega y gestión de DNRPA.'
 

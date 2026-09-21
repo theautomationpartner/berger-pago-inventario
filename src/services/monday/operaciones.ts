@@ -245,6 +245,8 @@ export const COLUMNAS_ARCHIVO = new Set<string>([
   COL_DESPACHANTE.despachoImpo,
   COL_DESPACHANTE.fcTerminal,
   COL_DESPACHANTE.gastosVarios,
+  COL_DESPACHANTE.vepDespachante,
+  COL_DESPACHANTE.comprobanteVep,
 ])
 
 /**
@@ -262,6 +264,10 @@ export const MODULO_DE_ARCHIVO: Record<string, ModuloApp> = {
   [COL_DESPACHANTE.despachoImpo]: 'aduana',
   [COL_DESPACHANTE.fcTerminal]: 'aduana',
   [COL_DESPACHANTE.gastosVarios]: 'aduana',
+  /* El VEP lo emite el despachante; su comprobante de pago lo sube BERGER. Son dos módulos
+     distintos justamente para que ninguno pueda escribir el archivo del otro. */
+  [COL_DESPACHANTE.vepDespachante]: 'aduana',
+  [COL_DESPACHANTE.comprobanteVep]: 'aduanaBerger',
 }
 
 /**
