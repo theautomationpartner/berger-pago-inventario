@@ -403,6 +403,8 @@ export const COL_DESPACHANTE_SUB = {
   chasis: 'lookup_mm7am1p1',
   modelo: 'lookup_mm78rbz2',
   rodado: 'lookup_mm78j0hk',
+  /** N° de la factura de compra del tractor, espejado del Inventario. */
+  nroFactCompra: 'lookup_mm7avmwm',
   /** Contenedor en el que viaja. Vacío = todavía no se armó. */
   contenedor: 'board_relation_mm7a62tt',
 } as const

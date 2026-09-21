@@ -855,7 +855,28 @@ ya se decidió.
 **Buscador.** Filtra por N° de OP del despachante (`text_mm78qbvc`), nombre de la OP, y **nombre o
 modelo** (`lookup_mm78rbz2`) de cualquiera de sus tractores. Los tractores de todas las OP listadas
 se traen en **una sola** consulta al abrir: quien busca una carga se acuerda del tractor mucho más
-seguido que del número de trámite. Cada fila muestra además cuántos tractores tiene.
+seguido que del número de trámite.
+
+**Qué muestra cada fila.** Además de las etiquetas de la OP, sus **tractores**: arriba el resumen
+por modelo (`2 x 6205 G AGROTRON`) y debajo una etiqueta por unidad.
+
+| Dato del tractor | Columna | Tipo |
+|---|---|---|
+| Nombre | `name` del subitem | — |
+| Modelo | `lookup_mm78rbz2` | espejo |
+| Valor neto | `numeric_mm78rw31` | columna propia del subitem |
+| N° Fact Compra | `lookup_mm7avmwm` | espejo |
+| Chasis | `lookup_mm7am1p1` | espejo |
+| Rodado | `lookup_mm78j0hk` | espejo |
+
+**Consideración · por qué está en la lista y no adentro.** Quien define pago, banco y entrega
+necesita ver qué está por pagar antes de entrar. Teniéndolo que abrir, la comparación entre OP se
+pierde.
+
+**Consideración · el rodado se muestra siempre.** Se imprime la etiqueta tal como viene del
+tablero ("Con Rodado", "Sin Rodado"), sin traducirla a un sí/no propio: eso obligaría a mantener
+acá la lista de etiquetas del Inventario. Lo único que se deduce es el color, y por la negativa.
+Un tractor sin rodado se descarga distinto, así que un vacío no puede confundirse con "no lo miré".
 
 **Sobre qué impacta.**
 

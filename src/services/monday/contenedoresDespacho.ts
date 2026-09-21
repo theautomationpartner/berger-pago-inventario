@@ -29,6 +29,8 @@ const COLUMNAS_TRACTOR = [
   COL_DESPACHANTE_SUB.rodado,
   COL_DESPACHANTE_SUB.numDraft,
   COL_DESPACHANTE_SUB.contenedor,
+  COL_DESPACHANTE_SUB.valorNeto,
+  COL_DESPACHANTE_SUB.nroFactCompra,
 ]
 
 const COLUMNAS_CONTENEDOR = [
@@ -85,6 +87,10 @@ function aTractor(s: SubitemCrudo): TractorDeOp {
     rodado: espejo(c[COL_DESPACHANTE_SUB.rodado]),
     numDraft: texto(c[COL_DESPACHANTE_SUB.numDraft]),
     contenedorId: c[COL_DESPACHANTE_SUB.contenedor]?.linked_item_ids?.[0] ?? null,
+    /* El valor neto es una columna propia del subitem; la factura es otro espejo del Inventario,
+       así que se leen distinto: una del texto de la columna y la otra del valor espejado. */
+    valorNeto: texto(c[COL_DESPACHANTE_SUB.valorNeto]),
+    nroFactCompra: espejo(c[COL_DESPACHANTE_SUB.nroFactCompra]),
   }
 }
 

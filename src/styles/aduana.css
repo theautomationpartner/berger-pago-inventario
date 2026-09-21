@@ -91,6 +91,98 @@
   margin-left: auto;
   flex: 0 0 auto;
 }
+/* Los tractores de una OP, debajo de su fila. Quien define pago y entrega tiene que ver QUÉ
+   está por pagar sin abrir la OP: modelo, plata, factura y chasis de cada unidad. */
+.tractores-op {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0 14px 12px 14px;
+}
+.tractores-op-resumen {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+.tractores-op-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+/* Una etiqueta por tractor: arriba cómo se llama, abajo sus datos duros. */
+.tractag {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 10px;
+  border: 1px solid var(--tint-neutral-bd);
+  border-radius: 10px;
+  background: var(--tint-neutral);
+  max-width: 100%;
+}
+.tractag-nom {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.3;
+}
+.tractag-modelo {
+  font-weight: 600;
+  color: var(--text-mid);
+}
+.tractag-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tractag-dato {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+.tractag-dato--plata {
+  background: var(--green-soft);
+  border-color: var(--green-bd);
+  color: var(--green-dark);
+  font-weight: 700;
+}
+/* El chasis, en monoespaciado: dos unidades del mismo modelo se distinguen sólo por acá, y las
+   matrículas se comparan carácter a carácter. */
+.tractag-dato--chasis {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--text-dark);
+  background: #fff;
+  border-color: var(--border);
+}
+.tractag-dato--si {
+  background: var(--tint-input);
+  border-color: var(--tint-input-bd);
+  color: #0a4f9e;
+}
+.tractag-dato--no {
+  color: var(--text-gray);
+}
+
+@media (max-width: 560px) {
+  .tractag {
+    width: 100%;
+  }
+}
+
 .opfila-cuerpo {
   padding: 0 14px 12px;
 }

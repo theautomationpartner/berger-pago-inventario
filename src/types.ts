@@ -324,6 +324,10 @@ export interface TractorDeOp {
   /** Matrícula o chasis: es lo único que distingue dos tractores del mismo modelo. */
   chasis: string
   numDraft: string
+  /** Valor neto del tractor en el despacho, tal como lo escribió la app al crearlo. */
+  valorNeto: string
+  /** N° de factura de compra, espejado del Inventario. */
+  nroFactCompra: string
   /** Contenedor en el que ya está cargado, o `null`. */
   contenedorId: string | null
 }

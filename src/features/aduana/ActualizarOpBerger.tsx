@@ -28,6 +28,7 @@ import type {
   TractorDeOp,
 } from '@/types'
 import { EtiquetasOP } from './EtiquetasOP'
+import { EtiquetasTractorOp } from './EtiquetasTractorOp'
 import { useDespachos } from './useDespachos'
 
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -444,6 +445,7 @@ export function ActualizarOpBerger() {
                             <i className="fa-solid fa-pen-to-square" aria-hidden="true" /> Completar
                           </button>
                         </div>
+                        <EtiquetasTractorOp tractores={tractoresPorOp[op.id] ?? []} />
                       </div>
                     ))}
                 </div>

@@ -743,8 +743,25 @@ estado: antes no hay nada que decidir, y después ya se decidió.
 Arriba hay un **buscador** que mira el N° de OP del despachante (`text_mm78qbvc`), el nombre de la
 OP, y el **nombre y el modelo** (`lookup_mm78rbz2`) de cada uno de sus tractores. Los tractores de
 todas las OP listadas se traen en **una sola** consulta al abrir la pantalla, porque quien busca una
-carga se acuerda del tractor mucho más seguido que del número de trámite. Cada fila muestra además
-cuántos tractores tiene.
+carga se acuerda del tractor mucho más seguido que del número de trámite.
+
+**Cada fila muestra sus tractores**, debajo de las etiquetas de la OP. Primero el resumen por
+modelo —`2 x 6205 G AGROTRON`, la forma en que se habla de una carga— y después una etiqueta por
+unidad con:
+
+| Dato | Columna | De dónde |
+|---|---|---|
+| Nombre y modelo | `name` y `lookup_mm78rbz2` | subitem + espejo |
+| Valor neto | `numeric_mm78rw31` | columna propia del subitem |
+| N° de factura de compra | `lookup_mm7avmwm` | espejo del Inventario |
+| Chasis | `lookup_mm7am1p1` | espejo del Inventario |
+| Rodado | `lookup_mm78j0hk` | espejo del Inventario |
+
+Está ahí porque quien define pago, banco y entrega necesita ver **qué** está por pagar sin abrir la
+OP: antes había que ir a monday, y al volver ya se había perdido la lista. El chasis va en
+monoespaciado —dos unidades del mismo modelo se distinguen sólo por ahí— y el **rodado se muestra
+siempre**, con la etiqueta tal como viene del tablero: un vacío se confunde con "no lo miré", y si
+el tractor viene sin rodado eso cambia cómo se descarga.
 
 Dos cosas en la misma pantalla, porque se deciden juntas:
 
