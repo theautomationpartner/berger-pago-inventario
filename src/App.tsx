@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { BarraMarca } from '@/components/ui/BarraMarca'
-import {
-  PantallaSinAcceso,
-  PantallaVerificando,
-} from '@/components/ui/PantallaSinAcceso'
+import { PantallaSinAcceso, PantallaVerificando } from '@/components/ui/PantallaSinAcceso'
 import { clienteVistaPrevia } from '@/features/acceso/clienteVistaPrevia'
 import { Ingreso, type SesionIngreso } from '@/features/acceso/Ingreso'
 import { ActualizarDespachos } from '@/features/aduana/ActualizarDespachos'
+import { ActualizarContenedores } from '@/features/aduana/ActualizarContenedores'
 import { ActualizarOpBerger } from '@/features/aduana/ActualizarOpBerger'
 import { DashboardDespachos } from '@/features/aduana/DashboardDespachos'
 import { DespachoAnticipado } from '@/features/anticipado/DespachoAnticipado'
@@ -86,7 +84,10 @@ export function App() {
   }
 
   return (
-    <Ingreso cliente={import.meta.env.DEV ? clienteVistaPrevia : clienteIngreso} usuarioId={usuarioId}>
+    <Ingreso
+      cliente={import.meta.env.DEV ? clienteVistaPrevia : clienteIngreso}
+      usuarioId={usuarioId}
+    >
       {(sesion) => <AppAdentro sesion={sesion} />}
     </Ingreso>
   )
@@ -132,9 +133,8 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
             <div className="aviso aviso--error">
               <i className="fa-solid fa-key" aria-hidden="true" />
               <span>
-                Falta el token de Monday. Copiá <code>.env.example</code> a{' '}
-                <code>.env.local</code>, completá <code>VITE_MONDAY_TOKEN</code> y reiniciá{' '}
-                <code>npm run dev</code>.
+                Falta el token de Monday. Copiá <code>.env.example</code> a <code>.env.local</code>,
+                completá <code>VITE_MONDAY_TOKEN</code> y reiniciá <code>npm run dev</code>.
               </span>
             </div>
           </div>
@@ -251,6 +251,9 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
       {principal === 'aduana' &&
         operacionAduana === 'berger' &&
         puedeEnAduana(sesion.modulos, 'berger') && <ActualizarOpBerger />}
+      {principal === 'aduana' &&
+        operacionAduana === 'contenedores' &&
+        puedeEnAduana(sesion.modulos, 'contenedores') && <ActualizarContenedores />}
       {principal === 'aduana' &&
         operacionAduana === 'dashboard' &&
         puedeEnAduana(sesion.modulos, 'dashboard') && <DashboardDespachos />}

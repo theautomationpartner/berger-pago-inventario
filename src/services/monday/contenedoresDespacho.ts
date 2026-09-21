@@ -6,6 +6,8 @@
  * tractores que efectivamente lo ocupan: **el dato que vale es cómo los armó el despachante**, no
  * la estimación que hizo la app al crear el despacho.
  */
+import { nombreDeContenedor } from '@/lib/despachos'
+import { hoyISO } from '@/lib/format'
 import type { ContenedorDespacho, TractorDeOp } from '@/types'
 import { COL_CONT_DESPACHO, COL_DESPACHANTE_SUB } from './columns'
 import { espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
@@ -31,13 +33,46 @@ const COLUMNAS_TRACTOR = [
 
 const COLUMNAS_CONTENEDOR = [
   COL_CONT_DESPACHO.numero,
+  COL_CONT_DESPACHO.fechaCreacion,
   COL_CONT_DESPACHO.ubicacion,
   COL_CONT_DESPACHO.transportista,
   COL_CONT_DESPACHO.patente,
   COL_CONT_DESPACHO.fechaTurno,
   COL_CONT_DESPACHO.estadoArribo,
   COL_CONT_DESPACHO.tractores,
+  COL_CONT_DESPACHO.opDespacho,
+  COL_CONT_DESPACHO.nroOpDespachante,
+  COL_CONT_DESPACHO.idOp,
+  COL_CONT_DESPACHO.estadoCargaOp,
+  COL_CONT_DESPACHO.chasis,
 ]
+
+/** Un item del tablero de contenedores, ya normalizado. */
+function aContenedor(item: {
+  id: string
+  name: string
+  column_values: ColumnaRica[]
+}): ContenedorDespacho {
+  const c = porId(item.column_values) as Record<string, ColumnaRica | undefined>
+  return {
+    id: item.id,
+    nombre: item.name,
+    numero: texto(c[COL_CONT_DESPACHO.numero]),
+    fechaCreacion: fechaISO(c[COL_CONT_DESPACHO.fechaCreacion]),
+    ubicacion: texto(c[COL_CONT_DESPACHO.ubicacion]),
+    transportista: texto(c[COL_CONT_DESPACHO.transportista]),
+    patente: texto(c[COL_CONT_DESPACHO.patente]),
+    fechaTurno: fechaISO(c[COL_CONT_DESPACHO.fechaTurno]),
+    estadoArribo: texto(c[COL_CONT_DESPACHO.estadoArribo]),
+    tractorIds: c[COL_CONT_DESPACHO.tractores]?.linked_item_ids ?? [],
+    opId: c[COL_CONT_DESPACHO.opDespacho]?.linked_item_ids?.[0] ?? null,
+    // Los espejos traen su valor en `display_value`, nunca en `text`.
+    nroOpDespachante: espejo(c[COL_CONT_DESPACHO.nroOpDespachante]),
+    idOp: espejo(c[COL_CONT_DESPACHO.idOp]),
+    estadoCargaOp: espejo(c[COL_CONT_DESPACHO.estadoCargaOp]),
+    chasis: espejo(c[COL_CONT_DESPACHO.chasis]),
+  }
+}
 
 function aTractor(s: SubitemCrudo): TractorDeOp {
   const c = porId(s.column_values) as Record<string, ColumnaRica | undefined>
@@ -77,20 +112,29 @@ export async function contenedoresPorIds(ids: string[]): Promise<ContenedorDespa
   const r = await mondayApi<{
     items: { id: string; name: string; column_values: ColumnaRica[] }[]
   }>('contenedoresDeDespacho', { ids: unicos, columnas: COLUMNAS_CONTENEDOR })
-  return (r.items ?? []).map((item) => {
-    const c = porId(item.column_values) as Record<string, ColumnaRica | undefined>
-    return {
-      id: item.id,
-      nombre: item.name,
-      numero: texto(c[COL_CONT_DESPACHO.numero]),
-      ubicacion: texto(c[COL_CONT_DESPACHO.ubicacion]),
-      transportista: texto(c[COL_CONT_DESPACHO.transportista]),
-      patente: texto(c[COL_CONT_DESPACHO.patente]),
-      fechaTurno: fechaISO(c[COL_CONT_DESPACHO.fechaTurno]),
-      estadoArribo: texto(c[COL_CONT_DESPACHO.estadoArribo]),
-      tractorIds: c[COL_CONT_DESPACHO.tractores]?.linked_item_ids ?? [],
-    }
-  })
+  return (r.items ?? []).map(aContenedor)
+}
+
+/**
+ * TODOS los contenedores del tablero.
+ *
+ * Es lo que mira BERGER para marcar arribos y cargar entregas: no se entra por la OP sino por el
+ * contenedor, porque un camión llega y se descarga de a uno. El filtro por estado lo hace la
+ * pantalla, que es instantáneo: el tablero crece de a un puñado de filas por despacho.
+ */
+export async function contenedoresDelTablero(): Promise<ContenedorDespacho[]> {
+  const r = await mondayApi<{
+    boards: {
+      items_page: { items: { id: string; name: string; column_values: ColumnaRica[] }[] }
+    }[]
+  }>('contenedoresDelTablero', { columnas: COLUMNAS_CONTENEDOR, limite: 500 })
+
+  return (
+    (r.boards?.[0]?.items_page.items ?? [])
+      .map(aContenedor)
+      // Los más nuevos arriba: el id de monday crece con el tiempo.
+      .sort((a, b) => b.id.localeCompare(a.id))
+  )
 }
 
 /** Los contenedores de una OP, a partir de sus tractores. */
@@ -109,21 +153,31 @@ export async function contenedoresDeOp(tractores: TractorDeOp[]): Promise<Conten
  * El nombre del item es el número de contenedor: es como se lo nombra en el puerto, en el buque y
  * en el remito, así que es lo que tiene que leerse en el tablero.
  */
-export async function crearContenedor(numero: string, tractorIds: string[]): Promise<string> {
+export async function crearContenedor(
+  numero: string,
+  tractores: TractorDeOp[],
+  opId: string,
+): Promise<string> {
   const r = await mondayApi<{ create_item: { id: string } }>('crearContenedorDespacho', {
-    nombre: numero,
+    // El nombre dice QUÉ lleva; el número va en su columna. En el tablero se ve primero el nombre,
+    // y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula de contenedor.
+    nombre: nombreDeContenedor(tractores),
     valores: JSON.stringify({
       [COL_CONT_DESPACHO.numero]: numero,
-      [COL_CONT_DESPACHO.tractores]: { item_ids: tractorIds },
+      [COL_CONT_DESPACHO.fechaCreacion]: { date: hoyISO() },
+      [COL_CONT_DESPACHO.tractores]: { item_ids: tractores.map((t) => t.id) },
+      /* La conexión al ITEM de la OP, además de la de los subitems: es la que le da al contenedor
+         el número de OP y el estado de carga espejados, que es con lo que después se lo busca. */
+      [COL_CONT_DESPACHO.opDespacho]: { item_ids: [opId] },
     }),
   })
   return r.create_item.id
 }
 
-/** Ubicación de entrega y transportista: lo que completa BERGER de cada contenedor. */
+/** Ubicación, transportista y arribo: lo que completa BERGER de cada contenedor. */
 export async function actualizarContenedor(
   id: string,
-  cambios: { ubicacion?: string; transportistaId?: string | null },
+  cambios: { ubicacion?: string; transportistaId?: string | null; estadoArribo?: string },
 ): Promise<string> {
   const valores: Record<string, unknown> = {}
   if (cambios.ubicacion !== undefined) {
@@ -140,6 +194,11 @@ export async function actualizarContenedor(
     valores[COL_CONT_DESPACHO.transportista] = cambios.transportistaId
       ? { item_ids: [cambios.transportistaId] }
       : { item_ids: [] }
+  }
+  if (cambios.estadoArribo !== undefined) {
+    valores[COL_CONT_DESPACHO.estadoArribo] = cambios.estadoArribo
+      ? { label: cambios.estadoArribo }
+      : {}
   }
   if (Object.keys(valores).length === 0) throw new Error('No hay cambios para guardar.')
 

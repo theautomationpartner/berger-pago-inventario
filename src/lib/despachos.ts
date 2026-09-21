@@ -78,10 +78,7 @@ export function cambiosDe(op: DespachoOP, edicion: EdicionDespacho): CambioDespa
 }
 
 /** Sólo los campos que cambiaron, listos para mandar a monday. */
-export function soloLoCambiado(
-  op: DespachoOP,
-  edicion: EdicionDespacho,
-): Partial<EdicionDespacho> {
+export function soloLoCambiado(op: DespachoOP, edicion: EdicionDespacho): Partial<EdicionDespacho> {
   const parcial: Partial<EdicionDespacho> = {}
   for (const { campo } of cambiosDe(op, edicion)) parcial[campo] = (edicion[campo] ?? '').trim()
   return parcial
@@ -170,7 +167,10 @@ export function resumirDespachos(ops: DespachoOP[], hoy = new Date()): ResumenDe
 
   const paises = new Map<string, number>()
   for (const op of ops) {
-    for (const pais of op.paisOrigen.split(',').map((p) => p.trim()).filter(Boolean)) {
+    for (const pais of op.paisOrigen
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)) {
       paises.set(pais, (paises.get(pais) ?? 0) + 1)
     }
   }
@@ -193,6 +193,29 @@ export function resumirDespachos(ops: DespachoOP[], hoy = new Date()): ResumenDe
     porPais: [...paises.entries()]
       .map(([pais, cantidad]) => ({ pais, cantidad }))
       .sort((a, b) => b.cantidad - a.cantidad),
-    actualizadasHoy: ops.filter((op) => diasSinActualizar(op.ultimaActualizacion, hoy) === 0).length,
+    actualizadasHoy: ops.filter((op) => diasSinActualizar(op.ultimaActualizacion, hoy) === 0)
+      .length,
   }
+}
+
+/**
+ * Cómo se nombra un contenedor: qué lleva, no cómo se llama.
+ *
+ * "2 x 6205 G AGROTRON · 1 x 6175 G AGROTRON" se reconoce de un vistazo en el tablero; la matrícula
+ * del contenedor, que es su número, vive en su propia columna y sirve para buscarlo, no para
+ * identificar la carga.
+ *
+ * Los modelos van en el orden en que aparecen y no alfabético: es el orden en que el despachante
+ * los fue marcando al armarlo.
+ */
+export function nombreDeContenedor(tractores: { modelo: string }[]): string {
+  if (tractores.length === 0) return 'Contenedor vacío'
+
+  const cuenta = new Map<string, number>()
+  for (const t of tractores) {
+    const modelo = t.modelo.trim() || 'Sin modelo'
+    cuenta.set(modelo, (cuenta.get(modelo) ?? 0) + 1)
+  }
+
+  return [...cuenta.entries()].map(([modelo, n]) => `${n} x ${modelo}`).join(' · ')
 }

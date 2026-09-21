@@ -45,6 +45,7 @@ app.
 | Pago Vista | Tractor `VISTA` **y** `Fecha Confirmada` | `Pendiente de Pago` + despacho creado |
 | Actualizar Despacho OP - DESPACHANTE | OP creada por cualquiera de los dos pagos | estado de carga actualizado y contenedores armados |
 | Actualizar OP - BERGER S.A. | OP en `Próxima a Arribar` | pago, banco, VEP y entrega definidos |
+| Actualizar Contenedores - BERGER S.A. | Contenedor de una OP `Próxima a Arribar` o `Nacionalizado` | `Arribado` + ubicación de entrega |
 
 ### 1.2 Tableros que intervienen
 
@@ -756,10 +757,24 @@ antes de eso el trámite no arrancó. Un tractor está pendiente cuando su subit
 
 **Sobre qué impacta.** 🚚 Contenedores (`18431711942`), un item por contenedor:
 
-| Dato | Columna |
-|---|---|
-| Nombre y número | `name` y `text_mm7aye5e` |
-| Tractores que lleva | `board_relation_mm7abg4` |
+| Dato | Columna | Qué lleva |
+|---|---|---|
+| Nombre del item | `name` | la cuenta por modelo: `2 x 6205 G AGROTRON · 1 x 6175 G` |
+| N° de contenedor | `text_mm7aye5e` | lo que cargó el despachante |
+| Fecha de Creación Contenedor | `date_mm7dxh72` | el día en que se armó |
+| Tractores que lleva | `board_relation_mm7abg4` | los subitems marcados |
+| OP de despacho | `board_relation_mm7d8kr1` | el **item** de la OP |
+
+**Consideración · el nombre dice qué lleva.** No repite el número de contenedor: en el tablero se
+lee primero el nombre, y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula.
+El número sigue estando, en su columna. Si un tractor no tiene modelo cargado se cuenta como
+"Sin modelo", para que la cuenta cierre igual.
+
+**Consideración · la conexión al item de la OP.** Va **además** de la de los subitems, y no es
+redundante: es la que le trae al contenedor, espejados, el N° de OP del despachante
+(`lookup_mm7d50jj`), el ID de la OP (`lookup_mm7dq99y`) y su estado de carga (`lookup_mm7d9537`).
+Sin ella el contenedor no sabría de qué despacho es, y es con esos espejos con lo que después se lo
+busca y se decide si puede marcarse como arribado.
 
 **Consideración · sólo se escribe un lado.** La conexión con el subitem del tractor es de **doble
 vía**: monday completa `board_relation_mm7a62tt` solo. Escribir los dos sería pisar el mismo dato
@@ -815,6 +830,11 @@ más los contenedores de esa OP y el tablero de Contactos para elegir transporti
 **Qué verifica antes de mostrar.** Sólo las OP en ese estado: antes no hay nada que decidir y después
 ya se decidió.
 
+**Buscador.** Filtra por N° de OP del despachante (`text_mm78qbvc`), nombre de la OP, y **nombre o
+modelo** (`lookup_mm78rbz2`) de cualquiera de sus tractores. Los tractores de todas las OP listadas
+se traen en **una sola** consulta al abrir: quien busca una carga se acuerda del tractor mucho más
+seguido que del número de trámite. Cada fila muestra además cuántos tractores tiene.
+
 **Sobre qué impacta.**
 
 *De la OP (👮 Despachante de aduana):*
@@ -849,7 +869,47 @@ exacto en el mapa se ajusta desde monday.
 `color_mm793phx`: su valor inicial lo pone la propia columna en monday. La app sólo lo escribe
 desde esta operación, cuando BERGER lo pasa a `PAGADO`.
 
-### 5.5 Operación · DASHBOARD DE DESPACHOS
+### 5.5 Operación · ACTUALIZAR CONTENEDORES - BERGER S.A.
+
+**Qué hace.** Marca los contenedores que ya llegaron y les carga la ubicación de entrega. **Sólo
+Administración** (módulo `aduanaBerger`).
+
+**Por qué es una operación aparte.** Cuando la carga llega, el trabajo deja de ser por OP y pasa a
+ser **por contenedor**: un camión llega y se descarga de a uno, con su propia entrega y su propio
+arribo. Por eso esta pantalla entra por el tablero de 🚚 Contenedores y no por la OP.
+
+**De dónde toma los datos.** 🚚 Contenedores (`18431711942`) completo —hasta 500 items, en una
+consulta—, con sus espejos de la OP, más el tablero de Contactos para elegir transportista.
+
+**Qué verifica antes de mostrar.**
+- Por defecto, sólo los **pendientes**: los de una OP en etapa de arribo a los que les falta el
+  arribo o la entrega. "Todos" está a un clic.
+- El **arribo sólo se puede marcar** si la OP está en **Próxima a Arribar** o **Nacionalizado**
+  (espejo `lookup_mm7d9537`). Antes de eso la mercadería está navegando: marcar un arribo ahí sería
+  anotar un hecho que no pasó. La ubicación, en cambio, se puede cargar siempre —se define antes de
+  que el barco llegue—.
+
+**Sobre qué impacta.** 🚚 Contenedores:
+
+| Dato | Columna |
+|---|---|
+| Estado de arribo | `color_mm7ar9rc` (*Arribado* / *Pendientes de Arribar*) |
+| Ubicación de entrega | `location_mm7a16dx` |
+| Transportista | `board_relation_mm7axy2m` |
+
+**Buscador.** Cubre las cuatro formas de nombrar un contenedor: su número (`text_mm7aye5e`), el
+nombre del item, el N° de OP del despachante (`lookup_mm7d50jj`), el ID de la OP
+(`lookup_mm7dq99y`) y el **chasis** de los tractores que lleva (`lookup_mm7ds57v`). Quien recibe el
+camión tiene a mano la matrícula o el remito, casi nunca el número de trámite.
+
+**Consideración · se guarda de a uno.** Cada tarjeta tiene su botón. Son decisiones independientes
+—cada contenedor va a un lugar distinto— y guardar en bloque haría que un error en el tercero
+dejara en duda a los otros cinco.
+
+**Consideración · la ubicación exige coordenadas.** Igual que en 5.4: la columna *location* rechaza
+la dirección sola, así que las coordenadas van en 0 y la dirección queda bien escrita.
+
+### 5.6 Operación · DASHBOARD DE DESPACHOS
 
 **Qué hace.** Lectura de conjunto del tablero del despachante. No escribe nada. **Sólo Administración
 lo ve.**
@@ -958,8 +1018,9 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 👮 Despachante | `color_mm793phx` | lo que defina BERGER (la app NO lo toca al crear) | Actualizar OP - BERGER |
 | 👮 Despachante | pago, fondeo, banco y VEP | lo que defina BERGER | Actualizar OP - BERGER |
 | 👮 Despachante | update + notificaciones | aviso a Sofía y Micaela | al pasar a "Próxima a Arribar" |
-| 🚚 Contenedores | item completo con sus tractores | — | Armar contenedores |
-| 🚚 Contenedores | `location_mm7a16dx` y `board_relation_mm7axy2m` | entrega y transportista | Actualizar OP - BERGER |
+| 🚚 Contenedores | item completo: nombre por modelo, N°, `date_mm7dxh72`, tractores y OP | — | Armar contenedores |
+| 🚚 Contenedores | `location_mm7a16dx` y `board_relation_mm7axy2m` | entrega y transportista | Actualizar OP - BERGER · Actualizar Contenedores |
+| 🚚 Contenedores | `color_mm7ar9rc` | `Arribado` | Actualizar Contenedores - BERGER |
 
 **Lo que la app NUNCA escribe:** importes y datos leídos del PDF de los drafts, el Catálogo de
 Productos, el tablero de Contenedores, y cualquier columna fuera de las listas de arriba.
@@ -977,6 +1038,7 @@ Productos, el tablero de Contenedores, y cualquier columna fuera de las listas d
 - **Dashboard de fechas de producción:** no existe. Los otros dos módulos sí tienen el suyo.
 - **Coordenadas de la ubicación de entrega:** se escriben en 0 porque la app no geocodifica; la
   dirección sí queda bien. El punto del mapa se ajusta a mano en monday.
-- **Menciones en los updates:** monday las descarta, así que el aviso a BERGER se apoya en las
-  notificaciones personales. Si algún día hace falta la mención dentro del update, hay que hacerlo
-  por Make.
+- **Menciones en los updates:** *resuelto*. Van en `mentions_list` de `create_update`, que existe
+  desde la versión 2025-07 de la API; esa operación —y sólo esa— declara su propia versión. Lo que
+  monday descarta es el marcado escrito dentro del `body`, que era el camino anterior. Las
+  notificaciones personales quedaron como respaldo por si el update falla.

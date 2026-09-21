@@ -38,6 +38,8 @@ DESPACHO DE ADUANA       →  ACTUALIZAR DESPACHO OP   →  1. Selección de OP
                                                         3b. Armar contenedores
                          →  ACTUALIZAR OP - BERGER   →  1. OP próximas a arribar
                                                         2. Pago y entrega
+                         →  ACTUALIZAR CONTENEDORES  →  pantalla única
+                            - BERGER
                          →  DASHBOARD DE DESPACHOS   →  pantalla única
 ```
 
@@ -666,9 +668,27 @@ lo único que las distingue. Un tractor entra en un solo contenedor: marcarlo en
 anterior.
 
 **No se puede guardar con tractores sin ubicar**, y los que faltan están siempre a la vista. Al
-guardar se crea un item en 🚚**Contenedores** (`18431711942`) con su número y los tractores
-conectados; **la conexión es de doble vía**, así que monday completa solo el lado del subitem
-—probado contra la API—.
+guardar se crea un item en 🚚**Contenedores** (`18431711942`) con:
+
+| Qué | Columna | De dónde sale |
+|---|---|---|
+| Nombre del item | *(el nombre)* | `2 x 6205 G AGROTRON · 1 x 6175 G` — la cuenta por modelo |
+| N° de contenedor | `text_mm7aye5e` | lo que cargó el despachante |
+| Fecha de creación | `date_mm7dxh72` | el día en que se armó |
+| Tractores | `board_relation_mm7abg4` | los subitems marcados |
+| OP | `board_relation_mm7d8kr1` | el **item** de la OP |
+
+El **nombre dice qué lleva**, no cómo se llama el contenedor: en el tablero se lee primero el
+nombre, y "2 x 6205 G AGROTRON" identifica la carga mucho antes que una matrícula. El número sigue
+estando, en su columna.
+
+La conexión al **item** de la OP va además de la de los subitems, y no es redundante: es la que le
+trae al contenedor el N° de OP del despachante (`lookup_mm7d50jj`), el ID de la OP
+(`lookup_mm7dq99y`) y su estado de carga (`lookup_mm7d9537`) espejados. Sin ella el contenedor no
+sabría de qué despacho es, y es con esos espejos con lo que después se lo busca.
+
+**La conexión es de doble vía**, así que monday completa solo el lado del subitem —probado contra
+la API—.
 
 ### "Próxima a Arribar": el cruce entre los dos
 
@@ -695,6 +715,12 @@ El aviso son **dos cosas**, no una:
 
 El otro lado de "Próxima a Arribar", y **sólo para Administración**. Muestra únicamente las OP en ese
 estado: antes no hay nada que decidir, y después ya se decidió.
+
+Arriba hay un **buscador** que mira el N° de OP del despachante (`text_mm78qbvc`), el nombre de la
+OP, y el **nombre y el modelo** (`lookup_mm78rbz2`) de cada uno de sus tractores. Los tractores de
+todas las OP listadas se traen en **una sola** consulta al abrir la pantalla, porque quien busca una
+carga se acuerda del tractor mucho más seguido que del número de trámite. Cada fila muestra además
+cuántos tractores tiene.
 
 Dos cosas en la misma pantalla, porque se deciden juntas:
 
@@ -724,6 +750,38 @@ transporte.
 columna en monday; la app lo escribe únicamente desde esta operación, cuando BERGER lo pasa a
 `PAGADO`. Escribirlo al crear obligaba a habilitar esa columna en la lista de escribibles del alta,
 y una columna habilitada de más es una que se puede pisar sin querer.
+
+### ACTUALIZAR CONTENEDORES - BERGER S.A.
+
+Cuando la carga llega, el trabajo deja de ser por OP y pasa a ser **por contenedor**: un camión
+llega y se descarga de a uno, con su propia entrega y su propio arribo. Por eso esta pantalla entra
+por el tablero de 🚚**Contenedores** y no por la OP. Es del módulo `aduanaBerger`, igual que
+"Actualizar OP".
+
+| Qué se carga | Columna |
+|---|---|
+| Arribado / Pendiente de Arribar | `color_mm7ar9rc` |
+| Ubicación de entrega | `location_mm7a16dx` |
+| Transportista | `board_relation_mm7axy2m` |
+
+**Sólo se marca arribo de lo que puede haber llegado.** El estado de carga de la OP se lee del
+espejo `lookup_mm7d9537`, y el toggle de arribo aparece únicamente si esa OP está en **Próxima a
+Arribar** o **Nacionalizado**. Antes de eso la mercadería todavía está navegando: marcar un arribo
+ahí sería anotar un hecho que no pasó. La ubicación, en cambio, se puede cargar siempre —se define
+antes de que el barco llegue—.
+
+Por defecto lista los **pendientes**: los de una OP ya en etapa de arribo a los que les falta el
+arribo o la entrega. "Todos" está a un clic, porque corregir algo ya cargado es tan legítimo como
+cargarlo la primera vez.
+
+El **buscador** cubre las cuatro formas de nombrar un contenedor: su número (`text_mm7aye5e`), el
+nombre del item, el N° de OP del despachante (`lookup_mm7d50jj`), el ID de la OP
+(`lookup_mm7dq99y`) y el **chasis** de los tractores que lleva (`lookup_mm7ds57v`). Quien recibe el
+camión tiene a mano la matrícula o el remito, casi nunca el número de trámite.
+
+Se guarda **de a un contenedor**: cada tarjeta tiene su botón. Son decisiones independientes —cada
+contenedor va a un lugar distinto— y guardar en bloque haría que un error en el tercero dejara en
+duda a los otros cinco.
 
 ### DASHBOARD DE DESPACHOS
 

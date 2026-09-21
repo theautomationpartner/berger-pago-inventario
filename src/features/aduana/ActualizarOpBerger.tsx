@@ -87,6 +87,10 @@ function Selector({
 export function ActualizarOpBerger() {
   const { despachos, cargando, error, recargar } = useDespachos()
 
+  const [busqueda, setBusqueda] = useState('')
+  /** Tractores de las OP listadas: hacen falta para poder buscar por tractor o por modelo. */
+  const [tractoresPorOp, setTractoresPorOp] = useState<Record<string, TractorDeOp[]>>({})
+
   const [etapa, setEtapa] = useState<EtapaBerger>('seleccion')
   const [elegidaId, setElegidaId] = useState<string | null>(null)
   const [edicion, setEdicion] = useState<EdicionBerger | null>(null)
@@ -108,6 +112,33 @@ export function ActualizarOpBerger() {
     [despachos],
   )
   const elegida = porLlegar.find((op) => op.id === elegidaId) ?? null
+
+  /* Los tractores de todas las OP listadas, en UNA consulta. Se traen para que la búsqueda pueda
+     mirar también adentro: quien busca una carga suele acordarse del tractor, no del N° de OP. */
+  useEffect(() => {
+    if (porLlegar.length === 0) return
+    tractoresDeOps(porLlegar.map((op) => op.id))
+      .then((porOp) => setTractoresPorOp(Object.fromEntries(porOp)))
+      .catch(() => setTractoresPorOp({}))
+  }, [porLlegar])
+
+  /** Busca por N° de OP del despachante, nombre de la OP, y nombre o modelo de sus tractores. */
+  const visibles = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase()
+    if (!texto) return porLlegar
+    return porLlegar.filter((op) => {
+      const tractores = tractoresPorOp[op.id] ?? []
+      return [
+        op.nombre,
+        op.nroOp,
+        op.idDespacho,
+        ...tractores.map((t) => t.nombre),
+        ...tractores.map((t) => t.modelo),
+      ]
+        .filter(Boolean)
+        .some((campo) => campo.toLowerCase().includes(texto))
+    })
+  }, [porLlegar, busqueda, tractoresPorOp])
 
   const cargarDetalle = useCallback(async (op: DespachoOP) => {
     setCargandoDetalle(true)
@@ -317,6 +348,24 @@ export function ActualizarOpBerger() {
                 </div>
               )}
 
+              <div className="filtros">
+                <div className="filtros-fila">
+                  <label className="campo campo--busqueda">
+                    <span className="campo-lbl">Buscar</span>
+                    <input
+                      className="input"
+                      value={busqueda}
+                      placeholder="N° de OP, nombre, tractor o modelo…"
+                      onChange={(e) => setBusqueda(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <span className="filtros-nota filtros-nota--sola">
+                  <i className="fa-solid fa-anchor" aria-hidden="true" />
+                  {visibles.length} de {porLlegar.length} OP próximas a arribar
+                </span>
+              </div>
+
               <div className="lista">
                 <div className="lista-head">
                   <span>Orden de pago</span>
@@ -339,6 +388,18 @@ export function ActualizarOpBerger() {
                     </div>
                   )}
 
+                  {!cargando && !error && visibles.length === 0 && porLlegar.length > 0 && (
+                    <div className="vacio">
+                      <span className="vacio-ic">
+                        <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
+                      </span>
+                      <span className="vacio-tit">Ninguna OP coincide con la búsqueda</span>
+                      <span className="vacio-det">
+                        Probá con el N° de OP, el nombre, o el modelo de alguno de sus tractores.
+                      </span>
+                    </div>
+                  )}
+
                   {!cargando && !error && porLlegar.length === 0 && (
                     <div className="vacio">
                       <span className="vacio-ic">
@@ -353,7 +414,7 @@ export function ActualizarOpBerger() {
                   )}
 
                   {!cargando &&
-                    porLlegar.map((op) => (
+                    visibles.map((op) => (
                       <div key={op.id} className="opfila">
                         <div className="opfila-head">
                           <span className="opfila-nom">{op.nombre}</span>
@@ -368,6 +429,12 @@ export function ActualizarOpBerger() {
                             >
                               VEP {op.estadoPagoVep || 'sin estado'}
                             </span>
+                            {(tractoresPorOp[op.id] ?? []).length > 0 && (
+                              <span className="chip chip--indigo">
+                                {(tractoresPorOp[op.id] ?? []).length} tractor
+                                {(tractoresPorOp[op.id] ?? []).length === 1 ? '' : 'es'}
+                              </span>
+                            )}
                           </span>
                           <button
                             type="button"

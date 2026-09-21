@@ -16,50 +16,49 @@ import type {
  * comodidad —el permiso lo aplica el servidor en cada pedido—, pero ofrecerle a alguien una
  * pantalla que va a rebotar es peor que no ofrecérsela.
  */
-export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modulo: ModuloApp })[] = [
-  {
-    id: 'drafts',
-    modulo: 'drafts',
-    titulo: 'PLANIFICACIÓN DE DRAFTS',
-    corto: 'Planificación de drafts',
-    detalle:
-      'Período de producción de cada draft y envío de la planificación al proveedor, antes de que ' +
-      'el tractor exista.',
-    icono: 'fa-solid fa-calendar-check',
-  },
-  {
-    id: 'fechas',
-    modulo: 'fechas',
-    titulo: 'FECHAS DE PRODUCCIÓN INVENTARIO',
-    corto: 'Fechas de producción',
-    detalle:
-      'El ida y vuelta con el proveedor por la fecha de producción de cada tractor: confirmarla o ' +
-      'proponer otra.',
-    icono: 'fa-solid fa-calendar-day',
-  },
-  {
-    id: 'despacho',
-    modulo: 'despacho',
-    titulo: 'PAGOS DESPACHO',
-    corto: 'Pagos despacho',
-    detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
-    icono: 'fa-solid fa-truck-ramp-box',
-  },
-  {
-    id: 'aduana',
-    modulo: 'aduana',
-    titulo: 'DESPACHO DE ADUANA',
-    corto: 'Despacho de aduana',
-    detalle:
-      'Seguimiento de las OP ya despachadas: estado de la carga, contenedores, arribos y pago.',
-    icono: 'fa-solid fa-passport',
-  },
-]
+export const OPERACIONES_PRINCIPALES: (OpcionPanel<OperacionPrincipal> & { modulo: ModuloApp })[] =
+  [
+    {
+      id: 'drafts',
+      modulo: 'drafts',
+      titulo: 'PLANIFICACIÓN DE DRAFTS',
+      corto: 'Planificación de drafts',
+      detalle:
+        'Período de producción de cada draft y envío de la planificación al proveedor, antes de que ' +
+        'el tractor exista.',
+      icono: 'fa-solid fa-calendar-check',
+    },
+    {
+      id: 'fechas',
+      modulo: 'fechas',
+      titulo: 'FECHAS DE PRODUCCIÓN INVENTARIO',
+      corto: 'Fechas de producción',
+      detalle:
+        'El ida y vuelta con el proveedor por la fecha de producción de cada tractor: confirmarla o ' +
+        'proponer otra.',
+      icono: 'fa-solid fa-calendar-day',
+    },
+    {
+      id: 'despacho',
+      modulo: 'despacho',
+      titulo: 'PAGOS DESPACHO',
+      corto: 'Pagos despacho',
+      detalle: 'Despacho de tractores del inventario, con pago anticipado o a la vista.',
+      icono: 'fa-solid fa-truck-ramp-box',
+    },
+    {
+      id: 'aduana',
+      modulo: 'aduana',
+      titulo: 'DESPACHO DE ADUANA',
+      corto: 'Despacho de aduana',
+      detalle:
+        'Seguimiento de las OP ya despachadas: estado de la carga, contenedores, arribos y pago.',
+      icono: 'fa-solid fa-passport',
+    },
+  ]
 
 /** Las operaciones principales que puede ver este perfil. */
-export const principalesDeModulos = (
-  modulos: ModuloApp[],
-): OpcionPanel<OperacionPrincipal>[] =>
+export const principalesDeModulos = (modulos: ModuloApp[]): OpcionPanel<OperacionPrincipal>[] =>
   OPERACIONES_PRINCIPALES.filter((o) => modulos.includes(o.modulo))
 
 /**
@@ -86,6 +85,14 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
     detalle:
       'De las OP próximas a arribar: forma de pago, fondeo, banco, VEP, transportista y entrega.',
     icono: 'fa-solid fa-building-columns',
+  },
+  {
+    id: 'contenedores',
+    modulo: 'aduanaBerger',
+    titulo: 'ACTUALIZAR CONTENEDORES - BERGER S.A.',
+    corto: 'Actualizar contenedores',
+    detalle: 'Marcar los contenedores que ya llegaron y cargarles la ubicación de entrega.',
+    icono: 'fa-solid fa-truck-ramp-box',
   },
   {
     id: 'dashboard',

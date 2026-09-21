@@ -53,12 +53,7 @@ import {
  * no se los muestre.
  */
 export type ModuloApp =
-  | 'despacho'
-  | 'aduana'
-  | 'aduanaBerger'
-  | 'aduanaDashboard'
-  | 'drafts'
-  | 'fechas' | 'drafts'
+  'despacho' | 'aduana' | 'aduanaBerger' | 'aduanaDashboard' | 'drafts' | 'fechas' | 'drafts'
 
 /** Nombre de cada operación. Es lo único que viaja del cliente al servidor. */
 export type NombreOperacion =
@@ -80,6 +75,7 @@ export type NombreOperacion =
   | 'actualizarDespacho'
   | 'tractoresDeOp'
   | 'contenedoresDeDespacho'
+  | 'contenedoresDelTablero'
   | 'crearContenedorDespacho'
   | 'actualizarContenedorDespacho'
   | 'contactos'
@@ -210,9 +206,12 @@ const COLUMNAS_DE_BERGER = new Set<string>([
 /** Lo que se puede escribir de un contenedor del despacho. */
 const COLUMNAS_DE_CONTENEDOR = new Set<string>([
   COL_CONT_DESPACHO.numero,
+  COL_CONT_DESPACHO.fechaCreacion,
   COL_CONT_DESPACHO.tractores,
+  COL_CONT_DESPACHO.opDespacho,
   COL_CONT_DESPACHO.ubicacion,
   COL_CONT_DESPACHO.transportista,
+  COL_CONT_DESPACHO.estadoArribo,
 ])
 
 /** Lo único que la app escribe de una confirmación: el disparador del envío. */
@@ -582,7 +581,11 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     validar: (v) => {
       const cursor = String(v.cursor ?? '')
       if (!cursor || cursor.length > 4096) throw new OperacionInvalida('Cursor inválido.')
-      return { cursor, columnas: idsDeColumnas(v.columnas), limite: entero(v.limite, 'limite', 1, 500) }
+      return {
+        cursor,
+        columnas: idsDeColumnas(v.columnas),
+        limite: entero(v.limite, 'limite', 1, 500),
+      }
     },
   },
 
@@ -610,7 +613,9 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     `,
     validar: (v) => ({
       tablero: TABLEROS.pagos,
-      operacion: [entero(Array.isArray(v.operacion) ? v.operacion[0] : v.operacion, 'operacion', 0, 999)],
+      operacion: [
+        entero(Array.isArray(v.operacion) ? v.operacion[0] : v.operacion, 'operacion', 0, 999),
+      ],
       cols: idsDeColumnas(v.cols),
       colsSub: idsDeColumnas(v.colsSub),
       limite: entero(v.limite, 'limite', 1, 500),
@@ -780,7 +785,11 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     validar: (v) => {
       const cursor = String(v.cursor ?? '')
       if (!cursor || cursor.length > 4096) throw new OperacionInvalida('Cursor inválido.')
-      return { cursor, columnas: idsDeColumnas(v.columnas), limite: entero(v.limite, 'limite', 1, 500) }
+      return {
+        cursor,
+        columnas: idsDeColumnas(v.columnas),
+        limite: entero(v.limite, 'limite', 1, 500),
+      }
     },
   },
 
@@ -1065,6 +1074,30 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     },
   },
 
+  /**
+   * Todos los contenedores del tablero.
+   *
+   * Es la entrada de BERGER para marcar arribos y cargar entregas: se trabaja por contenedor y no
+   * por OP, porque un camión llega y se descarga de a uno.
+   */
+  contenedoresDelTablero: {
+    modulo: 'aduanaBerger',
+    query: `
+      query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(limit: $limite) {
+            items { id name column_values(ids: $columnas) { ${CAMPOS_COLUMNA} } }
+          }
+        }
+      }
+    `,
+    validar: (v) => ({
+      tablero: TABLEROS.contenedoresDespacho,
+      columnas: idsDeColumnas(v.columnas),
+      limite: entero(v.limite, 'limite', 1, 500),
+    }),
+  },
+
   /** Contenedores del despacho por id: los que ya están armados. */
   contenedoresDeDespacho: {
     modulo: 'aduana',
@@ -1223,7 +1256,10 @@ export const MUTATION_ARCHIVO =
  * sube el archivo lo tiene habilitado. Sin eso, habilitar los comprobantes de aduana le habría
  * abierto al despachante externo la puerta del circuito de pago.
  */
-export function validarDestinoArchivo(itemId: unknown, columnId: unknown): {
+export function validarDestinoArchivo(
+  itemId: unknown,
+  columnId: unknown,
+): {
   itemId: string
   columnId: string
   modulo: ModuloApp

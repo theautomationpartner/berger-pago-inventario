@@ -22,7 +22,7 @@ export type OperacionPrincipal = 'despacho' | 'aduana' | 'drafts' | 'fechas'
 export type OperacionFechas = 'confirmar' | 'enviar'
 
 /** Operaciones dentro de "Despacho de Aduana". */
-export type OperacionAduana = 'actualizar' | 'berger' | 'dashboard'
+export type OperacionAduana = 'actualizar' | 'berger' | 'contenedores' | 'dashboard'
 
 /** Operaciones dentro de "Planificación de Drafts". */
 export type OperacionDrafts = 'planificar' | 'enviar' | 'dashboard'
@@ -337,9 +337,18 @@ export interface ContenedorDespacho {
   transportista: string
   patente: string
   fechaTurno: string
+  fechaCreacion: string
   estadoArribo: string
   /** Ids de los subitems (tractores) que van adentro. */
   tractorIds: string[]
+  /** OP a la que pertenece, conectada a nivel item. */
+  opId: string | null
+  /** Datos de esa OP, espejados: sirven para reconocerlo y para buscarlo. */
+  nroOpDespachante: string
+  idOp: string
+  estadoCargaOp: string
+  /** Matrículas de los tractores que lleva, espejadas de los subitems. */
+  chasis: string
 }
 
 /** Un contenedor mientras se está armando, antes de existir en monday. */
@@ -375,6 +384,8 @@ export interface EdicionBerger {
 export interface EdicionContenedor {
   ubicacion: string
   transportistaId: string | null
+  /** Si ya llegó. Se marca desde "Actualizar Contenedores". */
+  estadoArribo?: string
 }
 
 /** Etapa del asistente de "Actualizar OP - BERGER SA". */
@@ -506,9 +517,7 @@ export interface TractorFecha {
 }
 
 /** Qué se decidió para un tractor: aceptar la fecha del proveedor, o proponer otra. */
-export type DecisionFecha =
-  | { tipo: 'confirmar' }
-  | { tipo: 'proponer'; fecha: string }
+export type DecisionFecha = { tipo: 'confirmar' } | { tipo: 'proponer'; fecha: string }
 
 /** Resultado de confirmar o proponer fechas en un lote. */
 export interface ResultadoFechas {

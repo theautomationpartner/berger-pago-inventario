@@ -385,16 +385,10 @@ export const ESTADO_CARGA = [
 export type EstadoCarga = (typeof ESTADO_CARGA)[number]
 
 /** Etiquetas de "Via de transporte" (`dropdown_mm78f6fn`). */
-export const VIA_TRANSPORTE = [
-  'Vía Marítima',
-  'Vía Aérea',
-  'Vía Terrestre',
-  'Vía Currier',
-] as const
+export const VIA_TRANSPORTE = ['Vía Marítima', 'Vía Aérea', 'Vía Terrestre', 'Vía Currier'] as const
 
 /** URL del tablero del Despachante de aduana, para los enlaces "ver en monday". */
-export const URL_TABLERO_DESPACHANTE =
-  'https://maquinariasagricolas.monday.com/boards/18430575903'
+export const URL_TABLERO_DESPACHANTE = 'https://maquinariasagricolas.monday.com/boards/18430575903'
 
 /** 👮 Subelementos del Despachante (18431188087) — los mismos datos que el subitem del pago. */
 export const COL_DESPACHANTE_SUB = {
@@ -421,6 +415,7 @@ export const COL_DESPACHANTE_SUB = {
  */
 export const COL_CONT_DESPACHO = {
   numero: 'text_mm7aye5e',
+  fechaCreacion: 'date_mm7dxh72',
   ubicacion: 'location_mm7a16dx',
   transportista: 'board_relation_mm7axy2m',
   fechaTurno: 'date_mm7a8jds',
@@ -428,11 +423,39 @@ export const COL_CONT_DESPACHO = {
   estadoArribo: 'color_mm7ar9rc',
   /** Tractores que van adentro: subitems del Despachante de aduana. */
   tractores: 'board_relation_mm7abg4',
+  /**
+   * La OP a nivel ITEM.
+   *
+   * Los tractores ya conectan el contenedor con los subitems, pero eso no alcanza para trabajar
+   * desde el contenedor: para saber de qué OP es —y en qué estado está esa OP— habría que subir
+   * por cada subitem hasta su padre. Con la conexión al item, el contenedor trae todo espejado.
+   */
+  opDespacho: 'board_relation_mm7d8kr1',
+
+  /* Espejos de la OP y de los tractores. Son los que permiten buscar un contenedor por cualquiera
+     de los nombres con los que se lo llama en la operación. */
+  nroOpDespachante: 'lookup_mm7d50jj',
+  idOp: 'lookup_mm7dq99y',
+  estadoCargaOp: 'lookup_mm7d9537',
+  chasis: 'lookup_mm7ds57v',
 } as const
 
+/** Etiquetas de "Estado de Arribo" (`color_mm7ar9rc`). */
+export const ESTADO_ARRIBO = {
+  PENDIENTE: 'Pendientes de Arribar',
+  ARRIBADO: 'Arribado',
+} as const
+
+/**
+ * Estados de la OP en los que sus contenedores ya se pueden marcar como arribados.
+ *
+ * Antes de "Próxima a Arribar" la carga todavía está navegando: marcar un arribo ahí sería
+ * anticiparse a un hecho que no pasó.
+ */
+export const ESTADOS_CON_ARRIBO: string[] = [PROXIMA_A_ARRIBAR, 'Nacionalizado']
+
 /** URL del tablero de contenedores del despacho, para los enlaces "ver en monday". */
-export const URL_TABLERO_CONTENEDORES =
-  'https://maquinariasagricolas.monday.com/boards/18431711942'
+export const URL_TABLERO_CONTENEDORES = 'https://maquinariasagricolas.monday.com/boards/18431711942'
 
 /**
  * Equipo "Despachantes" de la cuenta (`/teams/1504184`).

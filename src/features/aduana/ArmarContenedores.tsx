@@ -102,7 +102,11 @@ export function ArmarContenedores({ op, tractores, armados, onVolver, onListo }:
        conectados y no hay nada que deshacer. */
     for (const c of contenedores) {
       try {
-        await crearContenedor(c.numero.trim(), c.tractorIds)
+        await crearContenedor(
+          c.numero.trim(),
+          pendientes.filter((t) => c.tractorIds.includes(t.id)),
+          op.id,
+        )
         creados.push(c.numero.trim())
       } catch (e) {
         advertencias.push(`No se pudo crear el contenedor ${c.numero}: ${mensaje(e)}`)
