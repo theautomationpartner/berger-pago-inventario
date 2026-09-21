@@ -903,10 +903,20 @@ transportista distinto, así que esos dos datos viven ahí y no en la OP.
 **Consideración · se puede completar a medias.** Nada obliga a llenar todo de una vez: el banco suele
 definirse antes que el transporte, y sólo viaja lo que se cambió.
 
-**Consideración · la ubicación exige coordenadas.** Una columna de tipo *location* rechaza la
-escritura si sólo se manda la dirección. Como la app no geocodifica, las coordenadas van en 0 y la
-dirección —que es lo que se lee y lo que necesita el transportista— queda bien escrita. El punto
-exacto en el mapa se ajusta desde monday.
+**Consideración · la ubicación se elige de una lista.** Una columna de tipo *location* rechaza la
+escritura si sólo se manda la dirección: exige latitud y longitud. El campo funciona como el de
+monday —se escribe, aparecen direcciones reales, se toca una— y se guardan **sus** coordenadas. En
+el tablero el resultado es indistinguible de haberla cargado a mano, probado contra la API.
+
+Escribir libre sigue permitido, porque hay entregas en establecimientos que ningún mapa conoce. En
+ese caso las coordenadas van en 0, la dirección se lee bien igual, y el campo avisa *"Sin ubicar en
+el mapa"* antes de guardar: así es una decisión y no un descuido.
+
+**Consideración · el transportista sale filtrado.** El tablero de Contactos es la agenda entera de
+BERGER —clientes, proveedores, despachantes—, así que el desplegable muestra sólo los que tienen
+`Transportista` en 🤚Categoria (`dropdown_mm7acm6r`). Un contacto con varias categorías aparece
+igual. El filtro es por el dato del tablero y no por una lista en el código: se da de alta un
+transportista nuevo y aparece sin tocar la app.
 
 **Consideración · el VEP lo maneja BERGER.** Al crear el despacho la app **no toca**
 `color_mm793phx`: su valor inicial lo pone la propia columna en monday. La app sólo lo escribe
@@ -949,8 +959,9 @@ camión tiene a mano la matrícula o el remito, casi nunca el número de trámit
 —cada contenedor va a un lugar distinto— y guardar en bloque haría que un error en el tercero
 dejara en duda a los otros cinco.
 
-**Consideración · la ubicación exige coordenadas.** Igual que en 5.4: la columna *location* rechaza
-la dirección sola, así que las coordenadas van en 0 y la dirección queda bien escrita.
+**Consideración · la ubicación y el transportista.** Igual que en 5.4: la dirección se elige del
+buscador para que viaje con coordenadas, y el desplegable de transportistas está filtrado por la
+categoría del tablero de Contactos.
 
 ### 5.6 Operación · DASHBOARD DE DESPACHOS
 
@@ -999,6 +1010,11 @@ IP, usuario, cuenta y motivo.
 **Consideración · mensaje único.** Cualquier rechazo muestra siempre lo mismo: *"No tenés acceso a
 esta aplicación. Contactá al administrador."* Nunca revela si el usuario existe ni qué hay adentro.
 El motivo real queda sólo en el registro.
+
+**Consideración · el buscador de direcciones también pasa por el portón.** `api/geo.ts` es el
+único endpoint que consulta un servicio de afuera (Nominatim/OpenStreetMap). Exige la misma sesión
+que el proxy de datos y, además, el módulo `aduanaBerger`. Lo único que sale hacia afuera es el
+texto de la dirección: ni el usuario, ni la cuenta, ni el contenedor, ni la OP.
 
 **Consideración · el candado real está en el servidor.** El cliente **no arma consultas GraphQL**:
 manda el *nombre* de una operación de un catálogo cerrado, y el servidor pone el texto y valida las
@@ -1079,8 +1095,9 @@ Productos, el tablero de Contenedores, y cualquier columna fuera de las listas d
 - **Despachos anteriores a esta versión:** los items ya creados en 👮 Despachante de aduana no tienen
   puerto de origen cargado; se completa a mano.
 - **Dashboard de fechas de producción:** no existe. Los otros dos módulos sí tienen el suyo.
-- **Coordenadas de la ubicación de entrega:** se escriben en 0 porque la app no geocodifica; la
-  dirección sí queda bien. El punto del mapa se ajusta a mano en monday.
+- **Coordenadas de la ubicación de entrega:** *resuelto*. La dirección se elige de un buscador
+  (Nominatim/OpenStreetMap, por `api/geo.ts`) y viaja con sus coordenadas reales. Sigue en 0 sólo
+  cuando se escribe una dirección que el buscador no encuentra, y la pantalla lo avisa.
 - **Menciones en los updates:** *resuelto*. Van en `mentions_list` de `create_update`, que existe
   desde la versión 2025-07 de la API; esa operación —y sólo esa— declara su propia versión. Lo que
   monday descarta es el marcado escrito dentro del `body`, que era el camino anterior. Las

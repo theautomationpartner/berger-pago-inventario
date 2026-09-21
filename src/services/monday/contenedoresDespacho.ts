@@ -8,8 +8,13 @@
  */
 import { nombreDeContenedor } from '@/lib/despachos'
 import { hoyISO } from '@/lib/format'
-import type { ContenedorDespacho, TractorDeOp } from '@/types'
-import { COL_CONT_DESPACHO, COL_DESPACHANTE_SUB } from './columns'
+import type { Contacto, ContenedorDespacho, TractorDeOp } from '@/types'
+import {
+  CATEGORIA_CONTACTO,
+  COL_CONTACTOS,
+  COL_CONT_DESPACHO,
+  COL_DESPACHANTE_SUB,
+} from './columns'
 import { espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
@@ -183,17 +188,27 @@ export async function crearContenedor(
 /** Ubicación, transportista y arribo: lo que completa BERGER de cada contenedor. */
 export async function actualizarContenedor(
   id: string,
-  cambios: { ubicacion?: string; transportistaId?: string | null; estadoArribo?: string },
+  cambios: {
+    ubicacion?: string
+    coordenadas?: { lat: string; lng: string } | null
+    transportistaId?: string | null
+    estadoArribo?: string
+  },
 ): Promise<string> {
   const valores: Record<string, unknown> = {}
   if (cambios.ubicacion !== undefined) {
-    /* Una columna de ubicación de monday EXIGE latitud y longitud: con sólo la dirección rechaza la
-       escritura entera —probado contra la API—. Como la app no geocodifica, las coordenadas van en
-       0 y la DIRECCIÓN, que es lo que se lee en el tablero y lo que necesita el transportista,
-       queda bien escrita. Quien quiera el punto exacto en el mapa lo ajusta desde monday.
+    /* Una columna de ubicación de monday EXIGE latitud y longitud: con sólo la dirección rechaza
+       la escritura entera —probado contra la API—. Cuando la dirección se eligió del buscador van
+       SUS coordenadas, y el tablero queda igual que si se hubiera cargado a mano desde monday.
+       Cuando se escribió libre —una entrega que el buscador no encuentra— van en 0: la dirección
+       se lee bien, que es lo que necesita el transportista, y el punto del mapa se ajusta después.
        Se limpia con el objeto vacío, igual que una fecha o un dropdown. */
     valores[COL_CONT_DESPACHO.ubicacion] = cambios.ubicacion
-      ? { lat: '0', lng: '0', address: cambios.ubicacion }
+      ? {
+          lat: cambios.coordenadas?.lat ?? '0',
+          lng: cambios.coordenadas?.lng ?? '0',
+          address: cambios.ubicacion,
+        }
       : {}
   }
   if (cambios.transportistaId !== undefined) {
@@ -213,11 +228,36 @@ export async function actualizarContenedor(
 }
 
 /** Los contactos, para elegir el transportista. */
-export async function listarContactos(): Promise<{ id: string; nombre: string }[]> {
+export async function listarContactos(): Promise<Contacto[]> {
   const r = await mondayApi<{
-    boards: { items_page: { items: { id: string; name: string }[] } }[]
-  }>('contactos', { limite: 500 })
+    boards: {
+      items_page: { items: { id: string; name: string; column_values: ColumnaRica[] }[] }
+    }[]
+  }>('contactos', { columnas: [COL_CONTACTOS.categoria], limite: 500 })
+
   return (r.boards?.[0]?.items_page.items ?? [])
-    .map((i) => ({ id: i.id, nombre: i.name }))
+    .map((i) => ({
+      id: i.id,
+      nombre: i.name,
+      /* La categoría es un dropdown de selección múltiple: monday devuelve las etiquetas en una
+         sola cadena separada por comas, no como lista. */
+      categorias: texto(porId(i.column_values)[COL_CONTACTOS.categoria] as ColumnaRica | undefined)
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean),
+    }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+}
+
+/**
+ * Los contactos que pueden llevar un contenedor.
+ *
+ * El tablero de Contactos es la agenda entera —clientes, proveedores, despachantes—, así que sin
+ * filtrar el desplegable ofrece gente a la que no se le puede asignar un flete. Se filtra por la
+ * categoría del propio tablero y no por una lista en el código: alta un transportista nuevo y
+ * aparece, sin tocar la app.
+ */
+export async function listarTransportistas(): Promise<Contacto[]> {
+  const todos = await listarContactos()
+  return todos.filter((c) => c.categorias.includes(CATEGORIA_CONTACTO.TRANSPORTISTA))
 }

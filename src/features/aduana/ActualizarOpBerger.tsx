@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
 import { Stepper } from '@/components/ui/Stepper'
 import { fechaCorta } from '@/lib/format'
 import {
@@ -14,7 +15,7 @@ import {
 import {
   actualizarContenedor,
   contenedoresDeOp,
-  listarContactos,
+  listarTransportistas,
   tractoresDeOps,
 } from '@/services/monday/contenedoresDespacho'
 import { actualizarOpBerger } from '@/services/monday/despachos'
@@ -163,7 +164,7 @@ export function ActualizarOpBerger() {
 
   // Los contactos se piden una sola vez: es la lista de transportistas y cambia cada tanto.
   useEffect(() => {
-    listarContactos()
+    listarTransportistas()
       .then(setContactos)
       .catch(() => setContactos([]))
   }, [])
@@ -594,20 +595,19 @@ export function ActualizarOpBerger() {
                         )}
 
                         <div className="datos datos--form">
-                          <label className="campo">
+                          <div className="campo">
                             <span className="campo-lbl">Ubicación de entrega</span>
-                            <input
-                              className="input"
-                              value={e.ubicacion}
-                              placeholder="Dirección o depósito"
-                              onChange={(ev) =>
+                            <SelectorUbicacion
+                              valor={e.ubicacion}
+                              coordenadas={e.coordenadas}
+                              onCambiar={(direccion, coordenadas) =>
                                 setEdiciones((a) => ({
                                   ...a,
-                                  [c.id]: { ...e, ubicacion: ev.target.value },
+                                  [c.id]: { ...e, ubicacion: direccion, coordenadas },
                                 }))
                               }
                             />
-                          </label>
+                          </div>
 
                           <label className="campo">
                             <span className="campo-lbl">Transportista</span>

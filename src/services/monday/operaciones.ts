@@ -1154,12 +1154,17 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
   contactos: {
     modulo: 'aduanaBerger',
     query: `
-      query ($tablero: ID!, $limite: Int!) {
-        boards(ids: [$tablero]) { items_page(limit: $limite) { items { id name } } }
+      query ($tablero: ID!, $columnas: [String!], $limite: Int!) {
+        boards(ids: [$tablero]) {
+          items_page(limit: $limite) {
+            items { id name column_values(ids: $columnas) { id text } }
+          }
+        }
       }
     `,
     validar: (v) => ({
       tablero: TABLEROS.contactos,
+      columnas: idsDeColumnas(v.columnas),
       limite: entero(v.limite, 'limite', 1, 500),
     }),
   },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
 import { fechaCorta } from '@/lib/format'
 import {
   ESTADO_ARRIBO,
@@ -8,7 +9,7 @@ import {
 import {
   actualizarContenedor,
   contenedoresDelTablero,
-  listarContactos,
+  listarTransportistas,
 } from '@/services/monday/contenedoresDespacho'
 import { SinAcceso } from '@/services/monday/sdk'
 import type { Contacto, ContenedorDespacho, EdicionContenedor } from '@/types'
@@ -91,7 +92,7 @@ export function ActualizarContenedores() {
   }, [recargar])
 
   useEffect(() => {
-    listarContactos()
+    listarTransportistas()
       .then(setContactos)
       .catch(() => setContactos([]))
   }, [])
@@ -358,17 +359,18 @@ export function ActualizarContenedores() {
                   </div>
 
                   <div className="datos datos--form" style={{ marginTop: 12 }}>
-                    <label className="campo">
+                    <div className="campo">
                       <span className="campo-lbl">
                         Ubicación de entrega {sinUbicacion(c) && '· pendiente'}
                       </span>
-                      <input
-                        className="input"
-                        value={e.ubicacion}
-                        placeholder="Dirección o depósito"
-                        onChange={(ev) => cambiar(c, { ubicacion: ev.target.value })}
+                      <SelectorUbicacion
+                        valor={e.ubicacion}
+                        coordenadas={e.coordenadas}
+                        onCambiar={(direccion, coordenadas) =>
+                          cambiar(c, { ubicacion: direccion, coordenadas })
+                        }
                       />
-                    </label>
+                    </div>
 
                     <label className="campo">
                       <span className="campo-lbl">Transportista</span>

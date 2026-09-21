@@ -782,10 +782,20 @@ Van en el contenedor y no en la OP porque cada uno puede ir a un lugar distinto 
 transportista distinto. Se puede completar sólo una parte: el banco suele definirse antes que el
 transporte.
 
-> **La ubicación exige coordenadas.** Una columna de tipo location de monday rechaza la escritura si
-> sólo se manda la dirección. Como la app no geocodifica, las coordenadas van en 0 y la dirección
-> —que es lo que se lee en el tablero y lo que necesita el transportista— queda bien escrita. El
-> punto exacto en el mapa se ajusta desde monday.
+> **La ubicación se elige, no se escribe.** Una columna de tipo location de monday rechaza la
+> escritura si sólo se manda la dirección: **exige latitud y longitud**. Por eso el campo funciona
+> como el de monday — se escribe, aparecen direcciones reales y al tocar una se guardan **sus**
+> coordenadas. En el tablero queda indistinguible de haberla cargado a mano, probado contra la API.
+>
+> Escribir libre sigue permitido, porque hay entregas en establecimientos que ningún mapa conoce:
+> en ese caso las coordenadas van en 0 —la dirección se lee bien igual— y el campo lo avisa con un
+> *"Sin ubicar en el mapa"* antes de guardar, para que sea una decisión y no un descuido.
+
+**El transportista sale de Contactos, filtrado.** Ese tablero es la agenda entera de BERGER
+—clientes, proveedores, despachantes—, así que el desplegable muestra **sólo** los que tienen
+`Transportista` en su 🤚Categoria (`dropdown_mm7acm6r`). Un contacto puede tener varias categorías
+a la vez y aparece igual. El filtro es por el dato del tablero y no por una lista en el código: se
+da de alta un transportista nuevo y aparece, sin tocar la app.
 
 **El Estado Pago VEP no lo toca la app al crear el despacho.** Su valor inicial lo pone la propia
 columna en monday; la app lo escribe únicamente desde esta operación, cuando BERGER lo pasa a
@@ -823,6 +833,21 @@ camión tiene a mano la matrícula o el remito, casi nunca el número de trámit
 Se guarda **de a un contenedor**: cada tarjeta tiene su botón. Son decisiones independientes —cada
 contenedor va a un lugar distinto— y guardar en bloque haría que un error en el tercero dejara en
 duda a los otros cinco.
+
+### El buscador de direcciones
+
+Vive en [`api/geo.ts`](api/geo.ts) y lo usa el campo de ubicación de las dos pantallas de BERGER.
+
+| Decisión | Por qué |
+|---|---|
+| **Nominatim (OpenStreetMap)** | no necesita clave ni facturación, que era lo único a evitar. A cambio pide identificarse y no abusar |
+| Pasa por el **servidor**, no por el navegador | así el pedido lleva el `User-Agent` que exige el servicio, y queda detrás del mismo portón que el resto: sesión de monday + sesión del día + módulo `aduanaBerger` |
+| Espera **500 ms** desde la última tecla, y no busca con menos de 3 letras | la política de uso pide no golpear el servicio; además, con dos letras el resultado es ruido |
+| Acotado a **Argentina** (`countrycodes=ar`) | sin eso, "Córdoba" devuelve primero la de España |
+| Sólo viaja **el texto de la dirección** | ni el usuario, ni la cuenta, ni el contenedor, ni la OP |
+
+En desarrollo las funciones de `api/` no corren, así que el pedido sale por un proxy de Vite
+(`/geo-api`) que agrega la misma identificación.
 
 ### DASHBOARD DE DESPACHOS
 

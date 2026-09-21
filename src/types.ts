@@ -373,6 +373,8 @@ export interface ResultadoContenedores {
 export interface Contacto {
   id: string
   nombre: string
+  /** Etiquetas de 🤚Categoria. Un mismo contacto puede ser transportista y cliente a la vez. */
+  categorias: string[]
 }
 
 /** Los campos de una OP que completa BERGER cuando la carga está por llegar. */
@@ -387,6 +389,13 @@ export interface EdicionBerger {
 /** Lo que BERGER puede cambiarle a un contenedor. */
 export interface EdicionContenedor {
   ubicacion: string
+  /**
+   * Coordenadas de la dirección elegida.
+   *
+   * `null` significa que la dirección se escribió a mano sin elegir ninguna de las sugeridas: la
+   * columna de monday igual la acepta, pero el punto del mapa queda sin ubicar.
+   */
+  coordenadas?: { lat: string; lng: string } | null
   transportistaId: string | null
   /** Si ya llegó. Se marca desde "Actualizar Contenedores". */
   estadoArribo?: string

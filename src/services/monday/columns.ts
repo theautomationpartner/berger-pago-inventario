@@ -410,6 +410,24 @@ export const COL_DESPACHANTE_SUB = {
 } as const
 
 /**
+ * Contactos (18428421093) — de ahí salen los transportistas.
+ *
+ * El tablero es la agenda entera de BERGER: transportistas, clientes, despachantes y proveedores
+ * conviven en él. La categoría es lo único que los separa.
+ */
+export const COL_CONTACTOS = {
+  categoria: 'dropdown_mm7acm6r',
+} as const
+
+/** Etiquetas de 🤚Categoria. Un contacto puede tener varias a la vez. */
+export const CATEGORIA_CONTACTO = {
+  TRANSPORTISTA: 'Transportista',
+  CLIENTE: 'Cliente',
+  DESPACHANTE: 'Despachante',
+  PROVEEDOR: 'Proveedor',
+} as const
+
+/**
  * 🚚 Contenedores (18431711942) — los que arma el despachante.
  *
  * OJO: no es el tablero 📦Contenedores (18430565324), que dice qué modelos PUEDEN viajar juntos.
