@@ -104,7 +104,8 @@ export async function avanzarPago({
      Despachante de aduana existe desde hace semanas. Crearla de nuevo sería duplicar el despacho y
      mandar al despachante a trabajar dos veces sobre la misma carga. */
   let itemDespachante: string | null = null
-  if (cierraDespacho(pago, flujo)) {
+  const armaDespacho = cierraDespacho(pago, flujo)
+  if (armaDespacho) {
     try {
       itemDespachante = await crearDespacho(pago, despachanteId, advertencias)
     } catch (e) {
@@ -117,7 +118,15 @@ export async function avanzarPago({
   const emails: Record<string, { label: string }> = {
     [flujo.columnaEmail]: { label: EMAIL_ENVIAR },
   }
-  if (cierraDespacho(pago, flujo)) emails[COL_PAGO.emailDespacho] = { label: EMAIL_ENVIAR }
+  /* El aviso al despachante sale sólo si su OP quedó creada: mandarle el mail de una OP que no
+     existe en su tablero es peor que no mandarlo, y el mail no se puede volver atrás. */
+  if (armaDespacho && itemDespachante) emails[COL_PAGO.emailDespacho] = { label: EMAIL_ENVIAR }
+  if (armaDespacho && !itemDespachante) {
+    advertencias.push(
+      'No se avisó al despachante: sin el despacho creado, el mail le llegaría sobre una OP que no ' +
+        'existe. Revisá el motivo de arriba y disparalo desde el tablero.',
+    )
+  }
   try {
     await mondayApi('actualizarColumnas', {
       tablero: TABLEROS.pagos,

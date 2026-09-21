@@ -720,8 +720,10 @@ transporte.
 > —que es lo que se lee en el tablero y lo que necesita el transportista— queda bien escrita. El
 > punto exacto en el mapa se ajusta desde monday.
 
-**El Estado Pago VEP nace en `NO PAGADO`**: lo escribe la app al crear el despacho, así que BERGER
-lo encuentra siempre en un estado explícito y no vacío.
+**El Estado Pago VEP no lo toca la app al crear el despacho.** Su valor inicial lo pone la propia
+columna en monday; la app lo escribe únicamente desde esta operación, cuando BERGER lo pasa a
+`PAGADO`. Escribirlo al crear obligaba a habilitar esa columna en la lista de escribibles del alta,
+y una columna habilitada de más es una que se puede pisar sin querer.
 
 ### DASHBOARD DE DESPACHOS
 

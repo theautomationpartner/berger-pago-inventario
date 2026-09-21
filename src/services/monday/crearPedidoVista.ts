@@ -110,6 +110,7 @@ export async function crearPedidoVista({
 
   /* 4. El despacho, en el tablero del Despachante de aduana. En la vista el pedido se cierra acá
      mismo: no hay pago posterior que esperar, así que el despachante ya puede trabajar. */
+  let hayDespacho = false
   try {
     const despacho = await crearDespachoDeAduana({
       pagoId,
@@ -127,20 +128,32 @@ export async function crearPedidoVista({
       })),
     })
     advertencias.push(...despacho.advertencias)
+    hayDespacho = true
   } catch (e) {
     advertencias.push(`No se pudo crear el despacho en el Despachante de aduana: ${motivo(e)}`)
   }
 
   /* 5. Aviso al despachante, con todo ya escrito. Va ÚLTIMO a propósito: de esa columna sale el
-     mail, y es lo único de la operación que no se puede deshacer. */
-  try {
-    await mondayApi('actualizarColumnas', {
-      tablero: TABLEROS.pagos,
-      item: pagoId,
-      valores: JSON.stringify({ [COL_PAGO.emailDespacho]: { label: EMAIL_ENVIAR } }),
-    })
-  } catch (e) {
-    advertencias.push(`No se pudo avisar al despachante: ${motivo(e)}`)
+     mail, y es lo único de la operación que no se puede deshacer.
+
+     Si el despacho NO se pudo crear, el aviso no sale: sería mandarle al despachante la
+     información de una OP que no existe en su tablero, y el mail no se puede volver atrás. Se
+     avisa en pantalla para resolverlo y mandarlo desde monday. */
+  if (hayDespacho) {
+    try {
+      await mondayApi('actualizarColumnas', {
+        tablero: TABLEROS.pagos,
+        item: pagoId,
+        valores: JSON.stringify({ [COL_PAGO.emailDespacho]: { label: EMAIL_ENVIAR } }),
+      })
+    } catch (e) {
+      advertencias.push(`No se pudo avisar al despachante: ${motivo(e)}`)
+    }
+  } else {
+    advertencias.push(
+      'No se avisó al despachante: sin el despacho creado, el mail le llegaría sobre una OP que ' +
+        'no existe. Revisá el motivo de arriba y disparalo desde el tablero.',
+    )
   }
 
   return { pagoId, subitemIds, tractoresActualizados, advertencias }

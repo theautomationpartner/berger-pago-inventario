@@ -21,7 +21,6 @@ import {
   COL_DESPACHANTE,
   COL_DESPACHANTE_SUB,
   COL_INV,
-  ESTADO_PAGO_VEP,
   IMPORTADOR_DESPACHO,
   PEDIDO_EN_DESPACHANTE,
   PROVEEDOR_DESPACHO,
@@ -84,8 +83,8 @@ export async function crearDespachoDeAduana({
     [COL_DESPACHANTE.pago]: { item_ids: [pagoId] },
     [COL_DESPACHANTE.proveedor]: { labels: [PROVEEDOR_DESPACHO] },
     [COL_DESPACHANTE.importador]: { label: IMPORTADOR_DESPACHO },
-    // El VEP nace impago: es el estado con el que BERGER lo va a encontrar cuando le toque.
-    [COL_DESPACHANTE.estadoPagoVep]: { label: ESTADO_PAGO_VEP.NO_PAGADO },
+    /* El Estado Pago VEP NO se escribe al crear: lo maneja BERGER desde monday, con el valor por
+       defecto de la propia columna. La app sólo lo toca desde "Actualizar OP - BERGER". */
   }
   if (cantidadContenedores != null) {
     valores[COL_DESPACHANTE.cantidadContenedores] = aTextoMonday(cantidadContenedores)

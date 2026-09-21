@@ -845,8 +845,9 @@ escritura si sólo se manda la dirección. Como la app no geocodifica, las coord
 dirección —que es lo que se lee y lo que necesita el transportista— queda bien escrita. El punto
 exacto en el mapa se ajusta desde monday.
 
-**Consideración · el VEP nace impago.** Al crear el despacho, la app escribe `NO PAGADO` en
-`color_mm793phx`: BERGER lo encuentra siempre en un estado explícito y no vacío.
+**Consideración · el VEP lo maneja BERGER.** Al crear el despacho la app **no toca**
+`color_mm793phx`: su valor inicial lo pone la propia columna en monday. La app sólo lo escribe
+desde esta operación, cuando BERGER lo pasa a `PAGADO`.
 
 ### 5.5 Operación · DASHBOARD DE DESPACHOS
 
@@ -954,7 +955,7 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 👮 Despachante | item completo + subitems | — | Etapa 3 y Pago Vista |
 | 👮 Despachante | los 8 campos del despachante | lo que cargue | Actualizar Despacho OP - DESPACHANTE |
 | 👮 Despachante | los 4 comprobantes del trámite | archivos | Actualizar Despacho OP - DESPACHANTE |
-| 👮 Despachante | `color_mm793phx` | `NO PAGADO` al crear · `PAGADO` desde BERGER | Etapa 3, Pago Vista y BERGER |
+| 👮 Despachante | `color_mm793phx` | lo que defina BERGER (la app NO lo toca al crear) | Actualizar OP - BERGER |
 | 👮 Despachante | pago, fondeo, banco y VEP | lo que defina BERGER | Actualizar OP - BERGER |
 | 👮 Despachante | update + notificaciones | aviso a Sofía y Micaela | al pasar a "Próxima a Arribar" |
 | 🚚 Contenedores | item completo con sus tractores | — | Armar contenedores |
