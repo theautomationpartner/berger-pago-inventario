@@ -627,7 +627,7 @@ export function ActualizarOpBerger() {
                             <ZonaArchivo
                               archivo={comprobanteVep}
                               onElegir={setComprobanteVep}
-                              acepta=".pdf,.jpg,.jpeg,.png"
+                              acepta=".pdf"
                               titulo={
                                 elegida.archivos[COL_DESPACHANTE.comprobanteVep]
                                   ? `Ya hay un comprobante cargado (${nombreDeArchivo(

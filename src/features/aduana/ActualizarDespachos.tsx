@@ -37,6 +37,9 @@ const SIN_ARCHIVOS: ArchivosDespacho = {
   despachoImpo: null,
   fcTerminal: null,
   gastosVarios: null,
+  facturaSenasa: null,
+  facturaModoc: null,
+  facturaPrecintos: null,
   vepDespachante: null,
 }
 
@@ -46,7 +49,10 @@ const COLUMNA_DE_ARCHIVO: Record<keyof ArchivosDespacho, string> = {
   despachoImpo: ARCHIVOS_OP[1],
   fcTerminal: ARCHIVOS_OP[2],
   gastosVarios: ARCHIVOS_OP[3],
-  vepDespachante: ARCHIVOS_OP[4],
+  facturaSenasa: ARCHIVOS_OP[4],
+  facturaModoc: ARCHIVOS_OP[5],
+  facturaPrecintos: ARCHIVOS_OP[6],
+  vepDespachante: ARCHIVOS_OP[7],
 }
 
 /**

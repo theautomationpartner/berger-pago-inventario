@@ -308,6 +308,12 @@ export const COL_DESPACHANTE = {
   despachoImpo: 'file_mm77dbsc',
   fcTerminal: 'file_mm77qde5',
   gastosVarios: 'file_mm774a1r',
+
+  /* Las facturas del trámite, todas del despachante. */
+  facturaSenasa: 'file_mm7awbzw',
+  facturaModoc: 'file_mm7a86et',
+  facturaPrecintos: 'file_mm7a9sxq',
+
   /**
    * El VEP que emite el DESPACHANTE. Es la llave del pago: hasta que este archivo no está, no hay
    * VEP que pagar, y BERGER no puede ni marcarlo pagado ni subir su comprobante.

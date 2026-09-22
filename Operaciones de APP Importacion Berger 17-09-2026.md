@@ -746,9 +746,27 @@ faltan.
 que usa la app al crear el despacho: la conexión al pago, el proveedor y el importador no se pueden
 cambiar desde este módulo.
 
-**Comprobantes que sube el despachante.** A los cuatro del trámite se suma el **VEP**
-(`file_mm7d41zn`), y no es uno más: es la llave del pago. Mientras esa columna esté vacía, BERGER
-no puede marcar el VEP como pagado ni subir su comprobante.
+**Comprobantes que sube el despachante.** Son ocho:
+
+| Comprobante | Columna |
+|---|---|
+| FC transporte de Importación | `file_mm77pmw7` |
+| Despacho de importación | `file_mm77dbsc` |
+| FC terminal | `file_mm77qde5` |
+| Gastos varios · rendición | `file_mm774a1r` |
+| Factura Senasa | `file_mm7awbzw` |
+| Factura Modoc | `file_mm7a86et` |
+| Factura Precintos | `file_mm7a9sxq` |
+| VEP | `file_mm7d41zn` |
+
+El **VEP** no es uno más: es la llave del pago. Mientras esa columna esté vacía, BERGER no puede
+marcar el VEP como pagado ni subir su comprobante.
+
+**Consideración · sólo PDF.** Los recuadros de aduana aceptan `.pdf` únicamente: el texto de cada
+uno lo dice, el diálogo del sistema filtra por eso y un archivo de otro tipo se rechaza con el
+motivo. Son comprobantes que se archivan y se vuelven a leer; una foto de un papel no sirve. Los
+del circuito de pago siguen aceptando imágenes, porque ahí lo que se adjunta suele ser la captura
+de un homebanking.
 
 **El paso 2 · ¿qué vas a hacer?** Después de elegir la OP se decide entre *Actualizar datos* y
 *Armar contenedores*. Cada tarjeta muestra al pie **su requisito**:
@@ -1184,7 +1202,7 @@ Estos criterios se repiten en toda la app y explican por qué las pantallas se p
 | 💸 Subelementos de Pagos | un subitem por tractor | — | Etapa 1 y Pago Vista |
 | 👮 Despachante | item completo + subitems | — | Etapa 3 y Pago Vista |
 | 👮 Despachante | los 9 campos del despachante, incluido `text_mm7756c6` | lo que cargue | Actualizar Despacho OP - DESPACHANTE |
-| 👮 Despachante | los 4 comprobantes del trámite **más el VEP** (`file_mm7d41zn`) | archivos | Actualizar Despacho OP - DESPACHANTE |
+| 👮 Despachante | los 8 comprobantes: trámite, 3 facturas y el VEP | archivos (sólo PDF) | Actualizar Despacho OP - DESPACHANTE |
 | 👮 Despachante | `file_mm7d3jvj` | comprobante de pago del VEP | Actualizar OP - BERGER |
 | 👮 Despachante | `color_mm793phx` | lo que defina BERGER (la app NO lo toca al crear) | Actualizar OP - BERGER |
 | 👮 Despachante | pago, fondeo, banco y VEP | lo que defina BERGER | Actualizar OP - BERGER |

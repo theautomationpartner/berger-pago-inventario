@@ -17,7 +17,10 @@ const CAMPOS_ARCHIVO: { columna: string; campo: keyof ArchivosDespacho }[] = [
   { columna: ARCHIVOS_OP[1], campo: 'despachoImpo' },
   { columna: ARCHIVOS_OP[2], campo: 'fcTerminal' },
   { columna: ARCHIVOS_OP[3], campo: 'gastosVarios' },
-  { columna: ARCHIVOS_OP[4], campo: 'vepDespachante' },
+  { columna: ARCHIVOS_OP[4], campo: 'facturaSenasa' },
+  { columna: ARCHIVOS_OP[5], campo: 'facturaModoc' },
+  { columna: ARCHIVOS_OP[6], campo: 'facturaPrecintos' },
+  { columna: ARCHIVOS_OP[7], campo: 'vepDespachante' },
 ]
 
 interface Props {
@@ -235,8 +238,7 @@ export function EditorOP({
               <b>
                 Para pasar a "{NACIONALIZADO}" hace falta el {ROTULOS.nroDespachoImpo}.
               </b>{' '}
-              Es el número del trámite ante la aduana: una OP nacionalizada sin él es un estado que
-              no se puede respaldar con nada, y después nadie sabe de dónde sacarlo. Cargalo arriba.
+              Es el número del trámite ante la aduana.
             </span>
           </div>
         )}
@@ -297,7 +299,7 @@ export function EditorOP({
                   <ZonaArchivo
                     archivo={archivos[campo]}
                     onElegir={(f) => onArchivo(campo, f)}
-                    acepta=".pdf,.jpg,.jpeg,.png"
+                    acepta=".pdf"
                     titulo={yaCargado ? 'Subir otro archivo' : 'Arrastrá el archivo o hacé clic'}
                   />
                 </div>

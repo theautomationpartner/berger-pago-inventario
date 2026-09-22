@@ -742,6 +742,26 @@ operación del catálogo tiene una lista de columnas escribibles de **una sola**
 ubicación de entrega, el transportista y el arribo quedan fuera de su alcance aunque conozca el id
 del item.
 
+### Los comprobantes del trámite
+
+El despachante sube **ocho**, todos a la OP:
+
+| Comprobante | Columna |
+|---|---|
+| FC transporte de Importación | `file_mm77pmw7` |
+| Despacho de importación | `file_mm77dbsc` |
+| FC terminal | `file_mm77qde5` |
+| Gastos varios · rendición | `file_mm774a1r` |
+| Factura Senasa | `file_mm7awbzw` |
+| Factura Modoc | `file_mm7a86et` |
+| Factura Precintos | `file_mm7a9sxq` |
+| VEP | `file_mm7d41zn` |
+
+**Sólo PDF.** Los recuadros de aduana aceptan `.pdf` y nada más —el texto de cada uno lo dice y el
+diálogo del sistema filtra por eso—: son comprobantes que se archivan y se vuelven a leer, y una
+foto de un papel no sirve para eso. Los del circuito de **pago** siguen aceptando imágenes, porque
+ahí lo que se adjunta muchas veces es la captura de un homebanking.
+
 ### "Nacionalizado": exige el N° de despacho
 
 Para poner ese estado hace falta el **N° Despacho Importación** (`text_mm7756c6`), que es el

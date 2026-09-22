@@ -17,8 +17,8 @@
    el ejemplo se cortaba a la mitad y dejaba de servir de ejemplo. Cuando ni así entra, el ejemplo
    sale del campo y va debajo, como ayuda. */
 .campo--busqueda {
-  flex: 1 1 380px;
-  max-width: 520px;
+  flex: 1 1 760px;
+  max-width: 900px;
 }
 @media (max-width: 480px) {
   .campo--busqueda {

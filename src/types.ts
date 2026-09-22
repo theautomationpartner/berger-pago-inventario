@@ -452,6 +452,9 @@ export interface ArchivosDespacho {
   despachoImpo: File | null
   fcTerminal: File | null
   gastosVarios: File | null
+  facturaSenasa: File | null
+  facturaModoc: File | null
+  facturaPrecintos: File | null
   /** El VEP que emite el despachante: sin este archivo, BERGER no puede pagarlo. */
   vepDespachante: File | null
 }

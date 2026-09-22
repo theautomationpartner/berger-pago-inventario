@@ -30,6 +30,9 @@ export const ARCHIVOS_OP = [
   COL_DESPACHANTE.despachoImpo,
   COL_DESPACHANTE.fcTerminal,
   COL_DESPACHANTE.gastosVarios,
+  COL_DESPACHANTE.facturaSenasa,
+  COL_DESPACHANTE.facturaModoc,
+  COL_DESPACHANTE.facturaPrecintos,
   COL_DESPACHANTE.vepDespachante,
 ]
 
@@ -47,6 +50,9 @@ export const ROTULO_ARCHIVO: Record<string, string> = {
   [COL_DESPACHANTE.despachoImpo]: 'Despacho de importación',
   [COL_DESPACHANTE.fcTerminal]: 'FC terminal',
   [COL_DESPACHANTE.gastosVarios]: 'Gastos varios · rendición',
+  [COL_DESPACHANTE.facturaSenasa]: 'Factura Senasa',
+  [COL_DESPACHANTE.facturaModoc]: 'Factura Modoc',
+  [COL_DESPACHANTE.facturaPrecintos]: 'Factura Precintos',
   [COL_DESPACHANTE.vepDespachante]: 'VEP',
   [COL_DESPACHANTE.comprobanteVep]: 'Comprobante de pago del VEP',
 }
