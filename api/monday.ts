@@ -19,7 +19,9 @@
  *    Las variables, que sí siguen viniendo de afuera, las valida el propio catálogo.
  */
 import { porton } from './_seguridad/porton'
+import { COL_DESPACHANTE } from '../src/services/monday/columns'
 import { OperacionInvalida, resolverOperacion } from '../src/services/monday/operaciones'
+import { NACIONALIZADO } from '../src/lib/despachos'
 
 const API = 'https://api.monday.com/v2'
 const API_VERSION = '2024-10'
@@ -37,6 +39,53 @@ const error = (status: number, message: string): Response =>
     status,
     headers: { 'Content-Type': 'application/json' },
   })
+
+/**
+ * Nacionalizar exige el N° de Despacho de Importación.
+ *
+ * Se mira el estado FINAL: el que trae la escritura, o el que la OP ya tiene. Y el número final,
+ * igual. Una OP que ya tenía el número y a la que sólo se le cambia el estado pasa sin problemas;
+ * la que quedaría nacionalizada con la celda vacía, no.
+ *
+ * Devuelve el motivo del rechazo, o `null` si puede escribir.
+ */
+async function reglaDeNacionalizado(
+  variables: Record<string, unknown>,
+  consultar: (q: string, v: Record<string, unknown>) => Promise<{ data?: Record<string, unknown> }>,
+): Promise<string | null> {
+  const item = variables.item
+  if (typeof item !== 'string' || typeof variables.valores !== 'string') return null
+
+  let valores: Record<string, unknown>
+  try {
+    valores = JSON.parse(variables.valores) as Record<string, unknown>
+  } catch {
+    return null
+  }
+
+  const estado = valores[COL_DESPACHANTE.estadoCarga]
+  const nacionalizaAhora =
+    typeof estado === 'object' &&
+    estado !== null &&
+    (estado as { label?: string }).label === NACIONALIZADO
+  // Sólo se paga la lectura cuando la escritura intenta nacionalizar.
+  if (!nacionalizaAhora) return null
+
+  const numeroEnElPedido = valores[COL_DESPACHANTE.nroDespachoImpo]
+  if (typeof numeroEnElPedido === 'string' && numeroEnElPedido.trim()) return null
+
+  const r = await consultar(
+    `query ($ids: [ID!]!, $cols: [String!]) {
+       items(ids: $ids) { column_values(ids: $cols) { id text } }
+     }`,
+    { ids: [item], cols: [COL_DESPACHANTE.nroDespachoImpo] },
+  )
+  const items = (r.data?.items ?? []) as { column_values?: { text?: string | null }[] }[]
+  const yaTiene = items[0]?.column_values?.[0]?.text?.trim()
+  if (yaTiene) return null
+
+  return 'Para pasar a "Nacionalizado" hace falta el N° Despacho Importación.'
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return error(405, 'Método no permitido.')
@@ -76,6 +125,23 @@ export default async function handler(req: Request): Promise<Response> {
     if (e instanceof OperacionInvalida) return error(400, e.message)
     return error(400, 'Pedido inválido.')
   }
+
+  /** Ejecuta una consulta contra monday con el token de la cuenta. */
+  const consultar = async (q: string, v: Record<string, unknown>) => {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: token, 'API-Version': version },
+      body: JSON.stringify({ query: q, variables: v }),
+    })
+    return (await r.json()) as { data?: Record<string, unknown> }
+  }
+
+  /* Reglas de negocio que NO se pueden decidir mirando sólo el pedido.
+     La pantalla ya las aplica, pero un pedido armado a mano se la saltea, y ésta en particular
+     deja un estado que no se puede respaldar ante la aduana. Cuesta una lectura del item y
+     sólo en la escritura que intenta nacionalizar. */
+  const problema = await reglaDeNacionalizado(variables, consultar)
+  if (problema) return error(400, problema)
 
   const res = await fetch(API, {
     method: 'POST',

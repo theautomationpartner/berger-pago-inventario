@@ -8,6 +8,7 @@
  * crece de a una fila por despacho, así que filtrar en el navegador es instantáneo y no cuesta un
  * viaje a monday por cada tecla.
  */
+import { NACIONALIZADO } from '@/lib/despachos'
 import type { ArchivoSubido, DespachoOP, EdicionBerger, EdicionDespacho } from '@/types'
 import { COL_DESPACHANTE } from './columns'
 import { aNumeroEspejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
@@ -248,6 +249,26 @@ export async function actualizarOpBerger(
   if (Object.keys(valores).length === 0) throw new Error('No hay cambios para guardar.')
   await mondayApi('actualizarOpBerger', { item: id, valores: JSON.stringify(valores) })
   return id
+}
+
+/**
+ * ¿Esta escritura deja la OP nacionalizada sin su N° de despacho?
+ *
+ * Se mira contra lo que la OP **ya tiene**, no sólo contra lo que viaja: una OP que ya tenía el
+ * número y a la que sólo se le cambia el estado es perfectamente válida, y rechazarla sería
+ * obligar a reescribir un dato que está.
+ *
+ * Vive acá, y no dentro de la pantalla, porque la usan los dos lados: el formulario para no dejar
+ * avanzar, y el servidor para no dejar escribir.
+ */
+export function nacionalizaSinDespacho(
+  cambios: Partial<EdicionDespacho>,
+  actual: { estadoCarga?: string; nroDespachoImpo?: string },
+): boolean {
+  const estadoFinal = cambios.estadoCarga ?? actual.estadoCarga ?? ''
+  if (estadoFinal !== NACIONALIZADO) return false
+  const numeroFinal = cambios.nroDespachoImpo ?? actual.nroDespachoImpo ?? ''
+  return !numeroFinal.trim()
 }
 
 /** Escribe los cambios de UNA OP. Devuelve el id, o lanza con el motivo. */

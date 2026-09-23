@@ -1539,3 +1539,12 @@
     margin-left: auto;
   }
 }
+
+/* El pie dice por qué el botón está apagado: un botón gris sin motivo es un callejón. */
+.pie-traba {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--berger-red-dark);
+}

@@ -863,9 +863,21 @@ export function ActualizarDespachos() {
             {elegidas.length} OP seleccionada{elegidas.length === 1 ? '' : 's'}
           </span>
           <span className="xs">
-            {totalCambios === 0
-              ? 'Todavía no hay cambios cargados'
-              : `${totalCambios} campo${totalCambios === 1 ? '' : 's'} por actualizar`}
+            {etapa !== 'seleccion' && sinNroDespacho.length > 0 ? (
+              <span className="pie-traba">
+                <i className="fa-solid fa-lock" aria-hidden="true" /> Falta el N° Despacho
+                Importación para nacionalizar
+              </span>
+            ) : etapa !== 'seleccion' && bloqueadas.length > 0 ? (
+              <span className="pie-traba">
+                <i className="fa-solid fa-lock" aria-hidden="true" /> Faltan armar los contenedores
+                para pasar a "{PROXIMA_A_ARRIBAR}"
+              </span>
+            ) : totalCambios === 0 ? (
+              'Todavía no hay cambios cargados'
+            ) : (
+              `${totalCambios} campo${totalCambios === 1 ? '' : 's'} por actualizar`
+            )}
           </span>
         </div>
 
@@ -901,8 +913,16 @@ export function ActualizarDespachos() {
               type="button"
               className="btn btn--primario"
               /* No se puede seguir con una OP sin editar: o se le carga algo, o se saca. Guardarla
-                 igual escribiría una actualización vacía y la dejaría "tocada" sin nada nuevo. */
-              disabled={elegidas.length === 0 || sinNada.length > 0}
+                 igual escribiría una actualización vacía y la dejaría "tocada" sin nada nuevo.
+                 Tampoco con una que quiere nacionalizarse sin su N° de despacho, ni con los
+                 contenedores sin armar: son las dos condiciones que el guardado rechaza, y
+                 dejarlas pasar acá es hacerle mirar un resumen que no va a poder aplicar. */
+              disabled={
+                elegidas.length === 0 ||
+                sinNada.length > 0 ||
+                sinNroDespacho.length > 0 ||
+                bloqueadas.length > 0
+              }
               onClick={() => setEtapa('resumen')}
             >
               Ver resumen <i className="fa-solid fa-arrow-right" aria-hidden="true" />
