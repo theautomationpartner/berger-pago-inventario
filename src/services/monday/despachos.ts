@@ -8,7 +8,7 @@
  * crece de a una fila por despacho, así que filtrar en el navegador es instantáneo y no cuesta un
  * viaje a monday por cada tecla.
  */
-import type { DespachoOP, EdicionBerger, EdicionDespacho } from '@/types'
+import type { ArchivoSubido, DespachoOP, EdicionBerger, EdicionDespacho } from '@/types'
 import { COL_DESPACHANTE } from './columns'
 import { aNumeroEspejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
@@ -43,6 +43,30 @@ export const ARCHIVOS_OP = [
  * quién puede escribir cada columna de archivo por esa pertenencia.
  */
 export const ARCHIVOS_BERGER = [COL_DESPACHANTE.comprobanteVep]
+
+/**
+ * Los archivos de una columna de archivo.
+ *
+ * La columna devuelve **las URLs separadas por ", "**, y el nombre del archivo es el último tramo
+ * de cada URL —comprobado contra la API—. Se corta por la coma que precede a un `http` y no por
+ * cualquier coma: un nombre de archivo con coma adentro partiría la lista al medio.
+ */
+export function archivosDeColumna(valor: string): ArchivoSubido[] {
+  return valor
+    .split(/,\s*(?=https?:\/\/)/)
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .map((url) => {
+      const ultimo = url.split('/').pop() ?? url
+      let nombre = ultimo
+      try {
+        nombre = decodeURIComponent(ultimo)
+      } catch {
+        // Un nombre mal codificado se muestra tal cual antes que romper la lista.
+      }
+      return { nombre: nombre || 'archivo adjunto', url }
+    })
+}
 
 /** Cómo se llama cada comprobante en pantalla. */
 export const ROTULO_ARCHIVO: Record<string, string> = {

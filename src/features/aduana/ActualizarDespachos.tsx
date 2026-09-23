@@ -33,14 +33,14 @@ import { useDespachos } from './useDespachos'
 const mensaje = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 const SIN_ARCHIVOS: ArchivosDespacho = {
-  fcTransporteImpo: null,
-  despachoImpo: null,
-  fcTerminal: null,
-  gastosVarios: null,
-  facturaSenasa: null,
-  facturaModoc: null,
-  facturaPrecintos: null,
-  vepDespachante: null,
+  fcTransporteImpo: [],
+  despachoImpo: [],
+  fcTerminal: [],
+  gastosVarios: [],
+  facturaSenasa: [],
+  facturaModoc: [],
+  facturaPrecintos: [],
+  vepDespachante: [],
 }
 
 /** Qué columna de monday le corresponde a cada archivo del formulario. */
@@ -121,7 +121,7 @@ export function ActualizarDespachos() {
   /** Cuántos archivos nuevos hay cargados para una OP. */
   const archivosDe = (id: string) => archivos[id] ?? SIN_ARCHIVOS
   const archivosNuevos = (id: string) =>
-    Object.values(archivosDe(id)).filter((f) => f != null).length
+    Object.values(archivosDe(id)).reduce((n, lista) => n + lista.length, 0)
 
   /** Una OP sin cambios y sin archivos nuevos no tiene nada que guardar. */
   const sinNada = elegidas.filter(
@@ -242,16 +242,19 @@ export function ActualizarDespachos() {
 
       /* Los archivos van DESPUÉS de las columnas: si una subida falla, los datos ya quedaron
          guardados y sólo se pierde el adjunto, que se puede volver a subir. */
-      for (const [campo, archivo] of Object.entries(archivosDe(op.id))) {
-        if (!archivo) continue
+      for (const [campo, lista] of Object.entries(archivosDe(op.id))) {
         const columna = COLUMNA_DE_ARCHIVO[campo as keyof ArchivosDespacho]
-        try {
-          await subirArchivoAColumna(op.id, columna, archivo)
-          tocada = true
-        } catch (e) {
-          advertencias.push(
-            `No se pudo subir "${ROTULO_ARCHIVO[columna]}" de ${nombre}: ${mensaje(e)}`,
-          )
+        /* Uno por uno: monday SUMA cada archivo a la columna, no la reemplaza —probado contra la
+           API—, así que subir tres certificados de Senasa son tres llamadas y las tres quedan. */
+        for (const archivo of lista) {
+          try {
+            await subirArchivoAColumna(op.id, columna, archivo)
+            tocada = true
+          } catch (e) {
+            advertencias.push(
+              `No se pudo subir "${ROTULO_ARCHIVO[columna]}" (${archivo.name}) de ${nombre}: ${mensaje(e)}`,
+            )
+          }
         }
       }
 
@@ -717,10 +720,10 @@ export function ActualizarDespachos() {
                     onDeshacer={() => setEdiciones((a) => ({ ...a, [op.id]: valoresActuales(op) }))}
                     onQuitar={() => quitar(op.id)}
                     archivos={archivosDe(op.id)}
-                    onArchivo={(campo, archivo) =>
+                    onArchivo={(campo, lista) =>
                       setArchivos((a) => ({
                         ...a,
-                        [op.id]: { ...archivosDe(op.id), [campo]: archivo },
+                        [op.id]: { ...archivosDe(op.id), [campo]: lista },
                       }))
                     }
                     sinContenedor={sinContenedor(op.id)}
@@ -794,7 +797,9 @@ export function ActualizarDespachos() {
               <div className="op-editores">
                 {elegidas.map((op) => {
                   const cambios = cambiosPorOp.get(op.id) ?? []
-                  const nuevos = Object.entries(archivosDe(op.id)).filter(([, f]) => f != null)
+                  const nuevos = Object.entries(archivosDe(op.id)).flatMap(([campo, lista]) =>
+                    (lista as File[]).map((archivo) => ({ campo, archivo })),
+                  )
                   const entraAProxima =
                     (ediciones[op.id] ?? valoresActuales(op)).estadoCarga === PROXIMA_A_ARRIBAR &&
                     op.estadoCarga !== PROXIMA_A_ARRIBAR
@@ -821,14 +826,14 @@ export function ActualizarDespachos() {
                             <span className="cambio-despues">{c.despues}</span>
                           </li>
                         ))}
-                        {nuevos.map(([campo, archivo]) => (
-                          <li key={campo} className="cambio">
+                        {nuevos.map(({ campo, archivo }) => (
+                          <li key={`${campo}-${archivo.name}`} className="cambio">
                             <span className="cambio-campo">
                               {ROTULO_ARCHIVO[COLUMNA_DE_ARCHIVO[campo as keyof ArchivosDespacho]]}
                             </span>
                             <span className="cambio-despues">
                               <i className="fa-solid fa-paperclip" aria-hidden="true" />{' '}
-                              {archivo?.name}
+                              {archivo.name}
                             </span>
                           </li>
                         ))}

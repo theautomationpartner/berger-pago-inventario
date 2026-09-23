@@ -1,8 +1,8 @@
-import { ZonaArchivo } from '@/components/ui/ZonaArchivo'
+import { FilaArchivo } from '@/components/ui/FilaArchivo'
 import { NACIONALIZADO, ROTULOS, faltaNroDespacho } from '@/lib/despachos'
 import { fechaCorta } from '@/lib/format'
 import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, VIA_TRANSPORTE } from '@/services/monday/columns'
-import { ARCHIVOS_OP, ROTULO_ARCHIVO } from '@/services/monday/despachos'
+import { ARCHIVOS_OP, ROTULO_ARCHIVO, archivosDeColumna } from '@/services/monday/despachos'
 import type { ArchivosDespacho, CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
 import { EtiquetasOP } from './EtiquetasOP'
 
@@ -12,12 +12,17 @@ import { EtiquetasOP } from './EtiquetasOP'
  * El VEP va último y es el que más peso tiene: hasta que no está subido, BERGER no puede marcar
  * el pago ni adjuntar su comprobante. Es la llave de esa parte del circuito.
  */
-const CAMPOS_ARCHIVO: { columna: string; campo: keyof ArchivosDespacho }[] = [
+const CAMPOS_ARCHIVO: {
+  columna: string
+  campo: keyof ArchivosDespacho
+  /** Si admite más de un archivo por vez. Hoy sólo Senasa. */
+  varios?: boolean
+}[] = [
   { columna: ARCHIVOS_OP[0], campo: 'fcTransporteImpo' },
   { columna: ARCHIVOS_OP[1], campo: 'despachoImpo' },
   { columna: ARCHIVOS_OP[2], campo: 'fcTerminal' },
   { columna: ARCHIVOS_OP[3], campo: 'gastosVarios' },
-  { columna: ARCHIVOS_OP[4], campo: 'facturaSenasa' },
+  { columna: ARCHIVOS_OP[4], campo: 'facturaSenasa', varios: true },
   { columna: ARCHIVOS_OP[5], campo: 'facturaModoc' },
   { columna: ARCHIVOS_OP[6], campo: 'facturaPrecintos' },
   { columna: ARCHIVOS_OP[7], campo: 'vepDespachante' },
@@ -32,7 +37,7 @@ interface Props {
   onDeshacer: () => void
   /** Los archivos que se van a subir al guardar. */
   archivos: ArchivosDespacho
-  onArchivo: (campo: keyof ArchivosDespacho, archivo: File | null) => void
+  onArchivo: (campo: keyof ArchivosDespacho, archivos: File[]) => void
   /**
    * Tractores de la OP que todavía no tienen contenedor. Con alguno pendiente, la OP no puede
    * pasar a "Próxima a Arribar": el aviso a BERGER sale con los links de los contenedores, y sin
@@ -282,29 +287,21 @@ export function EditorOP({
         <div className="archivos">
           <div className="archivos-tit">
             <i className="fa-solid fa-paperclip" aria-hidden="true" /> Comprobantes del trámite
+            <span className="archivos-nota">Sólo PDF · nada se sube hasta que guardes</span>
           </div>
-          <div className="archivos-grilla">
-            {CAMPOS_ARCHIVO.map(({ columna, campo }) => {
-              const yaCargado = op.archivos?.[columna] ?? ''
-              return (
-                <div key={columna} className="archivo">
-                  <span className="archivo-lbl">{ROTULO_ARCHIVO[columna]}</span>
-                  {/* Lo que ya está en monday se muestra, no se esconde: subir otro no reemplaza
-                      al anterior, lo suma, y conviene saberlo antes de apretar. */}
-                  {yaCargado && (
-                    <span className="chip chip--verde archivo-cargado" title={yaCargado}>
-                      <i className="fa-solid fa-check" aria-hidden="true" /> {yaCargado}
-                    </span>
-                  )}
-                  <ZonaArchivo
-                    archivo={archivos[campo]}
-                    onElegir={(f) => onArchivo(campo, f)}
-                    acepta=".pdf"
-                    titulo={yaCargado ? 'Subir otro archivo' : 'Arrastrá el archivo o hacé clic'}
-                  />
-                </div>
-              )
-            })}
+          {/* Una lista y no ocho recuadros: lo que hay que ver de un vistazo es qué está subido y
+              qué falta, y eso en ocho cajas iguales se pierde. */}
+          <div className="archivos-lista">
+            {CAMPOS_ARCHIVO.map(({ columna, campo, varios }) => (
+              <FilaArchivo
+                key={columna}
+                rotulo={ROTULO_ARCHIVO[columna]}
+                yaSubidos={archivosDeColumna(op.archivos?.[columna] ?? '')}
+                pendientes={archivos[campo]}
+                onCambiar={(lista) => onArchivo(campo, lista)}
+                varios={varios}
+              />
+            ))}
           </div>
         </div>
 

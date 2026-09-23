@@ -447,16 +447,30 @@ export interface CambioDespacho {
 }
 
 /** Los cuatro comprobantes que el despachante puede subir a una OP. */
+/**
+ * Los comprobantes que se van a subir al guardar.
+ *
+ * Cada uno es una **lista** aunque casi todos admitan uno solo: monday no reemplaza el archivo de
+ * una columna, lo suma, así que la columna es una lista de por sí. Tenerlo así en el formulario
+ * evita el caso especial de Senasa —el único que hoy acepta varios— desparramado por el código.
+ */
 export interface ArchivosDespacho {
-  fcTransporteImpo: File | null
-  despachoImpo: File | null
-  fcTerminal: File | null
-  gastosVarios: File | null
-  facturaSenasa: File | null
-  facturaModoc: File | null
-  facturaPrecintos: File | null
+  fcTransporteImpo: File[]
+  despachoImpo: File[]
+  fcTerminal: File[]
+  gastosVarios: File[]
+  /** Senasa admite VARIOS: de un mismo despacho pueden salir varios certificados. */
+  facturaSenasa: File[]
+  facturaModoc: File[]
+  facturaPrecintos: File[]
   /** El VEP que emite el despachante: sin este archivo, BERGER no puede pagarlo. */
-  vepDespachante: File | null
+  vepDespachante: File[]
+}
+
+/** Un archivo que YA está subido en una columna de monday. */
+export interface ArchivoSubido {
+  nombre: string
+  url: string
 }
 
 /** Resultado de guardar las ediciones de un lote de OP. */

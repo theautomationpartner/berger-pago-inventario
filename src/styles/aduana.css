@@ -1429,3 +1429,113 @@
   border-color: var(--berger-red);
   background: var(--berger-red-soft);
 }
+
+/* ============================================================================
+   Comprobantes, en lista
+   ============================================================================
+   Ocho recuadros de arrastrar y soltar ocupaban una pantalla entera para repetir ocho veces el
+   mismo texto. En una lista cada comprobante es un renglón: a la izquierda cómo se llama, en el
+   medio lo que tiene, y a la derecha el botón que abre el explorador. */
+.archivos-nota {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-gray);
+  text-transform: none;
+}
+.archivos-lista {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.farch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: #fff;
+}
+.farch:last-child {
+  border-bottom: 0;
+}
+.farch:nth-child(even) {
+  background: var(--tint-data);
+}
+.farch-nom {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.farch-rot {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.3;
+}
+.farch-varios {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--primary-blue);
+  letter-spacing: 0.2px;
+}
+.farch-tags {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.farch-vacio {
+  font-size: 12px;
+  color: var(--text-gray);
+}
+.farch-pend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.farch-peso {
+  font-weight: 600;
+  opacity: 0.75;
+}
+/* La cruz para sacar un adjunto ANTES de guardar: hasta ahí no viajó nada. */
+.farch-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  cursor: pointer;
+  font-size: 9px;
+}
+.farch-x:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+.farch-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .farch {
+    flex-wrap: wrap;
+  }
+  .farch-nom {
+    flex-basis: 100%;
+  }
+  .farch-btn {
+    margin-left: auto;
+  }
+}
