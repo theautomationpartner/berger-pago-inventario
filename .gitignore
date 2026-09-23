@@ -86,3 +86,13 @@ desktop.ini
 
 # Cualquier archivo marcado como local (convención de Vite).
 *.local
+
+# ============================================================================
+# DOCUMENTACIÓN INTERNA
+# ============================================================================
+# Los .md describen el circuito de negocio de BERGER entero: tableros, columnas,
+# reglas, quién puede qué y los ids de la gente del equipo. Mientras el
+# repositorio siga público, eso no se versiona.
+#
+# Viven en la carpeta del proyecto y se comparten por fuera de Git.
+*.md
