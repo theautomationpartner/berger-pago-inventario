@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { Tono } from '@/lib/chips'
-import { resumirDrafts, unidadesDe, type Corte } from '@/lib/drafts'
+import { enCurso, resumirDrafts, unidadesDe, type Corte } from '@/lib/drafts'
 import { importe } from '@/lib/format'
 import { DRAFT_ESTADO } from '@/services/monday/columns'
 import { draftsDePlanificacion, URL_TABLERO_DRAFTS } from '@/services/monday/drafts'
 import type { Draft } from '@/types'
+import { EtiquetasDraft, ImportesDraft, ProductosDraft } from './ListaDrafts'
 import { useDrafts } from './useDrafts'
 
 /** El color de cada estado del draft. El circuito avanza de ámbar a verde, como en el resto. */
@@ -25,27 +26,94 @@ function tonoEstadoDraft(estado: string): Tono {
   }
 }
 
+/**
+ * Una tarjeta del dashboard.
+ *
+ * Con drafts detrás se puede abrir, y entonces es un **botón de verdad** y no un div con
+ * `onClick`: así se llega con el teclado y el lector de pantalla la anuncia como lo que es. Un
+ * número sin la lista que lo compone obliga a ir a monday a buscarla, y al volver ya se perdió de
+ * vista el tablero.
+ */
 function Tarjeta({
   rotulo,
   valor,
   detalle,
   icono,
   tono,
+  onAbrir,
+  abierta,
 }: {
   rotulo: string
   valor: number | string
   detalle?: string
   icono: string
   tono: Tono
+  onAbrir?: () => void
+  abierta?: boolean
 }) {
-  return (
-    <div className={`tarjeta ${tono.replace('chip--', 'tarjeta--')}`}>
+  const clases = `tarjeta ${tono.replace('chip--', 'tarjeta--')}${onAbrir ? ' tarjeta--boton' : ''}${
+    abierta ? ' tarjeta--abierta' : ''
+  }`
+  const contenido = (
+    <>
       <span className="tarjeta-ic">
         <i className={`fa-solid ${icono}`} aria-hidden="true" />
       </span>
       <span className="tarjeta-val">{valor}</span>
       <span className="tarjeta-rot">{rotulo}</span>
       {detalle && <span className="tarjeta-det">{detalle}</span>}
+      {onAbrir && (
+        <span className="tarjeta-ver">
+          <i className={`fa-solid fa-chevron-${abierta ? 'up' : 'down'}`} aria-hidden="true" />{' '}
+          {abierta ? 'Ocultar' : 'Ver drafts'}
+        </span>
+      )}
+    </>
+  )
+
+  return onAbrir ? (
+    <button type="button" className={clases} aria-expanded={abierta} onClick={onAbrir}>
+      {contenido}
+    </button>
+  ) : (
+    <div className={clases}>{contenido}</div>
+  )
+}
+
+/** Un draft desplegado: todo lo que tiene, sin ir a monday. */
+function FichaDraft({ draft }: { draft: Draft }) {
+  return (
+    <div className="draft-ficha">
+      <div className="draft-ficha-head">
+        <span className="draft-ficha-nom">
+          <i className="fa-solid fa-file-lines" aria-hidden="true" /> Draft {draft.nombre}
+        </span>
+        <span className="opfila-chips">
+          <span className={`chip ${tonoEstadoDraft(draft.estado)}`}>
+            {draft.estado || 'Sin estado'}
+          </span>
+          <span className="chip chip--indigo">{unidadesDe(draft)} u.</span>
+          {draft.lectura && draft.lectura !== 'Leido' && (
+            <span className="chip chip--rojo">Lectura: {draft.lectura}</span>
+          )}
+        </span>
+        <a
+          className="btn btn--texto btn--chico"
+          style={{ marginLeft: 'auto' }}
+          href={`${URL_TABLERO_DRAFTS}/pulses/${draft.id}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" /> Ver
+        </a>
+      </div>
+
+      <div className="opfila-chips" style={{ marginBottom: 8 }}>
+        <EtiquetasDraft draft={draft} />
+      </div>
+
+      <ImportesDraft draft={draft} />
+      <ProductosDraft draft={draft} />
     </div>
   )
 }
@@ -119,6 +187,41 @@ export function DashboardDrafts() {
   const r = useMemo(() => resumirDrafts(drafts), [drafts])
 
   const unidadesPorPlanificar = r.paraPlanificar.reduce((n, d: Draft) => n + unidadesDe(d), 0)
+
+  /** Qué tarjeta está abierta. Una por vez: dos listas largas abiertas no se comparan, se pierden. */
+  const [corte, setCorte] = useState<string | null>(null)
+
+  /**
+   * Los drafts detrás de cada tarjeta.
+   *
+   * Se arma acá y no en el resumen porque es exactamente la misma población que ya está contada:
+   * si el número y la lista salieran de dos cálculos distintos, tarde o temprano se contradicen.
+   */
+  const cortes = useMemo(() => {
+    const abiertos = drafts.filter(enCurso)
+    const mapa: Record<string, { titulo: string; drafts: Draft[] }> = {
+      planificar: { titulo: 'Esperan período', drafts: r.paraPlanificar },
+      enviar: { titulo: 'Listos para enviar', drafts: r.paraEnviar },
+      sinLeer: { titulo: 'Trabados por lectura', drafts: r.sinLeer },
+      enCurso: { titulo: 'Drafts en curso', drafts: abiertos },
+    }
+    for (const { estado } of r.porEstado) {
+      mapa[`estado:${estado}`] = {
+        titulo: estado,
+        drafts: drafts.filter((d) => d.estado === estado),
+      }
+    }
+    for (const d of r.porDivisa) {
+      mapa[`divisa:${d.clave}`] = {
+        titulo: `En curso · ${d.clave}`,
+        drafts: abiertos.filter((x) => x.divisa === d.clave),
+      }
+    }
+    return mapa
+  }, [drafts, r])
+
+  /** Abre una tarjeta, o la cierra si ya estaba abierta. */
+  const alternar = (clave: string) => setCorte((a) => (a === clave ? null : clave))
 
   if (cargando) {
     return (
@@ -196,6 +299,8 @@ export function DashboardDrafts() {
                         : 'fa-calendar-plus'
               }
               tono={tonoEstadoDraft(estado)}
+              onAbrir={cantidad > 0 ? () => alternar(`estado:${estado}`) : undefined}
+              abierta={corte === `estado:${estado}`}
             />
           ))}
         </div>
@@ -207,6 +312,8 @@ export function DashboardDrafts() {
             detalle={`${unidadesPorPlanificar} unidades sin planificar`}
             icono="fa-calendar-plus"
             tono="chip--ambar"
+            onAbrir={r.paraPlanificar.length > 0 ? () => alternar('planificar') : undefined}
+            abierta={corte === 'planificar'}
           />
           <Tarjeta
             rotulo="Listos para enviar"
@@ -214,6 +321,8 @@ export function DashboardDrafts() {
             detalle="Planificados y con período"
             icono="fa-paper-plane"
             tono="chip--teal"
+            onAbrir={r.paraEnviar.length > 0 ? () => alternar('enviar') : undefined}
+            abierta={corte === 'enviar'}
           />
           <Tarjeta
             rotulo="Trabados por lectura"
@@ -221,6 +330,8 @@ export function DashboardDrafts() {
             detalle="El PDF todavía no se leyó bien"
             icono="fa-file-circle-xmark"
             tono="chip--rojo"
+            onAbrir={r.sinLeer.length > 0 ? () => alternar('sinLeer') : undefined}
+            abierta={corte === 'sinLeer'}
           />
           <Tarjeta
             rotulo="Unidades en curso"
@@ -228,6 +339,8 @@ export function DashboardDrafts() {
             detalle="En drafts todavía no confirmados"
             icono="fa-tractor"
             tono="chip--indigo"
+            onAbrir={r.unidadesEnCurso > 0 ? () => alternar('enCurso') : undefined}
+            abierta={corte === 'enCurso'}
           />
           {r.porDivisa.map((d) => (
             <Tarjeta
@@ -237,9 +350,34 @@ export function DashboardDrafts() {
               detalle={`${d.drafts} draft${d.drafts === 1 ? '' : 's'} en curso`}
               icono="fa-coins"
               tono="chip--verde"
+              onAbrir={d.drafts > 0 ? () => alternar(`divisa:${d.clave}`) : undefined}
+              abierta={corte === `divisa:${d.clave}`}
             />
           ))}
         </div>
+
+        {corte && (
+          <div className="corte-abierto">
+            <div className="ctitle">
+              <i className="fa-solid fa-layer-group" aria-hidden="true" />
+              {cortes[corte]?.titulo} · {cortes[corte]?.drafts.length ?? 0} draft
+              {(cortes[corte]?.drafts.length ?? 0) === 1 ? '' : 's'}
+              <button
+                type="button"
+                className="btn btn--texto btn--chico"
+                style={{ marginLeft: 'auto' }}
+                onClick={() => setCorte(null)}
+              >
+                <i className="fa-solid fa-xmark" aria-hidden="true" /> Cerrar
+              </button>
+            </div>
+            <div className="lista-body">
+              {(cortes[corte]?.drafts ?? []).map((d) => (
+                <FichaDraft key={d.id} draft={d} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="tablas" style={{ marginTop: 14 }}>
           <TablaCorte

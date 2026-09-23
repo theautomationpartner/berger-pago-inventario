@@ -53,8 +53,7 @@ export const sePuedeEnviar = (d: Draft): boolean =>
   d.estado === DRAFT_ESTADO.PLANIFICADA && Boolean(d.periodo.trim())
 
 /** Suma de una columna de importes, salteando los que no tienen dato. */
-const suma = (drafts: Draft[]): number =>
-  drafts.reduce((n, d) => n + (d.total ?? 0), 0)
+const suma = (drafts: Draft[]): number => drafts.reduce((n, d) => n + (d.total ?? 0), 0)
 
 /** Cuántas unidades pidió un draft, sumando sus productos. */
 export const unidadesDe = (d: Draft): number =>
@@ -142,7 +141,7 @@ export function ordenDePeriodo(periodo: string): number {
 }
 
 /** Un draft está "en curso" mientras no se canceló ni se confirmó en una orden. */
-const enCurso = (d: Draft): boolean =>
+export const enCurso = (d: Draft): boolean =>
   d.estado !== DRAFT_ESTADO.CANCELADO && d.estado !== DRAFT_ESTADO.CONFIRMADO
 
 export function resumirDrafts(drafts: Draft[]): ResumenDrafts {

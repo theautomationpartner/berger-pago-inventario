@@ -68,7 +68,7 @@ export function ImportesDraft({ draft }: { draft: Draft }) {
 }
 
 /** Los productos del draft: lo que el proveedor va a fabricar. */
-function ProductosDraft({ draft }: { draft: Draft }) {
+export function ProductosDraft({ draft }: { draft: Draft }) {
   if (draft.productos.length === 0) {
     return (
       <div className="vacio">
