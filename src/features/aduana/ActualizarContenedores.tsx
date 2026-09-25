@@ -75,6 +75,8 @@ export function ActualizarContenedores() {
   const [depositos, setDepositos] = useState<string[]>([])
   /** Los contenedores tildados para trabajarlos juntos. */
   const [lote, setLote] = useState<string[]>([])
+  /** La fecha de arribo que se les va a poner a los del lote. Arranca en hoy. */
+  const [fechaLote, setFechaLote] = useState(hoyISO())
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -171,10 +173,33 @@ export function ActualizarContenedores() {
   /** Los tildados que además están en pantalla: tildar y después filtrar no puede dejar fantasmas. */
   const delLote = useMemo(() => visibles.filter((c) => lote.includes(c.id)), [visibles, lote])
 
+  /* El arribo sólo se le puede poner a los que ya salieron de aduana, así que el lote se parte en
+     dos: a unos se les puede cargar todo, a los otros sólo la entrega. */
+  const nacionalizadosDelLote = useMemo(() => delLote.filter(puedeArribar), [delLote])
+  const sinNacionalizarDelLote = useMemo(() => delLote.filter((c) => !puedeArribar(c)), [delLote])
+
   const aplicarAlLote = (cambio: Partial<EdicionContenedor>) =>
     setEdiciones((a) => {
       const nuevas = { ...a }
       for (const c of delLote) {
+        nuevas[c.id] = {
+          ...(a[c.id] ?? {
+            ubicacion: c.ubicacion,
+            transportistaId: c.transportistaId,
+            estadoArribo: c.estadoArribo,
+            fechaArribo: c.fechaArribo,
+          }),
+          ...cambio,
+        }
+      }
+      return nuevas
+    })
+
+  /** Como `aplicarAlLote`, pero sólo a los que pueden arribar. */
+  const aplicarALosNacionalizados = (cambio: Partial<EdicionContenedor>) =>
+    setEdiciones((a) => {
+      const nuevas = { ...a }
+      for (const c of nacionalizadosDelLote) {
         nuevas[c.id] = {
           ...(a[c.id] ?? {
             ubicacion: c.ubicacion,
@@ -403,42 +428,85 @@ export function ActualizarContenedores() {
                   onCambiar={(v) => v && aplicarAlLote({ transportistaId: v })}
                 />
               </div>
-              <label className="campo campo--chico">
-                <span className="campo-lbl">Fecha de arribo para todos</span>
-                <input
-                  className="input"
-                  type="date"
-                  max={hoyISO()}
-                  value=""
-                  onChange={(ev) =>
-                    ev.target.value &&
-                    aplicarAlLote({
-                      estadoArribo: ESTADO_ARRIBO.ARRIBADO,
-                      fechaArribo: ev.target.value,
-                    })
-                  }
-                />
-              </label>
             </div>
 
-            {/* Marcar el arribo de varios es la acción del día cuando llega un barco: va como
-                botón y no escondido en el campo de fecha. */}
-            <div className="lote-acciones">
-              <button
-                type="button"
-                className="btn btn--borde btn--chico"
-                disabled={!delLote.some((c) => puedeArribar(c))}
-                onClick={() =>
-                  aplicarAlLote({ estadoArribo: ESTADO_ARRIBO.ARRIBADO, fechaArribo: hoyISO() })
-                }
-              >
-                <i className="fa-solid fa-circle-check" aria-hidden="true" /> Marcar arribados hoy
-              </button>
-              {!delLote.every((c) => puedeArribar(c)) && (
+            {/* El arribo NO es "un estado y además una fecha": marcar que llegó ES decir cuándo
+                llegó. Por eso va un solo control —la fecha— y el botón sólo elige hoy por vos.
+                Y se aplica únicamente a los nacionalizados: antes de salir de aduana no se retira
+                nada, así que ponerle fecha a los demás sería anotar una entrega imposible. */}
+            <div className="lote-arribo">
+              <span className="lote-arribo-tit">
+                <i className="fa-solid fa-anchor" aria-hidden="true" /> Marcar arribados
+              </span>
+
+              {nacionalizadosDelLote.length === 0 ? (
                 <span className="campo-ayuda campo-ayuda--falta">
-                  <i className="fa-solid fa-lock" aria-hidden="true" /> Los de una OP que todavía no
-                  está en <b>{NACIONALIZADO}</b> no se van a marcar.
+                  <i className="fa-solid fa-lock" aria-hidden="true" /> Ninguno de los elegidos está
+                  en <b>{NACIONALIZADO}</b>. El arribo se marca recién cuando la OP sale de aduana.
                 </span>
+              ) : (
+                <>
+                  <div className="lote-arribo-fila">
+                    <label className="campo campo--chico">
+                      <span className="campo-lbl">¿Qué día llegaron?</span>
+                      <input
+                        className="input"
+                        type="date"
+                        max={hoyISO()}
+                        value={fechaLote}
+                        onChange={(ev) => setFechaLote(ev.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn--primario btn--chico"
+                      disabled={!fechaLote}
+                      onClick={() =>
+                        aplicarALosNacionalizados({
+                          estadoArribo: ESTADO_ARRIBO.ARRIBADO,
+                          fechaArribo: fechaLote,
+                        })
+                      }
+                    >
+                      <i className="fa-solid fa-circle-check" aria-hidden="true" /> Marcar{' '}
+                      {nacionalizadosDelLote.length} como arribado
+                      {nacionalizadosDelLote.length === 1 ? '' : 's'}
+                    </button>
+                  </div>
+                  <span className="lote-arribo-det">
+                    Marcarlos arribados y ponerles la fecha es lo mismo: se guardan juntos.
+                  </span>
+                </>
+              )}
+
+              {/* Mezcla de nacionalizados y no nacionalizados: en vez de avisar que a algunos "no
+                  se les va a cargar" —que obliga a leer el resumen fila por fila para saber a
+                  cuáles—, se ofrece sacarlos de la selección de una vez. */}
+              {sinNacionalizarDelLote.length > 0 && (
+                <div className="aviso aviso--alerta" style={{ margin: 0 }}>
+                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                  <span>
+                    <b>
+                      {sinNacionalizarDelLote.length} de los elegidos todavía no{' '}
+                      {sinNacionalizarDelLote.length === 1 ? 'está' : 'están'} en {NACIONALIZADO}
+                    </b>{' '}
+                    y no se {sinNacionalizarDelLote.length === 1 ? 'va' : 'van'} a marcar como
+                    {sinNacionalizarDelLote.length === 1 ? ' arribado' : ' arribados'}:{' '}
+                    {sinNacionalizarDelLote.map((c) => c.numero || c.nombre).join(', ')}. La entrega
+                    y el transportista sí se les pueden cargar.
+                    <span className="aviso-chips">
+                      <button
+                        type="button"
+                        className="btn btn--borde btn--chico"
+                        onClick={() => setLote(nacionalizadosDelLote.map((c) => c.id))}
+                      >
+                        <i className="fa-solid fa-filter" aria-hidden="true" /> Dejar sólo los{' '}
+                        {nacionalizadosDelLote.length} nacionalizado
+                        {nacionalizadosDelLote.length === 1 ? '' : 's'}
+                      </button>
+                    </span>
+                  </span>
+                </div>
               )}
             </div>
 
@@ -463,12 +531,15 @@ export function ActualizarContenedores() {
                         }`,
                       )
                     }
-                    if (cambio.estadoArribo !== undefined) {
-                      partes.push(`arribo → ${cambio.estadoArribo || '(sin estado)'}`)
-                    }
-                    if (cambio.fechaArribo !== undefined) {
+                    /* El arribo se dice en un solo renglón: marcarlo y fecharlo son el mismo
+                       acto, y separarlos hacía leer "arribo → Arribado · fecha → 25/09" como si
+                       fueran dos cosas que pueden ir por separado. */
+                    if (cambio.estadoArribo !== undefined || cambio.fechaArribo !== undefined) {
+                      const dia = cambio.fechaArribo ?? c.fechaArribo
                       partes.push(
-                        `fecha → ${cambio.fechaArribo ? fechaCorta(cambio.fechaArribo) : '(sin fecha)'}`,
+                        cambio.estadoArribo === ESTADO_ARRIBO.ARRIBADO || !cambio.estadoArribo
+                          ? `arribado el ${dia ? fechaCorta(dia) : 'sin fecha'}`
+                          : 'vuelve a pendiente de arribar',
                       )
                     }
                     return (
@@ -593,14 +664,16 @@ export function ActualizarContenedores() {
                       </span>
                       <span className="opcion-txt">
                         <span className="opcion-tit">
-                          {arribado ? 'Arribado' : 'Marcar como arribado'}
+                          {arribado
+                            ? `Arribado el ${e.fechaArribo ? fechaCorta(e.fechaArribo) : 'sin fecha'}`
+                            : 'Marcar como arribado'}
                         </span>
                         <span className="opcion-det">
                           {!habilitaArribo
                             ? `La OP todavía está en "${c.estadoCargaOp || 'sin estado'}"`
                             : arribado
                               ? 'Tocá de nuevo si te equivocaste'
-                              : 'El contenedor ya llegó a destino'}
+                              : `El contenedor llegó a destino · se guarda con la fecha de hoy`}
                         </span>
                       </span>
                     </button>
@@ -614,10 +687,12 @@ export function ActualizarContenedores() {
                     </span>
                   )}
 
+                  {/* La fecha NO es un dato aparte del arribo: es el arribo. Por eso aparece
+                      pegada al interruptor y sólo cuando está marcado, con la de hoy ya puesta. */}
                   {arribado && (
                     <div className="arribo-fecha">
                       <label className="campo campo--chico">
-                        <span className="campo-lbl">Fecha de arribo</span>
+                        <span className="campo-lbl">¿Qué día llegó?</span>
                         <input
                           className="input"
                           type="date"
@@ -627,16 +702,10 @@ export function ActualizarContenedores() {
                         />
                       </label>
                       <span className="arribo-nota">
-                        {(e.fechaArribo ?? '') === hoyISO() ? (
+                        {e.fechaArribo ? (
                           <>
-                            <i className="fa-solid fa-circle-info" aria-hidden="true" /> Se va a
-                            guardar con la fecha de <b>hoy</b>. Si llegó antes y recién ahora lo
-                            marcás, cambiála.
-                          </>
-                        ) : e.fechaArribo ? (
-                          <>
-                            <i className="fa-solid fa-calendar-check" aria-hidden="true" /> Llegó el{' '}
-                            <b>{fechaCorta(e.fechaArribo)}</b>, no hoy.
+                            <i className="fa-solid fa-circle-info" aria-hidden="true" /> Cambiála si
+                            llegó antes y recién ahora lo estás marcando.
                           </>
                         ) : (
                           <>
