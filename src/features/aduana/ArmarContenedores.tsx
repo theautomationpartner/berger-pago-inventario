@@ -258,8 +258,12 @@ export function ArmarContenedores({ op, tractores, armados, onVolver, onListo }:
                       )}
                     </label>
 
-                    <div className="tractores-cont">
-                      <span className="campo-lbl">Tractores que van en este contenedor</span>
+                    <span className="campo-lbl">Tractores que van en este contenedor</span>
+                    {/* Cajitas en grilla y no filas a lo ancho: una fila de 1400px para mostrar un
+                        chasis y un modelo deja la mitad de la pantalla vacía y obliga a recorrer
+                        el ojo de punta a punta. En cajitas entran varias por renglón y la cuenta
+                        de cuántos van en el contenedor se hace de un vistazo. */}
+                    <div className="tractores-grilla">
                       {pendientes.map((t) => {
                         const marcado = c.tractorIds.includes(t.id)
                         const enOtro = asignados.has(t.id) && !marcado
@@ -268,8 +272,8 @@ export function ArmarContenedores({ op, tractores, armados, onVolver, onListo }:
                             key={t.id}
                             type="button"
                             aria-pressed={marcado}
-                            className={`tractor-fila${marcado ? ' tractor-fila--sel' : ''}${
-                              enOtro ? ' tractor-fila--otro' : ''
+                            className={`tcaja${marcado ? ' tcaja--sel' : ''}${
+                              enOtro ? ' tcaja--otro' : ''
                             }`}
                             onClick={() => alternarTractor(c.clave, t.id)}
                           >
@@ -277,7 +281,9 @@ export function ArmarContenedores({ op, tractores, armados, onVolver, onListo }:
                               {marcado && <i className="fa-solid fa-check" aria-hidden="true" />}
                             </span>
                             <Tractor t={t} />
-                            {enOtro && <span className="chip chip--azul">En otro contenedor</span>}
+                            {enOtro && (
+                              <span className="chip chip--azul tcaja-otro">En otro contenedor</span>
+                            )}
                           </button>
                         )
                       })}

@@ -30,7 +30,9 @@
   border-radius: 18px;
   background: #fff;
   color: var(--text-dark);
-  box-shadow: 0 24px 60px rgba(35, 3, 5, 0.45), 0 2px 8px rgba(35, 3, 5, 0.25);
+  box-shadow:
+    0 24px 60px rgba(35, 3, 5, 0.45),
+    0 2px 8px rgba(35, 3, 5, 0.25);
 }
 .ingreso-tarjeta--ancha {
   max-width: 520px;
@@ -107,7 +109,7 @@
    es como se revisa que no falte un pedazo. */
 .ingreso-clave-propia {
   height: 52px;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -212,7 +214,9 @@
   text-align: center;
   color: var(--text-dark);
   font-variant-numeric: tabular-nums;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 }
 .codigo::placeholder {
   color: #d3d7df;

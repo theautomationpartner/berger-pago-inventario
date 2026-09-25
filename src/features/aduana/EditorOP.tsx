@@ -1,7 +1,13 @@
+import { Desplegable } from '@/components/ui/Desplegable'
 import { FilaArchivo } from '@/components/ui/FilaArchivo'
 import { NACIONALIZADO, ROTULOS, faltaNroDespacho } from '@/lib/despachos'
 import { fechaCorta } from '@/lib/format'
-import { ESTADO_CARGA, PROXIMA_A_ARRIBAR, VIA_TRANSPORTE } from '@/services/monday/columns'
+import {
+  ESTADO_CARGA,
+  ESTADO_PAGO_VEP,
+  PROXIMA_A_ARRIBAR,
+  VIA_TRANSPORTE,
+} from '@/services/monday/columns'
 import { ARCHIVOS_OP, ROTULO_ARCHIVO, archivosDeColumna } from '@/services/monday/despachos'
 import type { ArchivosDespacho, CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
 import { EtiquetasOP } from './EtiquetasOP'
@@ -25,7 +31,8 @@ const CAMPOS_ARCHIVO: {
   { columna: ARCHIVOS_OP[4], campo: 'facturaSenasa', varios: true },
   { columna: ARCHIVOS_OP[5], campo: 'facturaModoc' },
   { columna: ARCHIVOS_OP[6], campo: 'facturaPrecintos' },
-  { columna: ARCHIVOS_OP[7], campo: 'vepDespachante' },
+  { columna: ARCHIVOS_OP[7], campo: 'vepArca' },
+  { columna: ARCHIVOS_OP[8], campo: 'vepTerminal' },
 ]
 
 interface Props {
@@ -87,6 +94,18 @@ export function EditorOP({
   /* Nacionalizar sin el número del despacho deja un estado que no se puede respaldar con nada.
      Se avisa apenas se elige el estado, no al guardar: el campo está en la misma pantalla. */
   const faltaDespacho = faltaNroDespacho(edicion)
+
+  /**
+   * La FC Terminal no se puede adjuntar antes de que BERGER pague el VEP Terminal.
+   *
+   * La terminal factura contra ese pago: una factura cargada antes es una factura de algo que
+   * todavía no se pagó, y después no se sabe a qué corresponde. El dato lo escribe BERGER desde su
+   * operación, así que acá sólo se lee y se explica.
+   */
+  const vepTerminalPagado = op.estadoPagoVepTerminal === ESTADO_PAGO_VEP.PAGADO
+  const trabaFcTerminal = vepTerminalPagado
+    ? undefined
+    : 'Se habilita cuando BERGER pague el VEP Terminal'
   const cambiado = (campo: keyof EdicionDespacho) => cambios.some((c) => c.campo === campo)
   const set = (campo: keyof EdicionDespacho, valor: string) =>
     onCambiar({ ...edicion, [campo]: valor })
@@ -122,24 +141,19 @@ export function EditorOP({
 
       <div className="op-editor-cuerpo">
         <div className="datos datos--form">
-          <label className="campo">
+          <div className="campo">
             <span className="campo-lbl">{ROTULOS.estadoCarga}</span>
-            <select
-              className="select"
-              value={edicion.estadoCarga}
-              onChange={(e) => set('estadoCarga', e.target.value)}
-            >
-              <option value="">(sin estado)</option>
-              {ESTADO_CARGA.map((estado) => {
-                const vedado = estado === PROXIMA_A_ARRIBAR && bloqueaProxima
-                return (
-                  <option key={estado} value={estado} disabled={vedado}>
-                    {estado}
-                    {vedado ? ' — faltan contenedores' : ''}
-                  </option>
-                )
-              })}
-            </select>
+            {/* "Próxima a Arribar" sin contenedores armados directamente no figura en la lista, y
+                el motivo se dice debajo: una opción visible que no se puede elegir invita a
+                probar, y probar termina en un cartel. */}
+            <Desplegable
+              valor={edicion.estadoCarga}
+              opciones={ESTADO_CARGA.filter(
+                (estado) => !(estado === PROXIMA_A_ARRIBAR && bloqueaProxima),
+              )}
+              vacio="(sin estado)"
+              onCambiar={(v) => set('estadoCarga', v)}
+            />
             {ayuda('estadoCarga')}
             {bloqueaProxima && (
               <span className="campo-ayuda campo-ayuda--falta">
@@ -148,7 +162,7 @@ export function EditorOP({
                 contenedor.
               </span>
             )}
-          </label>
+          </div>
 
           <label className="campo">
             <span className="campo-lbl">{ROTULOS.eta}</span>
@@ -172,22 +186,16 @@ export function EditorOP({
             {ayuda('nroOp')}
           </label>
 
-          <label className="campo">
+          <div className="campo">
             <span className="campo-lbl">{ROTULOS.viaTransporte}</span>
-            <select
-              className="select"
-              value={edicion.viaTransporte}
-              onChange={(e) => set('viaTransporte', e.target.value)}
-            >
-              <option value="">(sin vía)</option>
-              {VIA_TRANSPORTE.map((via) => (
-                <option key={via} value={via}>
-                  {via}
-                </option>
-              ))}
-            </select>
+            <Desplegable
+              valor={edicion.viaTransporte}
+              opciones={VIA_TRANSPORTE}
+              vacio="(sin vía)"
+              onCambiar={(v) => set('viaTransporte', v)}
+            />
             {ayuda('viaTransporte')}
-          </label>
+          </div>
 
           <label className="campo">
             <span className="campo-lbl">{ROTULOS.buque}</span>
@@ -300,6 +308,7 @@ export function EditorOP({
                 pendientes={archivos[campo]}
                 onCambiar={(lista) => onArchivo(campo, lista)}
                 varios={varios}
+                trabado={campo === 'fcTerminal' ? trabaFcTerminal : undefined}
               />
             ))}
           </div>

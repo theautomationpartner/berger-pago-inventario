@@ -201,8 +201,10 @@ const COLUMNAS_DE_BERGER = new Set<string>([
   COL_DESPACHANTE.formaPago,
   COL_DESPACHANTE.fondeo,
   COL_DESPACHANTE.bancoDeclarar,
-  COL_DESPACHANTE.vepPorDonde,
-  COL_DESPACHANTE.estadoPagoVep,
+  COL_DESPACHANTE.formaPagoVepArca,
+  COL_DESPACHANTE.estadoPagoVepArca,
+  COL_DESPACHANTE.formaPagoVepTerminal,
+  COL_DESPACHANTE.estadoPagoVepTerminal,
 ])
 
 /**
@@ -262,8 +264,10 @@ export const COLUMNAS_ARCHIVO = new Set<string>([
   COL_DESPACHANTE.facturaSenasa,
   COL_DESPACHANTE.facturaModoc,
   COL_DESPACHANTE.facturaPrecintos,
-  COL_DESPACHANTE.vepDespachante,
-  COL_DESPACHANTE.comprobanteVep,
+  COL_DESPACHANTE.vepArca,
+  COL_DESPACHANTE.vepTerminal,
+  COL_DESPACHANTE.comprobanteVepArca,
+  COL_DESPACHANTE.comprobanteVepTerminal,
 ])
 
 /**
@@ -286,8 +290,10 @@ export const MODULO_DE_ARCHIVO: Record<string, ModuloApp> = {
   [COL_DESPACHANTE.facturaPrecintos]: 'aduana',
   /* El VEP lo emite el despachante; su comprobante de pago lo sube BERGER. Son dos módulos
      distintos justamente para que ninguno pueda escribir el archivo del otro. */
-  [COL_DESPACHANTE.vepDespachante]: 'aduana',
-  [COL_DESPACHANTE.comprobanteVep]: 'aduanaBerger',
+  [COL_DESPACHANTE.vepArca]: 'aduana',
+  [COL_DESPACHANTE.vepTerminal]: 'aduana',
+  [COL_DESPACHANTE.comprobanteVepArca]: 'aduanaBerger',
+  [COL_DESPACHANTE.comprobanteVepTerminal]: 'aduanaBerger',
 }
 
 /**

@@ -26,6 +26,7 @@ import {
   OPERACIONES_FECHAS,
   OPERACIONES_PRINCIPALES,
   principalesDeModulos,
+  SECCIONES_ADUANA,
   puedeEnAduana,
 } from '@/lib/navegacion'
 import { clienteIngreso } from '@/services/acceso/cliente'
@@ -242,6 +243,7 @@ function AppAdentro({ sesion }: { sesion: SesionIngreso }) {
           titulo="Despacho de aduana"
           detalle="Seguimiento de las OP que ya salieron del circuito de despacho."
           opciones={operacionesAduana}
+          secciones={SECCIONES_ADUANA}
           onElegir={setOperacionAduana}
         />
       )}

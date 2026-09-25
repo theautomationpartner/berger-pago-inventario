@@ -137,7 +137,12 @@ export async function avanzarPago({
     advertencias.push(`No se pudo disparar el aviso por mail: ${motivo(e)}`)
   }
 
-  return { pagoId: pago.id, tractoresActualizados, advertencias, itemDespachanteId: itemDespachante }
+  return {
+    pagoId: pago.id,
+    tractoresActualizados,
+    advertencias,
+    itemDespachanteId: itemDespachante,
+  }
 }
 
 /**

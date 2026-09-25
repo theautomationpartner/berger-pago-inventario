@@ -8,12 +8,7 @@
  * de la fecha y la fecha propuesta. Todo lo demás de ese tablero lo manejan otros circuitos.
  */
 import type { DecisionFecha, TractorFecha } from '@/types'
-import {
-  COL_INV,
-  ESTADO_FECHA,
-  ESTADO_FECHA_INDEX,
-  ESTADO_FECHA_PROD,
-} from './columns'
+import { COL_INV, ESTADO_FECHA, ESTADO_FECHA_INDEX, ESTADO_FECHA_PROD } from './columns'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
@@ -107,7 +102,9 @@ export async function tractoresPendientesDeFecha(): Promise<TractorFecha[]> {
   return items
     .map(aTractorFecha)
     .filter((t) => t.estadoConfirmacion === ESTADO_FECHA.PEND_CONFIRMAR && Boolean(t.fechaProd))
-    .sort((a, b) => a.fechaProd.localeCompare(b.fechaProd) || a.nombre.localeCompare(b.nombre, 'es'))
+    .sort(
+      (a, b) => a.fechaProd.localeCompare(b.fechaProd) || a.nombre.localeCompare(b.nombre, 'es'),
+    )
 }
 
 /** Tractores del Inventario por id: los que cuelgan de una confirmación. */
@@ -131,7 +128,10 @@ export async function tractoresPorIds(ids: string[]): Promise<TractorFecha[]> {
  *   ninguna propuesta que hacer.
  * - **Proponer**: se guarda la fecha nueva y el tractor vuelve a quedar esperando al proveedor.
  */
-export async function decidirFecha(tractor: TractorFecha, decision: DecisionFecha): Promise<string> {
+export async function decidirFecha(
+  tractor: TractorFecha,
+  decision: DecisionFecha,
+): Promise<string> {
   const valores =
     decision.tipo === 'confirmar'
       ? {
@@ -152,5 +152,4 @@ export async function decidirFecha(tractor: TractorFecha, decision: DecisionFech
 }
 
 /** URL del Inventario, para los enlaces "ver en monday". */
-export const URL_TABLERO_INVENTARIO =
-  'https://maquinariasagricolas.monday.com/boards/18428578101'
+export const URL_TABLERO_INVENTARIO = 'https://maquinariasagricolas.monday.com/boards/18428578101'

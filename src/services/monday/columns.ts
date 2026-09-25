@@ -300,8 +300,13 @@ export const COL_DESPACHANTE = {
   formaPago: 'dropdown_mm77scb3',
   fondeo: 'dropdown_mm77t4vd',
   bancoDeclarar: 'dropdown_mm77yeb2',
-  vepPorDonde: 'dropdown_mm77tkx3',
-  estadoPagoVep: 'color_mm793phx',
+  /* El VEP ARCA: el de la aduana. */
+  formaPagoVepArca: 'dropdown_mm77tkx3',
+  estadoPagoVepArca: 'color_mm793phx',
+
+  /* El VEP TERMINAL: el de la terminal portuaria. Mismo circuito, otro trámite y otra plata. */
+  formaPagoVepTerminal: 'dropdown_mm7hpn8z',
+  estadoPagoVepTerminal: 'color_mm7gwnxh',
 
   /* Los comprobantes que sube el despachante a medida que avanza el trámite. */
   fcTransporteImpo: 'file_mm77pmw7',
@@ -315,12 +320,14 @@ export const COL_DESPACHANTE = {
   facturaPrecintos: 'file_mm7a9sxq',
 
   /**
-   * El VEP que emite el DESPACHANTE. Es la llave del pago: hasta que este archivo no está, no hay
-   * VEP que pagar, y BERGER no puede ni marcarlo pagado ni subir su comprobante.
+   * Los dos VEP que emite el DESPACHANTE. Cada uno es la llave de su pago: hasta que el archivo no
+   * está, no hay VEP que pagar, y BERGER no puede ni marcarlo pagado ni subir su comprobante.
    */
-  vepDespachante: 'file_mm7d41zn',
-  /** El comprobante del pago del VEP, que sube BERGER una vez que lo pagó. */
-  comprobanteVep: 'file_mm7d3jvj',
+  vepArca: 'file_mm7d41zn',
+  vepTerminal: 'file_mm7gw5yt',
+  /** Los comprobantes de cada pago, que sube BERGER una vez que pagó. */
+  comprobanteVepArca: 'file_mm7d3jvj',
+  comprobanteVepTerminal: 'file_mm7hqek2',
 
   /* Lo que carga el DESPACHANTE, ya con la OP en la calle. La app no lo escribe al crear el
      despacho: lo completa él desde el módulo de Aduana, a medida que la carga avanza. */
@@ -390,7 +397,7 @@ export const BANCO_DECLARAR = [
   '072 Santander',
 ] as const
 
-export const VEP_POR_DONDE = ['Interbanking', 'Banelco', 'Link'] as const
+export const FORMA_PAGO_VEP = ['Interbanking', 'Banelco', 'Link'] as const
 
 export const ESTADO_CARGA = [
   'Nueva OP',

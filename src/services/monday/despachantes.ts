@@ -22,7 +22,10 @@ interface UsuarioCrudo {
  * despacho a alguien que ya no entra a monday es mandarlo a un buzón que nadie abre.
  */
 export async function listarDespachantes(): Promise<Despachante[]> {
-  const r = await mondayApi<{ teams: { users: UsuarioCrudo[] | null }[] | null }>('despachantes', {})
+  const r = await mondayApi<{ teams: { users: UsuarioCrudo[] | null }[] | null }>(
+    'despachantes',
+    {},
+  )
 
   const usuarios = r.teams?.[0]?.users ?? []
   return usuarios

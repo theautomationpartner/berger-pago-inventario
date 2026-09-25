@@ -14,11 +14,7 @@
  *   inyectan el token del lado del servidor (`MONDAY_TOKEN`), para que el secreto no quede
  *   incrustado en el bundle que descarga el navegador.
  */
-import {
-  EVENTO_REINGRESAR,
-  EVENTO_SIN_ACCESO,
-  sesionDelDia,
-} from '@/services/acceso/sesionDelDia'
+import { EVENTO_REINGRESAR, EVENTO_SIN_ACCESO, sesionDelDia } from '@/services/acceso/sesionDelDia'
 import {
   MUTATION_ARCHIVO,
   resolverOperacion,

@@ -286,13 +286,18 @@
   text-align: left;
   cursor: pointer;
   box-shadow: var(--sombra);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease,
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease,
     transform 0.14s ease;
 }
 .panel-opcion:hover {
   border-color: var(--berger-red);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(225, 27, 34, 0.1), var(--sombra-alta);
+  box-shadow:
+    0 0 0 3px rgba(225, 27, 34, 0.1),
+    var(--sombra-alta);
 }
 .panel-opcion:active {
   transform: scale(0.99);
@@ -336,7 +341,9 @@
   flex: 0 0 auto;
   font-size: 14px;
   color: #b3b9c6;
-  transition: transform 0.14s ease, color 0.14s ease;
+  transition:
+    transform 0.14s ease,
+    color 0.14s ease;
 }
 .panel-opcion:hover .panel-opcion-flecha {
   color: var(--berger-red);
@@ -405,4 +412,79 @@
   border-right: none;
   border-top: none;
   padding: 10px var(--gutter);
+}
+
+/* ============================================================================
+   Secciones del panel de operaciones
+   ============================================================================
+   En DESPACHO DE ADUANA conviven dos trabajos sobre las mismas OP: el del despachante y el de
+   BERGER. Con los nombres completos, lo que los distinguía estaba al final del renglón. Agrupados
+   y con color, el nombre corto alcanza. */
+.panel-grupo {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--grupo-bd);
+  border-left: 4px solid var(--grupo-color);
+  border-radius: 14px;
+  background: var(--grupo-bg);
+}
+.panel-grupo--azul {
+  --grupo-color: #0073ea;
+  --grupo-bd: #bcd6f5;
+  --grupo-bg: #f4f9ff;
+}
+.panel-grupo--naranja {
+  --grupo-color: #e08600;
+  --grupo-bd: #f2d795;
+  --grupo-bg: #fffaf0;
+}
+.panel-grupo-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.panel-grupo-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--grupo-color);
+  color: #fff;
+  font-size: 16px;
+}
+.panel-grupo-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.panel-grupo-tit {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--grupo-color);
+}
+.panel-grupo-det {
+  font-size: 12.5px;
+  color: var(--text-gray);
+}
+/* Dentro de un grupo las tarjetas van en blanco: el color lo pone el marco, no cada una. */
+.panel-grupo .panel-opcion {
+  background: #fff;
+}
+.panel-grupo .panel-opcion:hover {
+  border-color: var(--grupo-color);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--grupo-color) 14%, transparent),
+    var(--sombra-alta);
+}
+.panel-grupo .panel-opcion-ic {
+  background: var(--grupo-color);
+}
+.panel-grupo .panel-opcion:hover .panel-opcion-flecha {
+  color: var(--grupo-color);
 }

@@ -10,13 +10,7 @@
  */
 import type { MesAnio, Tractor } from '@/types'
 import { puertosDeCatalogo } from './catalogo'
-import {
-  COL_INV,
-  FECHA_CONFIRMADA,
-  FORMA_PAGO,
-  INV_ESTADO,
-  INV_ESTADO_INDEX,
-} from './columns'
+import { COL_INV, FECHA_CONFIRMADA, FORMA_PAGO, INV_ESTADO, INV_ESTADO_INDEX } from './columns'
 import type { NombreOperacion } from './operaciones'
 import { aNumeroEspejo, espejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
@@ -95,7 +89,10 @@ const conFechaConfirmada = (t: Tractor): boolean => t.confirmacionFecha === FECH
  * `query_params` no se puede combinar con un cursor —el filtro ya quedó grabado en el cursor de
  * la primera página—, así que la primera página y las siguientes son operaciones distintas.
  */
-async function traerTodos(operacion: NombreOperacion, filtro: Record<string, unknown>): Promise<Tractor[]> {
+async function traerTodos(
+  operacion: NombreOperacion,
+  filtro: Record<string, unknown>,
+): Promise<Tractor[]> {
   const primera = await mondayApi<{ boards: { items_page: PaginaCruda }[] }>(operacion, {
     ...filtro,
     columnas: COLUMNAS,

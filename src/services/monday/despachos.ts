@@ -34,7 +34,8 @@ export const ARCHIVOS_OP = [
   COL_DESPACHANTE.facturaSenasa,
   COL_DESPACHANTE.facturaModoc,
   COL_DESPACHANTE.facturaPrecintos,
-  COL_DESPACHANTE.vepDespachante,
+  COL_DESPACHANTE.vepArca,
+  COL_DESPACHANTE.vepTerminal,
 ]
 
 /**
@@ -43,7 +44,10 @@ export const ARCHIVOS_OP = [
  * Va en una lista aparte de la del despachante porque son módulos distintos, y el servidor decide
  * quién puede escribir cada columna de archivo por esa pertenencia.
  */
-export const ARCHIVOS_BERGER = [COL_DESPACHANTE.comprobanteVep]
+export const ARCHIVOS_BERGER = [
+  COL_DESPACHANTE.comprobanteVepArca,
+  COL_DESPACHANTE.comprobanteVepTerminal,
+]
 
 /**
  * Los archivos de una columna de archivo.
@@ -78,8 +82,10 @@ export const ROTULO_ARCHIVO: Record<string, string> = {
   [COL_DESPACHANTE.facturaSenasa]: 'Factura Senasa',
   [COL_DESPACHANTE.facturaModoc]: 'Factura Modoc',
   [COL_DESPACHANTE.facturaPrecintos]: 'Factura Precintos',
-  [COL_DESPACHANTE.vepDespachante]: 'VEP',
-  [COL_DESPACHANTE.comprobanteVep]: 'Comprobante de pago del VEP',
+  [COL_DESPACHANTE.vepArca]: 'VEP ARCA',
+  [COL_DESPACHANTE.vepTerminal]: 'VEP Terminal',
+  [COL_DESPACHANTE.comprobanteVepArca]: 'Comprobante de pago del VEP ARCA',
+  [COL_DESPACHANTE.comprobanteVepTerminal]: 'Comprobante de pago del VEP Terminal',
 }
 
 const COLUMNAS = [
@@ -105,8 +111,10 @@ const COLUMNAS = [
   COL_DESPACHANTE.formaPago,
   COL_DESPACHANTE.fondeo,
   COL_DESPACHANTE.bancoDeclarar,
-  COL_DESPACHANTE.vepPorDonde,
-  COL_DESPACHANTE.estadoPagoVep,
+  COL_DESPACHANTE.formaPagoVepArca,
+  COL_DESPACHANTE.estadoPagoVepArca,
+  COL_DESPACHANTE.formaPagoVepTerminal,
+  COL_DESPACHANTE.estadoPagoVepTerminal,
   ...ARCHIVOS_OP,
   ...ARCHIVOS_BERGER,
 ]
@@ -138,8 +146,10 @@ function aDespacho(item: ItemCrudo): DespachoOP {
     formaPago: texto(c[COL_DESPACHANTE.formaPago]),
     fondeo: texto(c[COL_DESPACHANTE.fondeo]),
     bancoDeclarar: texto(c[COL_DESPACHANTE.bancoDeclarar]),
-    vepPorDonde: texto(c[COL_DESPACHANTE.vepPorDonde]),
-    estadoPagoVep: texto(c[COL_DESPACHANTE.estadoPagoVep]),
+    formaPagoVepArca: texto(c[COL_DESPACHANTE.formaPagoVepArca]),
+    estadoPagoVepArca: texto(c[COL_DESPACHANTE.estadoPagoVepArca]),
+    formaPagoVepTerminal: texto(c[COL_DESPACHANTE.formaPagoVepTerminal]),
+    estadoPagoVepTerminal: texto(c[COL_DESPACHANTE.estadoPagoVepTerminal]),
     // De una columna de archivo, el texto son los nombres de lo que ya está adjunto.
     archivos: Object.fromEntries(
       [...ARCHIVOS_OP, ...ARCHIVOS_BERGER].map((id) => [id, texto(c[id])]),
@@ -237,12 +247,20 @@ export async function actualizarOpBerger(
   if (cambios.bancoDeclarar !== undefined) {
     valores[COL_DESPACHANTE.bancoDeclarar] = dropdown(cambios.bancoDeclarar)
   }
-  if (cambios.vepPorDonde !== undefined) {
-    valores[COL_DESPACHANTE.vepPorDonde] = dropdown(cambios.vepPorDonde)
+  if (cambios.formaPagoVepArca !== undefined) {
+    valores[COL_DESPACHANTE.formaPagoVepArca] = dropdown(cambios.formaPagoVepArca)
   }
-  if (cambios.estadoPagoVep !== undefined) {
-    valores[COL_DESPACHANTE.estadoPagoVep] = cambios.estadoPagoVep
-      ? { label: cambios.estadoPagoVep }
+  if (cambios.estadoPagoVepArca !== undefined) {
+    valores[COL_DESPACHANTE.estadoPagoVepArca] = cambios.estadoPagoVepArca
+      ? { label: cambios.estadoPagoVepArca }
+      : {}
+  }
+  if (cambios.formaPagoVepTerminal !== undefined) {
+    valores[COL_DESPACHANTE.formaPagoVepTerminal] = dropdown(cambios.formaPagoVepTerminal)
+  }
+  if (cambios.estadoPagoVepTerminal !== undefined) {
+    valores[COL_DESPACHANTE.estadoPagoVepTerminal] = cambios.estadoPagoVepTerminal
+      ? { label: cambios.estadoPagoVepTerminal }
       : {}
   }
 

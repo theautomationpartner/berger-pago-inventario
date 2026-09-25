@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Stepper } from '@/components/ui/Stepper'
 import { tonoEstadoCarga } from '@/lib/chips'
 import {
@@ -40,7 +40,8 @@ const SIN_ARCHIVOS: ArchivosDespacho = {
   facturaSenasa: [],
   facturaModoc: [],
   facturaPrecintos: [],
-  vepDespachante: [],
+  vepArca: [],
+  vepTerminal: [],
 }
 
 /** Qué columna de monday le corresponde a cada archivo del formulario. */
@@ -52,7 +53,8 @@ const COLUMNA_DE_ARCHIVO: Record<keyof ArchivosDespacho, string> = {
   facturaSenasa: ARCHIVOS_OP[4],
   facturaModoc: ARCHIVOS_OP[5],
   facturaPrecintos: ARCHIVOS_OP[6],
-  vepDespachante: ARCHIVOS_OP[7],
+  vepArca: ARCHIVOS_OP[7],
+  vepTerminal: ARCHIVOS_OP[8],
 }
 
 /**
@@ -100,6 +102,17 @@ export function ActualizarDespachos() {
     [despachos, estados, busqueda],
   )
 
+  /* Los tractores de todas las OP del tablero, en UNA consulta, apenas se cargan las OP.
+     Sin esto, "¿a cuál le falta armar los contenedores?" sólo se podía contestar entrando a cada
+     una, que es justamente la pregunta con la que se abre esta pantalla. La cantidad que estimó
+     BERGER es una estimación; la que vale es la que arma el despachante. */
+  useEffect(() => {
+    if (despachos.length === 0) return
+    tractoresDeOps(despachos.map((op) => op.id))
+      .then((porOp) => setTractores((a) => ({ ...Object.fromEntries(porOp), ...a })))
+      .catch(() => undefined)
+  }, [despachos])
+
   const elegidas = useMemo(
     () =>
       seleccion
@@ -134,6 +147,19 @@ export function ActualizarDespachos() {
 
   /** Tractores de una OP que todavía no están en ningún contenedor. */
   const sinContenedor = (id: string) => (tractores[id] ?? []).filter((t) => !t.contenedorId).length
+
+  /**
+   * Cómo está el armado de contenedores de una OP.
+   *
+   * `null` mientras los tractores no se leyeron: mejor no decir nada que decir "faltan" sobre algo
+   * que todavía no se sabe.
+   */
+  const armado = (id: string): { listo: boolean; faltan: number; total: number } | null => {
+    const lista = tractores[id]
+    if (!lista) return null
+    const faltan = lista.filter((t) => !t.contenedorId).length
+    return { listo: lista.length > 0 && faltan === 0, faltan, total: lista.length }
+  }
 
   /** Las que quieren pasar a "Próxima a Arribar" sin tener los contenedores armados. */
   const bloqueadas = elegidas.filter(
@@ -524,6 +550,30 @@ export function ActualizarDespachos() {
 
                             <span className="opfila-chips">
                               <EtiquetasOP op={op} conEta />
+                              {(() => {
+                                const a = armado(op.id)
+                                if (!a) return null
+                                if (a.total === 0) {
+                                  return <span className="chip chip--gris">Sin tractores</span>
+                                }
+                                return a.listo ? (
+                                  <span
+                                    className="chip chip--verde"
+                                    title="Todos los tractores tienen contenedor"
+                                  >
+                                    <i className="fa-solid fa-boxes-packing" aria-hidden="true" />{' '}
+                                    Contenedores armados
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="chip chip--rojo"
+                                    title="Tractores sin contenedor"
+                                  >
+                                    <i className="fa-solid fa-boxes-packing" aria-hidden="true" />{' '}
+                                    Faltan armar ({a.faltan} de {a.total})
+                                  </span>
+                                )
+                              })()}
                             </span>
 
                             <button

@@ -113,17 +113,17 @@ function aPago(item: PagoCrudo, datosTractores: Map<string, DatosTractor>): Pago
  * Como en el Inventario, el filtro se manda a Monday por índice para traer menos filas y se
  * vuelve a aplicar acá por etiqueta, que es lo que decide de verdad.
  */
-export async function pagosPendientes(
-  operacionPend: string,
-  estadoPago?: string,
-): Promise<Pago[]> {
+export async function pagosPendientes(operacionPend: string, estadoPago?: string): Promise<Pago[]> {
   const indice = PAGO_OPERACION_INDEX[operacionPend]
-  const datos = await mondayApi<{ boards: { items_page: { items: PagoCrudo[] } }[] }>('pagosPendientes', {
-    operacion: indice == null ? [] : [indice],
-    cols: COLUMNAS_PAGO,
-    colsSub: COLUMNAS_SUB,
-    limite: LIMITE,
-  })
+  const datos = await mondayApi<{ boards: { items_page: { items: PagoCrudo[] } }[] }>(
+    'pagosPendientes',
+    {
+      operacion: indice == null ? [] : [indice],
+      cols: COLUMNAS_PAGO,
+      colsSub: COLUMNAS_SUB,
+      limite: LIMITE,
+    },
+  )
 
   const items = datos.boards?.[0]?.items_page.items ?? []
 

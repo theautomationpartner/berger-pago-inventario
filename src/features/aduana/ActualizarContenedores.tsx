@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Desplegable } from '@/components/ui/Desplegable'
 import { SelectorUbicacion } from '@/components/ui/SelectorUbicacion'
 import { NACIONALIZADO } from '@/lib/despachos'
 import { fechaCorta, hoyISO } from '@/lib/format'
@@ -457,23 +458,16 @@ export function ActualizarContenedores() {
                       />
                     </div>
 
-                    <label className="campo">
+                    <div className="campo">
                       <span className="campo-lbl">Transportista</span>
-                      <select
-                        className="select"
-                        value={e.transportistaId ?? ''}
-                        onChange={(ev) => cambiar(c, { transportistaId: ev.target.value || null })}
-                      >
-                        <option value="">
-                          {c.transportista ? `Actual: ${c.transportista}` : '(sin asignar)'}
-                        </option>
-                        {contactos.map((x) => (
-                          <option key={x.id} value={x.id}>
-                            {x.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                      <Desplegable
+                        valor={e.transportistaId ?? ''}
+                        opciones={contactos.map((x) => ({ valor: x.id, rotulo: x.nombre }))}
+                        vacio="(sin asignar)"
+                        buscable={contactos.length > 8}
+                        onCambiar={(v) => cambiar(c, { transportistaId: v || null })}
+                      />
+                    </div>
                   </div>
 
                   <div className="op-editor-acciones">

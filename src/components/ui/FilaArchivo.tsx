@@ -16,6 +16,8 @@ interface Props {
    * uno era hacer el mismo trámite tres veces. El resto es un único PDF por columna.
    */
   varios?: boolean
+  /** Por qué no se puede adjuntar todavía. Vacío = se puede. */
+  trabado?: string
 }
 
 /**
@@ -29,7 +31,7 @@ interface Props {
  * se subió va en ámbar, con una cruz para sacarlo antes de guardar: hasta que no se aprieta
  * Guardar no viajó nada.
  */
-export function FilaArchivo({ rotulo, yaSubidos, pendientes, onCambiar, varios }: Props) {
+export function FilaArchivo({ rotulo, yaSubidos, pendientes, onCambiar, varios, trabado }: Props) {
   const input = useRef<HTMLInputElement>(null)
 
   const agregar = (lista: FileList | null) => {
@@ -90,15 +92,19 @@ export function FilaArchivo({ rotulo, yaSubidos, pendientes, onCambiar, varios }
           </span>
         ))}
 
-        {vacio && <span className="farch-vacio">Sin adjuntar</span>}
+        {vacio && !trabado && <span className="farch-vacio">Sin adjuntar</span>}
+        {trabado && <span className="farch-trabado">{trabado}</span>}
       </div>
 
       <button
         type="button"
         className="btn btn--borde btn--chico farch-btn"
+        disabled={Boolean(trabado)}
+        title={trabado}
         onClick={() => input.current?.click()}
       >
-        <i className="fa-solid fa-paperclip" aria-hidden="true" /> {rotuloBoton}
+        <i className={`fa-solid ${trabado ? 'fa-lock' : 'fa-paperclip'}`} aria-hidden="true" />{' '}
+        {trabado ? 'Bloqueado' : rotuloBoton}
       </button>
 
       <input

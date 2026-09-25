@@ -34,8 +34,26 @@ export type ModalidadDespacho = 'anticipado' | 'vista'
 export type EtapaAnticipado = 'cargar' | 'aprobar' | 'confirmar'
 
 /** Tarjeta de un panel de elección (operación principal o modalidad). */
+/**
+ * Una sección del panel: agrupa operaciones que hace la misma gente.
+ *
+ * En DESPACHO DE ADUANA conviven dos trabajos que no se mezclan —lo del despachante y lo de
+ * BERGER— sobre las mismas OP, con nombres casi iguales. Agruparlos y darles color es lo que
+ * evita entrar a la pantalla equivocada: el nombre corto alcanza cuando ya se sabe de quién es.
+ */
+export interface SeccionPanel {
+  id: string
+  titulo: string
+  detalle: string
+  /** Se usa como clase CSS: `panel-grupo--${tono}`. */
+  tono: 'azul' | 'naranja'
+  icono: string
+}
+
 export interface OpcionPanel<T extends string> {
   id: T
+  /** A qué sección del panel pertenece, si el panel tiene secciones. */
+  seccion?: string
   titulo: string
   /** Rótulo corto, para la miga de pan y las pantallas angostas. */
   corto: string
@@ -307,8 +325,10 @@ export interface DespachoOP {
   formaPago: string
   fondeo: string
   bancoDeclarar: string
-  vepPorDonde: string
-  estadoPagoVep: string
+  formaPagoVepArca: string
+  estadoPagoVepArca: string
+  formaPagoVepTerminal: string
+  estadoPagoVepTerminal: string
   /** Nombres de los archivos ya cargados en cada columna de comprobante. */
   archivos: Record<string, string>
   /** Última vez que se tocó el item, como lo devuelve monday. */
@@ -392,8 +412,11 @@ export interface EdicionBerger {
   formaPago: string
   fondeo: string
   bancoDeclarar: string
-  vepPorDonde: string
-  estadoPagoVep: string
+  /* El VEP de la aduana y el de la terminal: mismo circuito, dos trámites y dos pagos. */
+  formaPagoVepArca: string
+  estadoPagoVepArca: string
+  formaPagoVepTerminal: string
+  estadoPagoVepTerminal: string
 }
 
 /** Lo que BERGER puede cambiarle a un contenedor. */
@@ -463,8 +486,9 @@ export interface ArchivosDespacho {
   facturaSenasa: File[]
   facturaModoc: File[]
   facturaPrecintos: File[]
-  /** El VEP que emite el despachante: sin este archivo, BERGER no puede pagarlo. */
-  vepDespachante: File[]
+  /** Los dos VEP que emite el despachante: sin el archivo, BERGER no puede pagar el suyo. */
+  vepArca: File[]
+  vepTerminal: File[]
 }
 
 /** Un archivo que YA está subido en una columna de monday. */

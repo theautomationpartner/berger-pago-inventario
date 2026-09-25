@@ -132,7 +132,9 @@ export async function cargarTransferencia({
       })
       tractoresActualizados += 1
     } catch (e) {
-      advertencias.push(`No se pudo pasar ${t.nombre} a "${INV_ESTADO.TRANSF_CARGADA}": ${motivo(e)}`)
+      advertencias.push(
+        `No se pudo pasar ${t.nombre} a "${INV_ESTADO.TRANSF_CARGADA}": ${motivo(e)}`,
+      )
     }
   }
 

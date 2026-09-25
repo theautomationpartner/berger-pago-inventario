@@ -7,13 +7,7 @@
  */
 import { condicionDeTransporte, rotuloTransporte } from '@/lib/drafts'
 import type { Draft, ProductoDraft } from '@/types'
-import {
-  COL_DRAFT,
-  COL_DRAFT_SUB,
-  DRAFT_ESTADO,
-  DRAFT_ESTADO_INDEX,
-  TABLEROS,
-} from './columns'
+import { COL_DRAFT, COL_DRAFT_SUB, DRAFT_ESTADO, DRAFT_ESTADO_INDEX, TABLEROS } from './columns'
 import { aNumeroEspejo, fechaISO, porId, texto, type ColumnaCruda } from './parse'
 import { mondayApi } from './sdk'
 
@@ -68,7 +62,11 @@ const MAX_PAGINAS = 25
 function aProducto(s: SubitemCrudo, condicion: 'FOB' | 'FCA' | null): ProductoDraft {
   const c = porId(s.column_values)
   const costo =
-    condicion === 'FCA' ? c[COL_DRAFT_SUB.costoFca] : condicion === 'FOB' ? c[COL_DRAFT_SUB.costoFob] : undefined
+    condicion === 'FCA'
+      ? c[COL_DRAFT_SUB.costoFca]
+      : condicion === 'FOB'
+        ? c[COL_DRAFT_SUB.costoFob]
+        : undefined
   return {
     id: s.id,
     nombre: s.name,

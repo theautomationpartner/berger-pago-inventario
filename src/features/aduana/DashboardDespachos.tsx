@@ -377,12 +377,12 @@ export function DashboardDespachos() {
                         <EtiquetasOP op={op} conEta />
                         <span
                           className={`chip ${
-                            op.estadoPagoVep === ESTADO_PAGO_VEP.PAGADO
+                            op.estadoPagoVepArca === ESTADO_PAGO_VEP.PAGADO
                               ? 'chip--verde'
                               : 'chip--rojo'
                           }`}
                         >
-                          VEP {op.estadoPagoVep || 'sin estado'}
+                          VEP {op.estadoPagoVepArca || 'sin estado'}
                         </span>
                         {info && (
                           <span

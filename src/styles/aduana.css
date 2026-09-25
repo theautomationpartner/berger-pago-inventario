@@ -7,17 +7,22 @@
  * ==================================================================== */
 
 /* ===== Filtros de la selección de OP ===== */
+/* Una fila de filtros ocupa SU renglón. Sin esto compartía línea con los chips de estado: el
+   contenedor de arriba es flex, la fila se encogía a su contenido y el ancho que pide el buscador
+   nunca llegaba a aplicarse. Era la razón real de que se viera corto. */
 .filtros-fila {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  flex: 1 1 100%;
+  min-width: 0;
   margin-bottom: 10px;
 }
 /* El buscador se dimensiona por lo que se escribe adentro, no por lo que sobra al lado: con 260px
    el ejemplo se cortaba a la mitad y dejaba de servir de ejemplo. Cuando ni así entra, el ejemplo
    sale del campo y va debajo, como ayuda. */
 .campo--busqueda {
-  flex: 1 1 760px;
+  flex: 1 1 420px;
   max-width: 900px;
 }
 @media (max-width: 480px) {
@@ -1571,4 +1576,68 @@
   font-size: 14px;
   font-weight: 800;
   color: var(--text-dark);
+}
+
+/* Un comprobante que todavía no se puede adjuntar: se dice el motivo en el lugar del archivo. */
+.farch-trabado {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--berger-red-dark);
+}
+
+/* ============================================================================
+   Tractores a elegir, en cajitas
+   ============================================================================
+   Antes eran filas a lo ancho de la pantalla: 1400px para mostrar un chasis y un modelo, con la
+   mitad vacía y el ojo recorriendo de punta a punta. En cajitas entran varias por renglón —cuántas
+   depende del ancho— y la cuenta de lo que va en el contenedor se hace de un vistazo. */
+.tractores-grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.tcaja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--tint-data-bd);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.tcaja:hover {
+  border-color: var(--primary-blue);
+}
+.tcaja--sel {
+  background: #eef9f2;
+  border-color: var(--green);
+}
+/* Un tractor que ya está en otro contenedor: se ve, pero se distingue de los libres. */
+.tcaja--otro {
+  opacity: 0.6;
+}
+.tcaja .chasis {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcaja .tractor-nom {
+  font-size: 12px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+/* La marca de elegido va arriba a la derecha, fuera del flujo: adentro empujaba el chasis. */
+.tcaja .trow-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.tcaja-otro {
+  margin-top: 2px;
 }

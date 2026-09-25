@@ -109,7 +109,10 @@
   border-radius: var(--radio);
   background: var(--tint-neutral);
   cursor: pointer;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease;
 }
 .op:hover {
   border-color: var(--berger-red-bd);
@@ -385,7 +388,10 @@
   cursor: pointer;
   background: #fff;
   color: var(--text-dark);
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -759,4 +765,145 @@
   .vacio {
     padding: 30px 14px;
   }
+}
+
+/* ============================================================================
+   Desplegable propio
+   ============================================================================
+   El <select> nativo dibuja su lista con el motor del sistema operativo: en Windows queda una caja
+   gris de bordes cuadrados que no respeta ni los colores ni los tamaños de la app, y adentro del
+   iframe de monday desentona todavía más. Éste usa los mismos elementos que el resto. */
+.desp {
+  position: relative;
+}
+.desp-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  text-align: left;
+  cursor: pointer;
+}
+.desp-btn:hover:not(:disabled) {
+  border-color: var(--text-gray);
+}
+.desp-btn:focus-visible,
+.desp-btn--abierto {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.15);
+}
+.desp-btn:disabled {
+  background: var(--tint-neutral);
+  color: var(--text-gray);
+  cursor: not-allowed;
+}
+.desp-val {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.desp-val--vacio {
+  color: var(--text-gray);
+  font-weight: 500;
+}
+.desp-flecha {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-gray);
+}
+
+.desp-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  min-width: 220px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--sombra-alta);
+}
+.desp-buscar {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.desp-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.desp-op {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-dark);
+  text-align: left;
+  cursor: pointer;
+}
+/* El foco lo maneja el teclado y el mouse por igual: una sola clase para los dos, así no puede
+   quedar una fila resaltada por el mouse y otra por las flechas. */
+.desp-op--foco {
+  background: var(--tint-input);
+}
+.desp-op--elegida .desp-op-rot {
+  font-weight: 800;
+  color: #0a4f9e;
+}
+.desp-op--limpiar .desp-op-rot {
+  color: var(--text-gray);
+  font-style: italic;
+}
+.desp-op-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.desp-op-rot {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.desp-op-det {
+  font-size: 11.5px;
+  color: var(--text-gray);
+}
+.desp-op-tic {
+  font-size: 11px;
+  color: var(--primary-blue);
+}
+.desp-vacio {
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text-gray);
+  text-align: center;
+}
+
+/* Un chip neutro, para decir "no hay nada" sin que parezca un problema. */
+.chip--gris {
+  background: var(--tint-neutral);
+  border-color: var(--tint-neutral-bd);
+  color: var(--text-gray);
 }

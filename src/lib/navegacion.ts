@@ -3,6 +3,7 @@ import type {
   ModalidadDespacho,
   OpcionPanel,
   OperacionAduana,
+  SeccionPanel,
   OperacionDrafts,
   OperacionFechas,
   OperacionPrincipal,
@@ -67,11 +68,40 @@ export const principalesDeModulos = (modulos: ModuloApp[]): OpcionPanel<Operacio
  * El dashboard tiene su propio módulo: el despachante externo entra a actualizar los datos de sus
  * OP, no a mirar el estado de toda la operación de BERGER. Administración ve las dos.
  */
+export const SECCIONES_ADUANA: SeccionPanel[] = [
+  {
+    id: 'despachante',
+    titulo: 'DESPACHANTE',
+    detalle: 'Lo que carga el despachante de aduana sobre sus OP.',
+    tono: 'azul',
+    icono: 'fa-solid fa-user-tie',
+  },
+  {
+    id: 'berger',
+    titulo: 'BERGER S.A.',
+    detalle: 'Lo que define BERGER: pago, entrega y seguimiento.',
+    tono: 'naranja',
+    icono: 'fa-solid fa-building',
+  },
+]
+
+/**
+ * Operaciones dentro de DESPACHO DE ADUANA.
+ *
+ * Van en **dos secciones** porque son dos trabajos distintos sobre las mismas OP, y con los
+ * nombres largos —"ACTUALIZAR OP - BERGER S.A." contra "ACTUALIZAR DESPACHO OP - DESPACHANTE"— lo
+ * que distinguía a una de otra estaba al final del renglón. Agrupadas, el nombre corto alcanza:
+ * dentro de DESPACHANTE, "ACTUALIZAR OP" no puede ser otra cosa.
+ *
+ * El dashboard tiene su propio módulo: el despachante externo entra a actualizar los datos de sus
+ * OP, no a mirar el estado de toda la operación de BERGER. Administración ve las dos secciones.
+ */
 export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: ModuloApp })[] = [
   {
     id: 'actualizar',
+    seccion: 'despachante',
     modulo: 'aduana',
-    titulo: 'ACTUALIZAR DESPACHO OP - DESPACHANTE',
+    titulo: 'ACTUALIZAR OP',
     corto: 'Actualizar OP · despachante',
     detalle:
       'Estado de la carga, ETA, buque, comprobantes del trámite y armado de los contenedores.',
@@ -79,31 +109,35 @@ export const OPERACIONES_ADUANA: (OpcionPanel<OperacionAduana> & { modulo: Modul
   },
   {
     id: 'turnos',
+    seccion: 'despachante',
     modulo: 'aduana',
-    titulo: 'ACTUALIZAR FECHA DE CARGA CONTENEDOR - DESPACHANTE',
-    corto: 'Fecha de carga · Despachante',
+    titulo: 'CARGAR TURNO CONTENEDOR',
+    corto: 'Turno de carga · despachante',
     detalle: 'Citar el camión de cada contenedor: día y hora del turno de carga en la terminal.',
     icono: 'fa-solid fa-calendar-day',
   },
   {
     id: 'berger',
+    seccion: 'berger',
     modulo: 'aduanaBerger',
-    titulo: 'ACTUALIZAR OP - BERGER S.A.',
+    titulo: 'ACTUALIZAR OP',
     corto: 'Actualizar OP · BERGER',
     detalle:
-      'De las OP próximas a arribar: forma de pago, fondeo, banco, VEP, transportista y entrega.',
+      'De las OP próximas a arribar: forma de pago, fondeo, banco y los dos VEP —ARCA y Terminal—.',
     icono: 'fa-solid fa-building-columns',
   },
   {
     id: 'contenedores',
+    seccion: 'berger',
     modulo: 'aduanaBerger',
-    titulo: 'ACTUALIZAR CONTENEDORES - BERGER S.A.',
+    titulo: 'ACTUALIZAR CONTENEDORES',
     corto: 'Actualizar contenedores',
     detalle: 'Marcar los contenedores que ya llegaron y cargarles la ubicación de entrega.',
     icono: 'fa-solid fa-truck-ramp-box',
   },
   {
     id: 'dashboard',
+    seccion: 'berger',
     modulo: 'aduanaDashboard',
     titulo: 'DASHBOARD DE DESPACHOS',
     corto: 'Dashboard',
