@@ -14,6 +14,7 @@
  * Si el update falla, se cae a **notificaciones personales**: es menos prolijo —no queda registro en
  * el item— pero la gente se entera igual, que es lo que no se puede perder.
  */
+import { fechaCorta } from '@/lib/format'
 import { AVISO_PROXIMA_ARRIBAR, URL_TABLERO_CONTENEDORES } from './columns'
 import type { ContenedorDespacho, DespachoOP } from '@/types'
 import { mondayApi } from './sdk'
@@ -21,54 +22,90 @@ import { mondayApi } from './sdk'
 /** Cómo se nombra la OP en el aviso: su nombre y el número que le puso el despachante. */
 const rotuloOp = (op: DespachoOP): string => (op.nroOp ? `${op.nombre} - (${op.nroOp})` : op.nombre)
 
-/** Lo que BERGER tiene que completar en el item de la OP. */
-const PENDIENTES_BERGER =
-  'forma de pago, fondeo, banco de origen del pago de la mercadería, forma de pago del VEP ' +
-  '(interbanking u otro), banco para declarar en el despacho, transporte a utilizar, ' +
-  'lugar/ubicación de entrega y gestión de DNRPA.'
+/**
+ * Lo que BERGER tiene que completar en el item de la OP.
+ *
+ * Como lista y no como párrafo: son ocho cosas, y en un renglón corrido la séptima se saltea. En
+ * una lista se leen de a una y se pueden ir tildando mentalmente.
+ */
+const PENDIENTES_BERGER = [
+  'Forma de pago',
+  'Fondeo',
+  'Banco de origen del pago de la mercadería',
+  'Banco a declarar en el despacho',
+  'Forma de pago y estado del <strong>VEP ARCA</strong>',
+  'Forma de pago y estado del <strong>VEP Terminal</strong>',
+  'Transporte a utilizar y lugar/ubicación de entrega',
+  'Gestión de DNRPA',
+]
+
+/** Un renglón de una lista de datos: rótulo en negrita, valor al lado. */
+const dato = (rotulo: string, valor: string): string =>
+  `<li><strong>${rotulo}:</strong> ${valor || '—'}</li>`
+
+const lista = (items: string[]): string => `<ul>${items.join('')}</ul>`
 
 /**
  * El cuerpo del update.
+ *
+ * Va en **listas de HTML**, no en párrafos corridos: un aviso que se lee de arriba abajo en tres
+ * segundos es el que se atiende. Cada dato de la OP es un renglón con su rótulo en negrita, y lo
+ * que falta completar es otra lista aparte, porque son dos cosas distintas —lo que hay y lo que
+ * falta— y mezcladas en un párrafo se pierden las dos.
  *
  * Cuando los contenedores ya están armados se suman sus links, porque la ubicación de entrega y el
  * transportista se cargan **en cada contenedor** y no en la OP: sin el link habría que ir a
  * buscarlos a mano al tablero.
  */
 export function cuerpoDelAviso(op: DespachoOP, contenedores: ContenedorDespacho[]): string {
-  const saludo =
-    `<p>Hola, la siguiente OP: "${rotuloOp(op)}" EL DESPACHANTE LA MARCO en Estado de carga como ` +
-    `"Próxima a Arribar", deben ingresar a completar los campos de ese ítem correspondientes a: ` +
-    `${PENDIENTES_BERGER}</p>`
+  const encabezado =
+    `<strong>¡Aviso automático — OP Próxima a Arribar!</strong> 🚢<br><br>` +
+    `Hola, el despachante marcó esta OP en estado de carga <strong>"Próxima a Arribar"</strong>. ` +
+    `Estos son los datos de la carga:<br><br>`
+
+  const datos = lista([
+    dato('Orden de pago', op.nombre),
+    dato('ID del despacho', op.idDespacho),
+    dato('N° de OP', op.nroOp),
+    dato('Proveedor', op.proveedor),
+    dato('Origen', [op.paisOrigen, op.puertoOrigen].filter(Boolean).join(' · ')),
+    dato('ETA', op.eta ? fechaCorta(op.eta) : ''),
+    dato('Buque', op.buque),
+    dato('Vía de transporte', op.viaTransporte),
+    dato('N° doc de transporte', op.nroDocTransporte),
+  ])
+
+  const pendientes =
+    `<br><strong>Falta completar en el ítem de la OP:</strong>` +
+    lista(PENDIENTES_BERGER.map((p) => `<li>${p}</li>`))
+
+  const conts =
+    contenedores.length === 0
+      ? `<br><strong>Todavía no hay contenedores armados</strong> para esta OP.`
+      : `<br><strong>Contenedores de esta OP (${contenedores.length}):</strong> entren al tablero ` +
+        `de Contenedores a completar el <strong>Transportista</strong> y la ` +
+        `<strong>Ubicación de entrega</strong> de cada uno:` +
+        lista(
+          contenedores.map(
+            (c) =>
+              `<li><a href="${URL_TABLERO_CONTENEDORES}/pulses/${c.id}">` +
+              `${c.numero || c.nombre}</a> — ${c.tractorIds.length} tractor` +
+              `${c.tractorIds.length === 1 ? '' : 'es'}</li>`,
+          ),
+        )
 
   /* monday agrega las menciones AL FINAL del cuerpo, como enlaces. Por eso el texto no las nombra
      adentro y termina con esta línea: sin ella, los "@" aparecerían sueltos sin decir para qué. */
-  const cierre = `<p>Aviso para:</p>`
-
-  if (contenedores.length === 0) return saludo + cierre
-
-  const items = contenedores
-    .map(
-      (c) =>
-        `<li><a href="${URL_TABLERO_CONTENEDORES}/pulses/${c.id}">` +
-        `${c.numero || c.nombre}</a> — ${c.tractorIds.length} tractor` +
-        `${c.tractorIds.length === 1 ? '' : 'es'}</li>`,
-    )
-    .join('')
-
-  return (
-    saludo +
-    `<p>Los contenedores de esta OP ya están armados (${contenedores.length}). ` +
-    `Entren al tablero de Contenedores a completar el <b>Transportista</b> y la ` +
-    `<b>Ubicación de entrega</b> de cada uno:</p><ul>${items}</ul>` +
-    cierre
-  )
+  return encabezado + datos + pendientes + conts + `<br><strong>Aviso para:</strong>`
 }
 
 /** El texto de la notificación. Va sin formato: monday la muestra como una línea. */
 export function textoDeLaNotificacion(op: DespachoOP, contenedores: ContenedorDespacho[]): string {
+  /* La notificación NO admite formato: monday la muestra como una línea de texto plano. Por eso
+     acá los pendientes van resumidos y no como lista, que es lo que sí puede el update. */
   const base =
     `La OP "${rotuloOp(op)}" pasó a "Próxima a Arribar". Hay que completar forma de pago, fondeo, ` +
-    `banco, VEP, transporte, entrega y DNRPA.`
+    `banco, los dos VEP (ARCA y Terminal), transporte, entrega y DNRPA.`
   if (contenedores.length === 0) return base
   const cuantos =
     contenedores.length === 1
