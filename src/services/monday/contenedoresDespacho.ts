@@ -37,6 +37,7 @@ const COLUMNAS_TRACTOR = [
   COL_DESPACHANTE_SUB.rodado,
   COL_DESPACHANTE_SUB.numDraft,
   COL_DESPACHANTE_SUB.contenedor,
+  COL_DESPACHANTE_SUB.inventario,
   COL_DESPACHANTE_SUB.valorNeto,
   COL_DESPACHANTE_SUB.nroFactCompra,
 ]
@@ -105,6 +106,9 @@ function aTractor(s: SubitemCrudo): TractorDeOp {
     rodado: espejo(c[COL_DESPACHANTE_SUB.rodado]),
     numDraft: texto(c[COL_DESPACHANTE_SUB.numDraft]),
     contenedorId: c[COL_DESPACHANTE_SUB.contenedor]?.linked_item_ids?.[0] ?? null,
+    /* El item del tractor en el Inventario. Es lo que se conecta desde el contenedor para que,
+       mirando un tractor, se sepa en qué caja viajó. */
+    inventarioId: c[COL_DESPACHANTE_SUB.inventario]?.linked_item_ids?.[0] ?? null,
     /* El valor neto es una columna propia del subitem; la factura es otro espejo del Inventario,
        así que se leen distinto: una del texto de la columna y la otra del valor espejado. */
     valorNeto: texto(c[COL_DESPACHANTE_SUB.valorNeto]),
@@ -198,6 +202,11 @@ export async function crearContenedor(
       [COL_CONT_DESPACHO.numero]: numero,
       [COL_CONT_DESPACHO.fechaCreacion]: { date: hoyISO() },
       [COL_CONT_DESPACHO.tractores]: { item_ids: tractores.map((t) => t.id) },
+      /* Y los mismos tractores del lado del Inventario. Se filtra lo que venga vacío: un subitem
+         sin su conexión al Inventario no puede tumbar el alta del contenedor entero. */
+      [COL_CONT_DESPACHO.inventario]: {
+        item_ids: tractores.map((t) => t.inventarioId).filter((id): id is string => Boolean(id)),
+      },
       /* La conexión al ITEM de la OP, además de la de los subitems: es la que le da al contenedor
          el número de OP y el estado de carga espejados, que es con lo que después se lo busca. */
       [COL_CONT_DESPACHO.opDespacho]: { item_ids: [opId] },

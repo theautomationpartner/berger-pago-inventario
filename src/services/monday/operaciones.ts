@@ -222,6 +222,7 @@ const COLUMNAS_DE_CONTENEDOR = new Set<string>([
   COL_CONT_DESPACHO.numero,
   COL_CONT_DESPACHO.fechaCreacion,
   COL_CONT_DESPACHO.tractores,
+  COL_CONT_DESPACHO.inventario,
   COL_CONT_DESPACHO.opDespacho,
   COL_CONT_DESPACHO.ubicacionEntrega,
   COL_CONT_DESPACHO.transportista,

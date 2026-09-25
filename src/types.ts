@@ -351,6 +351,8 @@ export interface TractorDeOp {
   nroFactCompra: string
   /** Contenedor en el que ya está cargado, o `null`. */
   contenedorId: string | null
+  /** El item de este tractor en el 🧮Inventario, o `null` si el subitem no lo trae conectado. */
+  inventarioId: string | null
 }
 
 /** Un contenedor real del despacho, con los tractores que lleva. */

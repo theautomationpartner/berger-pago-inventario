@@ -491,7 +491,16 @@ export const COL_CONT_DESPACHO = {
   /** ID legible del contenedor ("CONTENED-004"). Sólo lectura: lo numera monday. */
   idContenedor: 'pulse_id_mm7da57j',
   /** Tractores que van adentro: subitems del Despachante de aduana. */
+  /** Los SUBITEMS del despachante que viajan adentro. */
   tractores: 'board_relation_mm7abg4',
+  /**
+   * Los mismos tractores, pero apuntando al 🧮Inventario.
+   *
+   * No es la misma conexión con otro nombre: una lleva al subitem del despacho —que existe sólo
+   * para esa OP— y la otra al item del tractor, que es el que lo acompaña desde que se pide hasta
+   * que se entrega. Desde el Inventario, ésta es la única forma de saber en qué contenedor viajó.
+   */
+  inventario: 'board_relation_mm7hf5x4',
   /**
    * La OP a nivel ITEM.
    *
