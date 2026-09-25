@@ -1,4 +1,4 @@
-import { ESTADO_CARGA } from '@/services/monday/columns'
+import { ESTADO_CARGA, NACIONALIZADO } from '@/services/monday/columns'
 import type { CambioDespacho, DespachoOP, EdicionDespacho } from '@/types'
 import { fechaCorta } from './format'
 
@@ -43,7 +43,7 @@ export const CAMPOS_EDITABLES: (keyof EdicionDespacho)[] = [
  * puede respaldar con nada, y después nadie sabe de dónde sacarlo. Se pide en el momento de
  * elegir el estado, no al guardar.
  */
-export const NACIONALIZADO = 'Nacionalizado'
+export { NACIONALIZADO }
 
 export const faltaNroDespacho = (edicion: EdicionDespacho): boolean =>
   edicion.estadoCarga === NACIONALIZADO && !edicion.nroDespachoImpo.trim()

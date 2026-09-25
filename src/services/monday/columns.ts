@@ -368,6 +368,16 @@ export const ESTADO_PAGO_VEP = {
 export const PROXIMA_A_ARRIBAR = 'Próxima a Arribar'
 
 /**
+ * El estado que exige el N° de Despacho de Importación.
+ *
+ * Vive acá y no en `lib/despachos` porque lo usa también el proxy de `api/`, y **este archivo no
+ * importa nada**: las funciones edge de Vercel no resuelven el alias `@/`, así que todo lo que
+ * llega desde `api/` tiene que colgar de módulos sin alias. Moverlo de acá vuelve a romper el
+ * deploy, y el build local no lo avisa.
+ */
+export const NACIONALIZADO = 'Nacionalizado'
+
+/**
  * Quiénes reciben el aviso cuando una OP pasa a "Próxima a Arribar".
  *
  * Son usuarios de monday y no un equipo: el aviso es una notificación personal, y monday no

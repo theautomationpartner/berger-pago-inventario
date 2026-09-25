@@ -9,9 +9,10 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build",
+    "build": "npm run verificar:api && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verificar:api": "node scripts/verificar-api.mjs"
   },
   "dependencies": {
     "monday-sdk-js": "^1.0.0-beta",

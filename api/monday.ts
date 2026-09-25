@@ -19,9 +19,11 @@
  *    Las variables, que sí siguen viniendo de afuera, las valida el propio catálogo.
  */
 import { porton } from './_seguridad/porton'
-import { COL_DESPACHANTE } from '../src/services/monday/columns'
+/* OJO: desde acá sólo se puede importar código que NO use el alias `@/`. El empaquetador de las
+   funciones edge de Vercel no lo resuelve —Vite sí—, así que un import de más rompe el deploy sin
+   que el build local diga nada. `columns` y `operaciones` cuelgan de imports relativos. */
+import { COL_DESPACHANTE, NACIONALIZADO } from '../src/services/monday/columns'
 import { OperacionInvalida, resolverOperacion } from '../src/services/monday/operaciones'
-import { NACIONALIZADO } from '../src/lib/despachos'
 
 const API = 'https://api.monday.com/v2'
 const API_VERSION = '2024-10'
