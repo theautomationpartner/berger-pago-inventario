@@ -44,7 +44,8 @@ const COLUMNAS_TRACTOR = [
 const COLUMNAS_CONTENEDOR = [
   COL_CONT_DESPACHO.numero,
   COL_CONT_DESPACHO.fechaCreacion,
-  COL_CONT_DESPACHO.ubicacion,
+  COL_CONT_DESPACHO.ubicacionEntrega,
+  COL_CONT_DESPACHO.ubicacionVieja,
   COL_CONT_DESPACHO.transportista,
   COL_CONT_DESPACHO.patente,
   COL_CONT_DESPACHO.fechaTurno,
@@ -59,20 +60,6 @@ const COLUMNAS_CONTENEDOR = [
   COL_CONT_DESPACHO.chasis,
 ]
 
-/**
- * Las coordenadas guardadas de una ubicación.
- *
- * NO están en `text`, que es sólo la dirección escrita: la columna las expone en campos propios
- * (`lat`/`lng`) y por eso la consulta los pide aparte. Las de una dirección tipeada a mano son
- * "0"/"0", y eso hay que distinguirlo de una bien ubicada: es lo que decide si la pantalla avisa
- * que el punto del mapa quedó sin definir.
- */
-function coordenadasDe(c: ColumnaRica | undefined): { lat: string; lng: string } | null {
-  if (!c?.lat || !c?.lng) return null
-  if (Number(c.lat) === 0 && Number(c.lng) === 0) return null
-  return { lat: String(c.lat), lng: String(c.lng) }
-}
-
 /** Un item del tablero de contenedores, ya normalizado. */
 function aContenedor(item: {
   id: string
@@ -85,7 +72,8 @@ function aContenedor(item: {
     nombre: item.name,
     numero: texto(c[COL_CONT_DESPACHO.numero]),
     fechaCreacion: fechaISO(c[COL_CONT_DESPACHO.fechaCreacion]),
-    ubicacion: texto(c[COL_CONT_DESPACHO.ubicacion]),
+    ubicacion: texto(c[COL_CONT_DESPACHO.ubicacionEntrega]),
+    ubicacionVieja: texto(c[COL_CONT_DESPACHO.ubicacionVieja]),
     transportista: texto(c[COL_CONT_DESPACHO.transportista]),
     patente: texto(c[COL_CONT_DESPACHO.patente]),
     fechaTurno: fechaISO(c[COL_CONT_DESPACHO.fechaTurno]),
@@ -96,7 +84,6 @@ function aContenedor(item: {
     estadoArribo: texto(c[COL_CONT_DESPACHO.estadoArribo]),
     fechaArribo: fechaISO(c[COL_CONT_DESPACHO.fechaArribo]),
     transportistaId: c[COL_CONT_DESPACHO.transportista]?.linked_item_ids?.[0] ?? null,
-    coordenadas: coordenadasDe(c[COL_CONT_DESPACHO.ubicacion]),
     tractorIds: c[COL_CONT_DESPACHO.tractores]?.linked_item_ids ?? [],
     opId: c[COL_CONT_DESPACHO.opDespacho]?.linked_item_ids?.[0] ?? null,
     // Los espejos traen su valor en `display_value`, nunca en `text`.
@@ -224,7 +211,6 @@ export async function actualizarContenedor(
   id: string,
   cambios: {
     ubicacion?: string
-    coordenadas?: { lat: string; lng: string } | null
     transportistaId?: string | null
     estadoArribo?: string
     fechaArribo?: string
@@ -232,18 +218,10 @@ export async function actualizarContenedor(
 ): Promise<string> {
   const valores: Record<string, unknown> = {}
   if (cambios.ubicacion !== undefined) {
-    /* Una columna de ubicación de monday EXIGE latitud y longitud: con sólo la dirección rechaza
-       la escritura entera —probado contra la API—. Cuando la dirección se eligió del buscador van
-       SUS coordenadas, y el tablero queda igual que si se hubiera cargado a mano desde monday.
-       Cuando se escribió libre —una entrega que el buscador no encuentra— van en 0: la dirección
-       se lee bien, que es lo que necesita el transportista, y el punto del mapa se ajusta después.
-       Se limpia con el objeto vacío, igual que una fecha o un dropdown. */
-    valores[COL_CONT_DESPACHO.ubicacion] = cambios.ubicacion
-      ? {
-          lat: cambios.coordenadas?.lat ?? '0',
-          lng: cambios.coordenadas?.lng ?? '0',
-          address: cambios.ubicacion,
-        }
+    /* Ahora es un desplegable de depósitos, no una dirección libre: se escribe con `labels`, y
+       una etiqueta que no existe en la columna hace fallar la escritura ENTERA del item. */
+    valores[COL_CONT_DESPACHO.ubicacionEntrega] = cambios.ubicacion
+      ? { labels: [cambios.ubicacion] }
       : {}
   }
   if (cambios.transportistaId !== undefined) {
@@ -288,6 +266,28 @@ export async function asignarTurnoDeCarga(
     valores: JSON.stringify({ [COL_CONT_DESPACHO.fechaTurno]: aFechaHoraMonday(fecha, hora) }),
   })
   return id
+}
+
+/**
+ * Los depósitos cargados en la columna de ubicación de entrega.
+ *
+ * Se leen de monday y no se escriben en el código: BERGER va a ir sumando depósitos, y una lista
+ * acá obligaría a tocar la app cada vez. Además, una etiqueta inventada hace fallar la escritura
+ * entera del item, así que la única lista segura es la del propio tablero.
+ */
+export async function depositosDeEntrega(): Promise<string[]> {
+  const r = await mondayApi<{
+    boards: { columns: { id: string; settings_str: string }[] }[]
+  }>('etiquetasDeColumna', { columna: COL_CONT_DESPACHO.ubicacionEntrega })
+
+  const crudo = r.boards?.[0]?.columns?.[0]?.settings_str
+  if (!crudo) return []
+  try {
+    const ajustes = JSON.parse(crudo) as { labels?: { id: number; name: string }[] }
+    return (ajustes.labels ?? []).map((l) => l.name).filter(Boolean)
+  } catch {
+    return []
+  }
 }
 
 /** Los contactos, para elegir el transportista. */

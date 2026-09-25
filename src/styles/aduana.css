@@ -1641,3 +1641,101 @@
 .tcaja-otro {
   margin-top: 2px;
 }
+
+/* ============================================================================
+   Cargar varios contenedores a la vez
+   ============================================================================
+   Un barco trae seis contenedores que van al mismo depósito, con el mismo transportista y el mismo
+   día de arribo. Cargarlo seis veces no es sólo lento: es donde aparece el que quedó distinto
+   porque se saltó una fila. */
+.lote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1.5px solid var(--primary-blue);
+  border-radius: 12px;
+  background: var(--tint-input);
+  box-shadow: var(--sombra);
+}
+.lote-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lote-tit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0a4f9e;
+}
+.lote-det {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-mid);
+}
+.lote-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* El resumen: qué le va a pasar a cada uno. Guardar en lote sin verlo es firmar a ciegas. */
+.lote-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--tint-input-bd);
+}
+.lote-resumen-tit {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--text-mid);
+}
+.lote-resumen .btn {
+  align-self: flex-start;
+}
+
+/* El PDF que subió el despachante, con su rótulo: se abre en una pestaña, no se descarga a ciegas. */
+.vep-ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 11px;
+  border: 1px solid var(--green-bd);
+  border-radius: 9px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  text-decoration: none;
+  max-width: 100%;
+}
+.vep-ver:hover {
+  border-color: var(--green);
+  background: #fff;
+}
+.vep-ver-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.vep-ver-rot {
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.vep-ver-arch {
+  font-size: 11px;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

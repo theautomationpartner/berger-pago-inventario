@@ -36,17 +36,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/monday-file/, '/v2/file'),
       },
-      /*
-       * Buscador de direcciones. En producción esto lo hace `api/geo.ts`, que además controla el
-       * acceso; acá las funciones de `api/` no corren, así que el pedido sale por el proxy. El
-       * `User-Agent` no es opcional: OpenStreetMap responde 403 sin él.
-       */
-      '/geo-api': {
-        target: 'https://nominatim.openstreetmap.org',
-        changeOrigin: true,
-        headers: { 'User-Agent': 'ImportacionBergerSA/1.0 (desarrollo local)' },
-        rewrite: (path) => path.replace(/^\/geo-api/, ''),
-      },
     },
   },
 })

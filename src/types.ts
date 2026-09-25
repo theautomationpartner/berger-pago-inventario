@@ -358,7 +358,10 @@ export interface ContenedorDespacho {
   id: string
   nombre: string
   numero: string
+  /** Depósito de entrega, tal como figura en el desplegable del tablero. */
   ubicacion: string
+  /** Lo que había en la columna vieja de tipo location. Se muestra sólo si el depósito está vacío. */
+  ubicacionVieja: string
   transportista: string
   patente: string
   fechaTurno: string
@@ -371,8 +374,6 @@ export interface ContenedorDespacho {
   fechaArribo: string
   /** Id del contacto asignado como transportista, para poder dejarlo elegido en el desplegable. */
   transportistaId: string | null
-  /** Coordenadas guardadas de la ubicación. En 0 cuando la dirección se escribió a mano. */
-  coordenadas: { lat: string; lng: string } | null
   /** Ids de los subitems (tractores) que van adentro. */
   tractorIds: string[]
   /** OP a la que pertenece, conectada a nivel item. */
@@ -421,14 +422,8 @@ export interface EdicionBerger {
 
 /** Lo que BERGER puede cambiarle a un contenedor. */
 export interface EdicionContenedor {
+  /** Depósito elegido del desplegable. */
   ubicacion: string
-  /**
-   * Coordenadas de la dirección elegida.
-   *
-   * `null` significa que la dirección se escribió a mano sin elegir ninguna de las sugeridas: la
-   * columna de monday igual la acepta, pero el punto del mapa queda sin ubicar.
-   */
-  coordenadas?: { lat: string; lng: string } | null
   transportistaId: string | null
   /** Si ya llegó. Se marca desde "Actualizar Contenedores". */
   estadoArribo?: string

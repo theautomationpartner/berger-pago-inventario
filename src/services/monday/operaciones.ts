@@ -77,6 +77,7 @@ export type NombreOperacion =
   | 'contenedoresDeDespacho'
   | 'contenedoresDelTablero'
   | 'contenedoresDelTableroDespachante'
+  | 'etiquetasDeColumna'
   | 'asignarTurnoContenedor'
   | 'crearContenedorDespacho'
   | 'actualizarContenedorDespacho'
@@ -222,7 +223,7 @@ const COLUMNAS_DE_CONTENEDOR = new Set<string>([
   COL_CONT_DESPACHO.fechaCreacion,
   COL_CONT_DESPACHO.tractores,
   COL_CONT_DESPACHO.opDespacho,
-  COL_CONT_DESPACHO.ubicacion,
+  COL_CONT_DESPACHO.ubicacionEntrega,
   COL_CONT_DESPACHO.transportista,
   COL_CONT_DESPACHO.estadoArribo,
   COL_CONT_DESPACHO.fechaArribo,
@@ -1147,6 +1148,29 @@ export const OPERACIONES: Record<NombreOperacion, Operacion> = {
     modulo: 'aduana',
     query: CONSULTA_CONTENEDORES,
     validar: validarTablero,
+  },
+
+  /**
+   * Las etiquetas de una columna del tablero de contenedores.
+   *
+   * Hoy se usa para los depósitos de entrega. La lista vive en monday y no en el código porque
+   * BERGER va a ir sumando depósitos, y una etiqueta inventada hace fallar la escritura entera.
+   * El id de la columna lo valida el catálogo: no se puede pedir cualquiera.
+   */
+  etiquetasDeColumna: {
+    modulo: 'aduanaBerger',
+    query: `
+      query ($tablero: ID!, $columna: [String!]) {
+        boards(ids: [$tablero]) { columns(ids: $columna) { id settings_str } }
+      }
+    `,
+    validar: (v) => {
+      const columna = String(v.columna)
+      if (columna !== COL_CONT_DESPACHO.ubicacionEntrega) {
+        throw new OperacionInvalida('Esa columna no se puede consultar.')
+      }
+      return { tablero: TABLEROS.contenedoresDespacho, columna: [columna] }
+    },
   },
 
   /**

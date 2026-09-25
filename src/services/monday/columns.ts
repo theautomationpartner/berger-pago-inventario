@@ -471,7 +471,15 @@ export const CATEGORIA_CONTACTO = {
 export const COL_CONT_DESPACHO = {
   numero: 'text_mm7aye5e',
   fechaCreacion: 'date_mm7dxh72',
-  ubicacion: 'location_mm7a16dx',
+  /**
+   * Ubicación de entrega: el depósito al que va el contenedor.
+   *
+   * Es un **desplegable** con los depósitos cargados en el tablero, no una dirección libre. Las
+   * etiquetas se leen de monday en vivo —van a ir sumando depósitos— y por eso no están acá.
+   */
+  ubicacionEntrega: 'dropdown_mm7hvc28',
+  /** La columna de ubicación anterior, de tipo location. Sólo se lee, para no perder lo cargado. */
+  ubicacionVieja: 'location_mm7a16dx',
   transportista: 'board_relation_mm7axy2m',
   fechaTurno: 'date_mm7a8jds',
   patente: 'text_mm7a8ngn',

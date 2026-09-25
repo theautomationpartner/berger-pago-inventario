@@ -117,6 +117,7 @@ function BloqueVep({
   formaPago,
   onFormaPago,
   estado,
+  estadoGuardado,
   onEstado,
   comprobante,
   onComprobante,
@@ -130,12 +131,46 @@ function BloqueVep({
   formaPago: string
   onFormaPago: (v: string) => void
   estado: string
+  /** El estado que hay HOY en monday. Un pago ya registrado no se revierte solo. */
+  estadoGuardado: string
   onEstado: (v: string) => void
   comprobante: File | null
   onComprobante: (f: File | null) => void
 }) {
   const hayVep = Boolean(vepSubido.trim())
   const pagado = estado === ESTADO_PAGO_VEP.PAGADO
+
+  /*
+   * Marcar PAGADO exige dos cosas, y las dos por el mismo motivo: un pago que no se puede
+   * respaldar no es un pago registrado, es un estado suelto.
+   *
+   *   1. Una forma de pago elegida: sin eso no se sabe por dónde salió la plata.
+   *   2. El comprobante — el que ya está en monday, o el que se está adjuntando ahora.
+   *
+   * La opción directamente NO aparece en el desplegable mientras falte algo, y debajo se dice qué.
+   * Dejarla visible pero inerte invita a probar, y probar termina en un cartel.
+   */
+  const hayComprobante = Boolean(comprobanteSubido.trim()) || Boolean(comprobante)
+  const faltaParaPagar = !formaPago.trim()
+    ? 'Elegí primero la forma de pago'
+    : !hayComprobante
+      ? 'Adjuntá el comprobante del pago para poder marcarlo PAGADO'
+      : ''
+
+  /*
+   * Si se marcó PAGADO y después se saca el comprobante —o la forma de pago—, el estado vuelve
+   * solo a NO PAGADO. El requisito no puede ser sólo de entrada: sin esto alcanzaba con adjuntar,
+   * marcar y quitar el archivo para dejar un PAGADO sin nada detrás.
+   *
+   * Nunca toca un pago que YA estaba registrado en monday: eso se revierte allá, donde queda
+   * asentado quién lo hizo.
+   */
+  const yaEstabaPagado = estadoGuardado === ESTADO_PAGO_VEP.PAGADO
+  useEffect(() => {
+    if (!yaEstabaPagado && faltaParaPagar && estado === ESTADO_PAGO_VEP.PAGADO) {
+      onEstado(ESTADO_PAGO_VEP.NO_PAGADO)
+    }
+  }, [yaEstabaPagado, faltaParaPagar, estado, onEstado])
 
   return (
     <div className="vep">
@@ -144,13 +179,13 @@ function BloqueVep({
           <i className={`fa-solid ${icono}`} aria-hidden="true" /> {titulo}
         </span>
         {hayVep ? (
-          <a
-            className="chip chip--verde chip--link"
-            href={vepSubido}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <i className="fa-solid fa-paperclip" aria-hidden="true" /> {nombreDeArchivo(vepSubido)}
+          <a className="vep-ver" href={vepSubido} target="_blank" rel="noreferrer">
+            <i className="fa-solid fa-file-pdf" aria-hidden="true" />
+            <span className="vep-ver-txt">
+              <span className="vep-ver-rot">Ver {titulo} del despachante</span>
+              <span className="vep-ver-arch">{nombreDeArchivo(vepSubido)}</span>
+            </span>
+            <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
           </a>
         ) : (
           <span className="chip chip--ambar">El despachante todavía no lo subió</span>
@@ -173,15 +208,25 @@ function BloqueVep({
               <span className="campo-lbl">Estado del pago</span>
               <Desplegable
                 valor={estado}
-                opciones={[ESTADO_PAGO_VEP.NO_PAGADO, ESTADO_PAGO_VEP.PAGADO]}
+                opciones={
+                  faltaParaPagar
+                    ? [ESTADO_PAGO_VEP.NO_PAGADO]
+                    : [ESTADO_PAGO_VEP.NO_PAGADO, ESTADO_PAGO_VEP.PAGADO]
+                }
                 bloqueado={pagado}
                 onCambiar={onEstado}
               />
-              {pagado && (
+              {pagado ? (
                 <span className="campo-ayuda campo-ayuda--falta">
                   <i className="fa-solid fa-lock" aria-hidden="true" /> Ya está pagado: para
                   revertirlo, se cambia en monday
                 </span>
+              ) : (
+                faltaParaPagar && (
+                  <span className="campo-ayuda campo-ayuda--falta">
+                    <i className="fa-solid fa-lock" aria-hidden="true" /> {faltaParaPagar}
+                  </span>
+                )
               )}
             </div>
           </div>
@@ -668,6 +713,7 @@ export function ActualizarOpBerger() {
                     formaPago={edicion.formaPagoVepArca}
                     onFormaPago={(v) => setEdicion({ ...edicion, formaPagoVepArca: v })}
                     estado={edicion.estadoPagoVepArca}
+                    estadoGuardado={elegida.estadoPagoVepArca}
                     onEstado={(v) => setEdicion({ ...edicion, estadoPagoVepArca: v })}
                     comprobante={comprobanteArca}
                     onComprobante={setComprobanteArca}
@@ -683,6 +729,7 @@ export function ActualizarOpBerger() {
                     formaPago={edicion.formaPagoVepTerminal}
                     onFormaPago={(v) => setEdicion({ ...edicion, formaPagoVepTerminal: v })}
                     estado={edicion.estadoPagoVepTerminal}
+                    estadoGuardado={elegida.estadoPagoVepTerminal}
                     onEstado={(v) => setEdicion({ ...edicion, estadoPagoVepTerminal: v })}
                     comprobante={comprobanteTerminal}
                     onComprobante={setComprobanteTerminal}
