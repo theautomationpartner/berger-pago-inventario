@@ -75,14 +75,23 @@ export function ActualizarContenedores() {
   const [depositos, setDepositos] = useState<string[]>([])
   /** Los contenedores tildados para trabajarlos juntos. */
   const [lote, setLote] = useState<string[]>([])
-  /** La fecha de arribo que se les va a poner a los del lote. Arranca en hoy. */
+  /**
+   * Lo elegido en el panel del lote.
+   *
+   * Vive acá y NO se vuelca a cada contenedor en el momento del clic. Es la diferencia entre "esto
+   * vale para los tildados" y "esto se copió una vez a los que había": con lo segundo, tildar uno
+   * más lo dejaba afuera de lo ya elegido, y el desplegable volvía a verse vacío.
+   */
+  const [loteValores, setLoteValores] = useState<Partial<EdicionContenedor>>({})
+  /** La fecha del arribo del lote. Separada porque el arribo se confirma con un botón. */
   const [fechaLote, setFechaLote] = useState(hoyISO())
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [busqueda, setBusqueda] = useState('')
   const [soloPendientes, setSoloPendientes] = useState(true)
-  const [ediciones, setEdiciones] = useState<Record<string, EdicionContenedor>>({})
+  /** Lo editado a mano en CADA contenedor. Sólo los campos tocados: lo demás sale del lote. */
+  const [ediciones, setEdiciones] = useState<Record<string, Partial<EdicionContenedor>>>({})
 
   const [guardando, setGuardando] = useState<string | null>(null)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
@@ -130,21 +139,47 @@ export function ActualizarContenedores() {
     [soloPendientes, pendientes, contenedores, busqueda],
   )
 
-  const edicionDe = (c: ContenedorDespacho): EdicionContenedor =>
-    ediciones[c.id] ?? {
-      ubicacion: c.ubicacion,
-      transportistaId: c.transportistaId,
-      estadoArribo: c.estadoArribo,
-      fechaArribo: c.fechaArribo,
+  const enLote = (c: ContenedorDespacho) => lote.includes(c.id)
+
+  /**
+   * Lo que va a quedar en un contenedor, con esta prioridad:
+   *
+   *   1. lo que se editó **a mano en su tarjeta** —gana siempre, es lo más específico—,
+   *   2. lo elegido en el **panel del lote**, si está tildado,
+   *   3. lo que ya tiene en monday.
+   *
+   * Esa escalera es la que permite "todos a este depósito, menos éste que va al otro" sin
+   * destildar nada ni volver a elegir lo de arriba.
+   */
+  const edicionDe = (c: ContenedorDespacho): EdicionContenedor => {
+    const propio = ediciones[c.id] ?? {}
+    const delLoteAhora = enLote(c) ? loteValores : {}
+    /* El arribo del lote sólo cae sobre los que ya salieron de aduana: a los demás ni se les
+       propone, así que tampoco se les aplica por estar tildados. */
+    const arriboDelLote =
+      enLote(c) && puedeArribar(c)
+        ? { estadoArribo: delLoteAhora.estadoArribo, fechaArribo: delLoteAhora.fechaArribo }
+        : {}
+
+    const elegir = <T,>(a: T | undefined, b: T | undefined, c2: T): T => a ?? b ?? c2
+    return {
+      ubicacion: elegir(propio.ubicacion, delLoteAhora.ubicacion, c.ubicacion),
+      transportistaId: elegir(
+        propio.transportistaId,
+        delLoteAhora.transportistaId,
+        c.transportistaId,
+      ),
+      estadoArribo: elegir(propio.estadoArribo, arriboDelLote.estadoArribo, c.estadoArribo),
+      fechaArribo: elegir(propio.fechaArribo, arriboDelLote.fechaArribo, c.fechaArribo),
     }
+  }
 
   const cambiar = (c: ContenedorDespacho, cambio: Partial<EdicionContenedor>) =>
-    setEdiciones((a) => ({ ...a, [c.id]: { ...edicionDe(c), ...cambio } }))
+    setEdiciones((a) => ({ ...a, [c.id]: { ...(a[c.id] ?? {}), ...cambio } }))
 
   /** Qué cambió respecto de lo que hay en monday. Sólo eso viaja. */
   const cambiosDe = (c: ContenedorDespacho): Partial<EdicionContenedor> => {
-    const e = ediciones[c.id]
-    if (!e) return {}
+    const e = edicionDe(c)
     const parcial: Partial<EdicionContenedor> = {}
     if ((e.ubicacion ?? '') !== (c.ubicacion ?? '')) parcial.ubicacion = e.ubicacion
     if ((e.transportistaId ?? null) !== (c.transportistaId ?? null)) {
@@ -165,8 +200,6 @@ export function ActualizarContenedores() {
    * uno antes de guardar.
    * ------------------------------------------------------------------ */
 
-  const enLote = (c: ContenedorDespacho) => lote.includes(c.id)
-
   const alternarLote = (c: ContenedorDespacho) =>
     setLote((a) => (a.includes(c.id) ? a.filter((x) => x !== c.id) : [...a, c.id]))
 
@@ -178,40 +211,11 @@ export function ActualizarContenedores() {
   const nacionalizadosDelLote = useMemo(() => delLote.filter(puedeArribar), [delLote])
   const sinNacionalizarDelLote = useMemo(() => delLote.filter((c) => !puedeArribar(c)), [delLote])
 
-  const aplicarAlLote = (cambio: Partial<EdicionContenedor>) =>
-    setEdiciones((a) => {
-      const nuevas = { ...a }
-      for (const c of delLote) {
-        nuevas[c.id] = {
-          ...(a[c.id] ?? {
-            ubicacion: c.ubicacion,
-            transportistaId: c.transportistaId,
-            estadoArribo: c.estadoArribo,
-            fechaArribo: c.fechaArribo,
-          }),
-          ...cambio,
-        }
-      }
-      return nuevas
-    })
-
-  /** Como `aplicarAlLote`, pero sólo a los que pueden arribar. */
-  const aplicarALosNacionalizados = (cambio: Partial<EdicionContenedor>) =>
-    setEdiciones((a) => {
-      const nuevas = { ...a }
-      for (const c of nacionalizadosDelLote) {
-        nuevas[c.id] = {
-          ...(a[c.id] ?? {
-            ubicacion: c.ubicacion,
-            transportistaId: c.transportistaId,
-            estadoArribo: c.estadoArribo,
-            fechaArribo: c.fechaArribo,
-          }),
-          ...cambio,
-        }
-      }
-      return nuevas
-    })
+  /** Vacía la selección y lo elegido para ella: sin esto, lo del lote anterior seguiría pegado. */
+  const vaciarLote = () => {
+    setLote([])
+    setLoteValores({})
+  }
 
   /** Guarda de a uno, en orden: si el tercero falla, los dos anteriores ya quedaron bien. */
   const guardarLote = async () => {
@@ -228,7 +232,7 @@ export function ActualizarContenedores() {
     if (fallaron.length > 0) {
       setErrorGuardar(`No se pudieron guardar: ${fallaron.join(', ')}.`)
     }
-    setLote([])
+    vaciarLote()
   }
 
   const guardar = async (c: ContenedorDespacho) => {
@@ -267,6 +271,7 @@ export function ActualizarContenedores() {
         const { [c.id]: _, ...resto } = a
         return resto
       })
+      setLote((a) => a.filter((x) => x !== c.id))
     } catch (e) {
       setErrorGuardar(`No se pudo guardar ${c.numero || c.nombre}: ${mensaje(e)}`)
     } finally {
@@ -396,7 +401,7 @@ export function ActualizarContenedores() {
                 type="button"
                 className="btn btn--texto btn--chico"
                 style={{ marginLeft: 'auto' }}
-                onClick={() => setLote([])}
+                onClick={vaciarLote}
               >
                 <i className="fa-solid fa-xmark" aria-hidden="true" /> Vaciar la selección
               </button>
@@ -411,21 +416,23 @@ export function ActualizarContenedores() {
               <div className="campo">
                 <span className="campo-lbl">Ubicación de entrega para todos</span>
                 <Desplegable
-                  valor=""
+                  valor={loteValores.ubicacion ?? ''}
                   opciones={depositos}
                   vacio="Elegir un depósito…"
                   buscable={depositos.length > 8}
-                  onCambiar={(v) => v && aplicarAlLote({ ubicacion: v })}
+                  onCambiar={(v) => setLoteValores((a) => ({ ...a, ubicacion: v || undefined }))}
                 />
               </div>
               <div className="campo">
                 <span className="campo-lbl">Transportista para todos</span>
                 <Desplegable
-                  valor=""
+                  valor={loteValores.transportistaId ?? ''}
                   opciones={contactos.map((x) => ({ valor: x.id, rotulo: x.nombre }))}
                   vacio="Elegir un transportista…"
                   buscable={contactos.length > 8}
-                  onCambiar={(v) => v && aplicarAlLote({ transportistaId: v })}
+                  onCambiar={(v) =>
+                    setLoteValores((a) => ({ ...a, transportistaId: v || undefined }))
+                  }
                 />
               </div>
             </div>
@@ -454,23 +461,45 @@ export function ActualizarContenedores() {
                         type="date"
                         max={hoyISO()}
                         value={fechaLote}
-                        onChange={(ev) => setFechaLote(ev.target.value)}
+                        onChange={(ev) => {
+                          setFechaLote(ev.target.value)
+                          // Si el arribo ya estaba marcado, mover la fecha lo mueve con él.
+                          setLoteValores((a) =>
+                            a.estadoArribo ? { ...a, fechaArribo: ev.target.value } : a,
+                          )
+                        }}
                       />
                     </label>
                     <button
                       type="button"
-                      className="btn btn--primario btn--chico"
+                      className={`btn btn--chico ${
+                        loteValores.estadoArribo ? 'btn--borde' : 'btn--primario'
+                      }`}
                       disabled={!fechaLote}
                       onClick={() =>
-                        aplicarALosNacionalizados({
-                          estadoArribo: ESTADO_ARRIBO.ARRIBADO,
-                          fechaArribo: fechaLote,
-                        })
+                        setLoteValores((a) =>
+                          a.estadoArribo
+                            ? { ...a, estadoArribo: undefined, fechaArribo: undefined }
+                            : {
+                                ...a,
+                                estadoArribo: ESTADO_ARRIBO.ARRIBADO,
+                                fechaArribo: fechaLote,
+                              },
+                        )
                       }
                     >
-                      <i className="fa-solid fa-circle-check" aria-hidden="true" /> Marcar{' '}
-                      {nacionalizadosDelLote.length} como arribado
-                      {nacionalizadosDelLote.length === 1 ? '' : 's'}
+                      {loteValores.estadoArribo ? (
+                        <>
+                          <i className="fa-solid fa-rotate-left" aria-hidden="true" /> Deshacer el
+                          arribo
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-circle-check" aria-hidden="true" /> Marcar{' '}
+                          {nacionalizadosDelLote.length} como arribado
+                          {nacionalizadosDelLote.length === 1 ? '' : 's'}
+                        </>
+                      )}
                     </button>
                   </div>
                   <span className="lote-arribo-det">
@@ -482,7 +511,7 @@ export function ActualizarContenedores() {
               {/* Mezcla de nacionalizados y no nacionalizados: en vez de avisar que a algunos "no
                   se les va a cargar" —que obliga a leer el resumen fila por fila para saber a
                   cuáles—, se ofrece sacarlos de la selección de una vez. */}
-              {sinNacionalizarDelLote.length > 0 && (
+              {sinNacionalizarDelLote.length > 0 && nacionalizadosDelLote.length > 0 && (
                 <div className="aviso aviso--alerta" style={{ margin: 0 }}>
                   <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
                   <span>
