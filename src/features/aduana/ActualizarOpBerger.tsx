@@ -165,6 +165,9 @@ function BloqueVep({
    * Nunca toca un pago que YA estaba registrado en monday: eso se revierte allá, donde queda
    * asentado quién lo hizo.
    */
+  /** Están las dos condiciones y todavía figura como no pagado: es el momento de recordarlo. */
+  const listoParaPagar = !faltaParaPagar && estado !== ESTADO_PAGO_VEP.PAGADO
+
   const yaEstabaPagado = estadoGuardado === ESTADO_PAGO_VEP.PAGADO
   useEffect(() => {
     if (!yaEstabaPagado && faltaParaPagar && estado === ESTADO_PAGO_VEP.PAGADO) {
@@ -249,16 +252,42 @@ function BloqueVep({
               </span>
             )
           ) : (
-            <ZonaArchivo
-              archivo={comprobante}
-              onElegir={onComprobante}
-              acepta=".pdf"
-              titulo={
-                comprobanteSubido
-                  ? `Ya hay un comprobante (${nombreDeArchivo(comprobanteSubido)}) · subir otro`
-                  : `Comprobante de pago del ${titulo}`
-              }
-            />
+            <>
+              <ZonaArchivo
+                archivo={comprobante}
+                onElegir={onComprobante}
+                acepta=".pdf"
+                titulo={
+                  comprobanteSubido
+                    ? `Ya hay un comprobante (${nombreDeArchivo(comprobanteSubido)}) · subir otro`
+                    : `Comprobante de pago del ${titulo}`
+                }
+              />
+
+              {/* Ya está todo para marcarlo, pero la app NO lo marca sola: el estado queda cerrado
+                  al guardar y sólo se revierte desde monday, así que decidirlo por alguien sería
+                  tomarle una decisión que después no puede deshacer desde acá. Lo que sí hace es
+                  recordárselo y dejarlo a un toque. */}
+              {listoParaPagar && (
+                <div className="vep-listo">
+                  <span className="vep-listo-txt">
+                    <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                    <span>
+                      Ya tenés la <b>forma de pago</b> y el <b>comprobante</b> del {titulo}. ¿Lo
+                      marcamos como <b>{ESTADO_PAGO_VEP.PAGADO}</b>?
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn--primario btn--chico"
+                    onClick={() => onEstado(ESTADO_PAGO_VEP.PAGADO)}
+                  >
+                    <i className="fa-solid fa-check" aria-hidden="true" /> Marcarlo{' '}
+                    {ESTADO_PAGO_VEP.PAGADO}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

@@ -1739,3 +1739,29 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* "Ya tenés todo para marcarlo": el recordatorio con el botón al lado. La app no lo marca sola
+   —el estado queda cerrado al guardar y sólo se revierte desde monday—, pero lo deja a un toque. */
+.vep-listo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--green-bd);
+  border-radius: 10px;
+  background: var(--green-soft);
+}
+.vep-listo-txt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--green-dark);
+}
+.vep-listo-txt > i {
+  font-size: 14px;
+}
